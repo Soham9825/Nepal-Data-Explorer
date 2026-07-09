@@ -1,0 +1,676 @@
+Context,Date,Value,Type,Published_Year
+Advanced Economies,Pred_2005,2.5,Predicted,2004
+Advanced Economies,Pred_2006,2.7,Predicted,2004
+Advanced Economies,Pred_2007,2.5,Predicted,2006
+Advanced Economies,Pred_2008,2.2,Predicted,2006
+Advanced Economies,Pred_2008,1.5,Predicted,2007
+Advanced Economies,Pred_2009,0.5,Predicted,2007
+Advanced Economies,Pred_2009,-3.4,Predicted,2008
+Advanced Economies,Pred_2010,1.3,Predicted,2008
+Advanced Economies,Pred_2010,2.6,Predicted,2009
+Advanced Economies,Pred_2011,2.4,Predicted,2009
+Advanced Economies,Pred_2011,1.6,Predicted,2010
+Advanced Economies,Pred_2012,1.9,Predicted,2010
+Advanced Economies,Pred_2012,1.3,Predicted,2011
+Advanced Economies,Pred_2013,1.5,Predicted,2011
+Advanced Economies,Pred_2013,1.2,Predicted,2012
+Advanced Economies,Pred_2014,3.8,Predicted,2012
+Advanced Economies,Pred_2014,1.8,Predicted,2013
+Advanced Economies,Pred_2015,2.3,Predicted,2013
+Advanced Economies,Pred_2015,2,Predicted,2014
+Advanced Economies,Pred_2016,2.2,Predicted,2014
+Advanced Economies,Pred_2016,1.6,Predicted,2015
+Advanced Economies,Pred_2017,1.8,Predicted,2015
+Advanced Economies,Pred_2017,2.2,Predicted,2016
+Advanced Economies,Pred_2018,2,Predicted,2016
+Advanced Economies,Pred_2018,2.4,Predicted,2017
+Advanced Economies,Pred_2019,2.1,Predicted,2017
+Advanced Economies,Pred_2019,1.7,Predicted,2018
+Advanced Economies,Pred_2020,1.7,Predicted,2018
+Advanced Economies,Pred_2020,-5.8,Predicted,2019
+Advanced Economies,Pred_2021,3.9,Predicted,2019
+Advanced Economies,Pred_2021,5.2,Predicted,2020
+Advanced Economies,Pred_2022,4.5,Predicted,2020
+Advanced Economies,Pred_2022,2.4,Predicted,2021
+Advanced Economies,Pred_2023,1.1,Predicted,2021
+Advanced Economies,Pred_2023,1.5,Predicted,2022
+Advanced Economies,Pred_2024,1.4,Predicted,2022
+Advanced Economies,Pred_2024,1.8,Predicted,2023
+Advanced Economies,Pred_2025,1.8,Predicted,2023
+Advanced Economies,Real_2003,1.9,Real,2004
+Advanced Economies,Real_2004,3.3,Real,2004
+Advanced Economies,Real_2005,2.5,Real,2006
+Advanced Economies,Real_2006,2.9,Real,2006
+Advanced Economies,Real_2006,3,Real,2007
+Advanced Economies,Real_2007,2.6,Real,2007
+Advanced Economies,Real_2007,2.7,Real,2008
+Advanced Economies,Real_2008,0.6,Real,2008
+Advanced Economies,Real_2008,0.5,Real,2009
+Advanced Economies,Real_2009,-3.2,Real,2009
+Advanced Economies,Real_2009,-3.7,Real,2010
+Advanced Economies,Real_2010,3.1,Real,2010
+Advanced Economies,Real_2010,3,Real,2011
+Advanced Economies,Real_2011,1.6,Real,2011
+Advanced Economies,Real_2011,1.7,Real,2012
+Advanced Economies,Real_2012,1.2,Real,2012
+Advanced Economies,Real_2012,1.2,Real,2013
+Advanced Economies,Real_2012,1.4,Real,2013
+Advanced Economies,Real_2013,1.1,Real,2014
+Advanced Economies,Real_2014,1.8,Real,2014
+Advanced Economies,Real_2014,1.9,Real,2015
+Advanced Economies,Real_2015,2.1,Real,2015
+Advanced Economies,Real_2015,2.2,Real,2016
+Advanced Economies,Real_2016,1.7,Real,2016
+Advanced Economies,Real_2016,1.7,Real,2017
+Advanced Economies,Real_2017,2.3,Real,2017
+Advanced Economies,Real_2017,2.5,Real,2018
+Advanced Economies,Real_2018,2.3,Real,2018
+Advanced Economies,Real_2018,2.2,Real,2019
+Advanced Economies,Real_2019,1.7,Real,2019
+Advanced Economies,Real_2019,1.7,Real,2020
+Advanced Economies,Real_2020,-4.5,Real,2020
+Advanced Economies,Real_2021,5.2,Real,2021
+Advanced Economies,Real_2021,5.4,Real,2022
+Advanced Economies,Real_2022,2.7,Real,2022
+Advanced Economies,Real_2022,2.9,Real,2023
+Advanced Economies,Real_2023,1.7,Real,2023
+China,Pred_2005,9,Predicted,2004
+China,Pred_2006,8.2,Predicted,2004
+China,Pred_2007,11.5,Predicted,2006
+China,Pred_2008,10,Predicted,2006
+China,Pred_2008,9.7,Predicted,2007
+China,Pred_2009,9.3,Predicted,2007
+China,Pred_2009,8.5,Predicted,2008
+China,Pred_2010,9,Predicted,2008
+China,Pred_2010,10.5,Predicted,2009
+China,Pred_2011,9.6,Predicted,2009
+China,Pred_2011,9.5,Predicted,2010
+China,Pred_2012,9,Predicted,2010
+China,Pred_2012,7.8,Predicted,2011
+China,Pred_2013,8.2,Predicted,2011
+China,Pred_2013,7.8,Predicted,2012
+China,Pred_2014,5.4,Predicted,2012
+China,Pred_2014,7.4,Predicted,2013
+China,Pred_2015,7.1,Predicted,2013
+China,Pred_2015,6.8,Predicted,2014
+China,Pred_2016,6.3,Predicted,2014
+China,Pred_2016,6.6,Predicted,2015
+China,Pred_2017,6.2,Predicted,2015
+China,Pred_2017,6.8,Predicted,2016
+China,Pred_2018,6.5,Predicted,2016
+China,Pred_2018,6.6,Predicted,2017
+China,Pred_2019,6.2,Predicted,2017
+China,Pred_2019,6.1,Predicted,2018
+China,Pred_2020,5.8,Predicted,2018
+China,Pred_2020,1.9,Predicted,2019
+China,Pred_2021,8.2,Predicted,2019
+China,Pred_2021,8,Predicted,2020
+China,Pred_2022,5.6,Predicted,2020
+China,Pred_2022,3.2,Predicted,2021
+China,Pred_2023,4.4,Predicted,2021
+China,Pred_2023,5.2,Predicted,2022
+China,Pred_2024,4.5,Predicted,2022
+China,Pred_2024,4.8,Predicted,2023
+China,Pred_2025,4.5,Predicted,2023
+China,Real_2003,9.5,Real,2004
+China,Real_2004,9.5,Real,2004
+China,Real_2005,10.4,Real,2006
+China,Real_2006,11.1,Real,2006
+China,Real_2006,11.6,Real,2007
+China,Real_2007,11.9,Real,2007
+China,Real_2007,13,Real,2008
+China,Real_2008,9,Real,2008
+China,Real_2008,9.6,Real,2009
+China,Real_2009,9.1,Real,2009
+China,Real_2009,9.2,Real,2010
+China,Real_2010,10.3,Real,2010
+China,Real_2010,10.4,Real,2011
+China,Real_2011,9.2,Real,2011
+China,Real_2011,9.3,Real,2012
+China,Real_2012,7.8,Real,2012
+China,Real_2012,7.7,Real,2013
+China,Real_2012,7.7,Real,2013
+China,Real_2013,7.7,Real,2014
+China,Real_2014,7.3,Real,2014
+China,Real_2014,7.3,Real,2015
+China,Real_2015,6.9,Real,2015
+China,Real_2015,6.9,Real,2016
+China,Real_2016,6.7,Real,2016
+China,Real_2016,6.7,Real,2017
+China,Real_2017,6.9,Real,2017
+China,Real_2017,6.8,Real,2018
+China,Real_2018,6.6,Real,2018
+China,Real_2018,6.7,Real,2019
+China,Real_2019,6.1,Real,2019
+China,Real_2019,6,Real,2020
+China,Real_2020,2.3,Real,2020
+China,Real_2021,8.1,Real,2021
+China,Real_2021,8.4,Real,2022
+China,Real_2022,3,Real,2022
+China,Real_2022,3,Real,2023
+China,Real_2023,5.2,Real,2023
+Developing Countries,Pred_2005,6.4,Predicted,2004
+Developing Countries,Pred_2006,6.1,Predicted,2004
+Developing Countries,Pred_2007,8.1,Predicted,2006
+Developing Countries,Pred_2008,7.4,Predicted,2006
+Developing Countries,Pred_2008,6.9,Predicted,2007
+Developing Countries,Pred_2009,6.1,Predicted,2007
+Developing Countries,Pred_2009,1.7,Predicted,2008
+Developing Countries,Pred_2010,5.1,Predicted,2008
+Developing Countries,Pred_2010,6.8,Predicted,2009
+Developing Countries,Pred_2011,6.4,Predicted,2009
+Developing Countries,Pred_2011,6.4,Predicted,2010
+Developing Countries,Pred_2012,6.1,Predicted,2010
+Developing Countries,Pred_2012,5.3,Predicted,2011
+Developing Countries,Pred_2013,5.6,Predicted,2011
+Developing Countries,Pred_2013,5,Predicted,2012
+Developing Countries,Pred_2014,1.2,Predicted,2012
+Developing Countries,Pred_2014,4.4,Predicted,2013
+Developing Countries,Pred_2015,5,Predicted,2013
+Developing Countries,Pred_2015,4,Predicted,2014
+Developing Countries,Pred_2016,4.5,Predicted,2014
+Developing Countries,Pred_2016,4.2,Predicted,2015
+Developing Countries,Pred_2017,4.6,Predicted,2015
+Developing Countries,Pred_2017,4.6,Predicted,2016
+Developing Countries,Pred_2018,4.9,Predicted,2016
+Developing Countries,Pred_2018,4.7,Predicted,2017
+Developing Countries,Pred_2019,4.7,Predicted,2017
+Developing Countries,Pred_2019,3.9,Predicted,2018
+Developing Countries,Pred_2020,4.6,Predicted,2018
+Developing Countries,Pred_2020,-3.3,Predicted,2019
+Developing Countries,Pred_2021,6,Predicted,2019
+Developing Countries,Pred_2021,6.4,Predicted,2020
+Developing Countries,Pred_2022,5.1,Predicted,2020
+Developing Countries,Pred_2022,3.7,Predicted,2021
+Developing Countries,Pred_2023,3.7,Predicted,2021
+Developing Countries,Pred_2023,4,Predicted,2022
+Developing Countries,Pred_2024,4.1,Predicted,2022
+Developing Countries,Pred_2024,4.2,Predicted,2023
+Developing Countries,Pred_2025,4.2,Predicted,2023
+Developing Countries,Real_2003,6.5,Real,2004
+Developing Countries,Real_2004,7.3,Real,2004
+Developing Countries,Real_2005,7.5,Real,2006
+Developing Countries,Real_2006,8.1,Real,2006
+Developing Countries,Real_2006,7.9,Real,2007
+Developing Countries,Real_2007,8,Real,2007
+Developing Countries,Real_2007,8.3,Real,2008
+Developing Countries,Real_2008,6,Real,2008
+Developing Countries,Real_2008,6.1,Real,2009
+Developing Countries,Real_2009,2.5,Real,2009
+Developing Countries,Real_2009,2.8,Real,2010
+Developing Countries,Real_2010,7.3,Real,2010
+Developing Countries,Real_2010,7.4,Real,2011
+Developing Countries,Real_2011,6.2,Real,2011
+Developing Countries,Real_2011,6.2,Real,2012
+Developing Countries,Real_2012,4.9,Real,2012
+Developing Countries,Real_2012,5.1,Real,2013
+Developing Countries,Real_2012,4.7,Real,2013
+Developing Countries,Real_2013,5,Real,2014
+Developing Countries,Real_2014,4.6,Real,2014
+Developing Countries,Real_2014,4.6,Real,2015
+Developing Countries,Real_2015,4,Real,2015
+Developing Countries,Real_2015,4.3,Real,2016
+Developing Countries,Real_2016,4.3,Real,2016
+Developing Countries,Real_2016,4.4,Real,2017
+Developing Countries,Real_2017,4.7,Real,2017
+Developing Countries,Real_2017,4.8,Real,2018
+Developing Countries,Real_2018,4.5,Real,2018
+Developing Countries,Real_2018,4.5,Real,2019
+Developing Countries,Real_2019,3.7,Real,2019
+Developing Countries,Real_2019,3.7,Real,2020
+Developing Countries,Real_2020,-2.1,Real,2020
+Developing Countries,Real_2021,6.6,Real,2021
+Developing Countries,Real_2021,6.8,Real,2022
+Developing Countries,Real_2022,4,Real,2022
+Developing Countries,Real_2022,4,Real,2023
+Developing Countries,Real_2023,4.4,Real,2023
+Emerging Asia,Pred_2005,7.8,Predicted,2004
+Emerging Asia,Pred_2006,7.2,Predicted,2004
+Emerging Asia,Pred_2007,9.8,Predicted,2006
+Emerging Asia,Pred_2008,8.8,Predicted,2006
+Emerging Asia,Pred_2008,8.4,Predicted,2007
+Emerging Asia,Pred_2009,7.7,Predicted,2007
+Emerging Asia,Pred_2009,6.2,Predicted,2008
+Emerging Asia,Pred_2010,7.3,Predicted,2008
+Emerging Asia,Pred_2010,9.2,Predicted,2009
+Emerging Asia,Pred_2011,8.5,Predicted,2009
+Emerging Asia,Pred_2011,8.2,Predicted,2010
+Emerging Asia,Pred_2012,8,Predicted,2010
+Emerging Asia,Pred_2012,6.7,Predicted,2011
+Emerging Asia,Pred_2013,7.2,Predicted,2011
+Emerging Asia,Pred_2013,6.9,Predicted,2012
+Emerging Asia,Pred_2014,,Predicted,2012
+Emerging Asia,Pred_2014,6.5,Predicted,2013
+Emerging Asia,Pred_2015,6.6,Predicted,2013
+Emerging Asia,Pred_2015,6.5,Predicted,2014
+Emerging Asia,Pred_2016,6.4,Predicted,2014
+Emerging Asia,Pred_2016,6.5,Predicted,2015
+Emerging Asia,Pred_2017,6.3,Predicted,2015
+Emerging Asia,Pred_2017,6.5,Predicted,2016
+Emerging Asia,Pred_2018,6.5,Predicted,2016
+Emerging Asia,Pred_2018,6.5,Predicted,2017
+Emerging Asia,Pred_2019,6.3,Predicted,2017
+Emerging Asia,Pred_2019,5.9,Predicted,2018
+Emerging Asia,Pred_2020,6,Predicted,2018
+Emerging Asia,Pred_2020,-1.7,Predicted,2019
+Emerging Asia,Pred_2021,8,Predicted,2019
+Emerging Asia,Pred_2021,7.2,Predicted,2020
+Emerging Asia,Pred_2022,6.3,Predicted,2020
+Emerging Asia,Pred_2022,4.4,Predicted,2021
+Emerging Asia,Pred_2023,4.9,Predicted,2021
+Emerging Asia,Pred_2023,5.3,Predicted,2022
+Emerging Asia,Pred_2024,5,Predicted,2022
+Emerging Asia,Pred_2024,5.3,Predicted,2023
+Emerging Asia,Pred_2025,5,Predicted,2023
+Emerging Asia,Real_2003,8.1,Real,2004
+Emerging Asia,Real_2004,8.2,Real,2004
+Emerging Asia,Real_2005,9.2,Real,2006
+Emerging Asia,Real_2006,9.8,Real,2006
+Emerging Asia,Real_2006,9.9,Real,2007
+Emerging Asia,Real_2007,10,Real,2007
+Emerging Asia,Real_2007,10.6,Real,2008
+Emerging Asia,Real_2008,7.6,Real,2008
+Emerging Asia,Real_2008,7.7,Real,2009
+Emerging Asia,Real_2009,6.9,Real,2009
+Emerging Asia,Real_2009,7.2,Real,2010
+Emerging Asia,Real_2010,9.5,Real,2010
+Emerging Asia,Real_2010,9.5,Real,2011
+Emerging Asia,Real_2011,7.8,Real,2011
+Emerging Asia,Real_2011,7.8,Real,2012
+Emerging Asia,Real_2012,6.5,Real,2012
+Emerging Asia,Real_2012,6.7,Real,2013
+Emerging Asia,Real_2012,6.6,Real,2013
+Emerging Asia,Real_2013,7,Real,2014
+Emerging Asia,Real_2014,6.8,Real,2014
+Emerging Asia,Real_2014,6.8,Real,2015
+Emerging Asia,Real_2015,6.6,Real,2015
+Emerging Asia,Real_2015,6.8,Real,2016
+Emerging Asia,Real_2016,6.4,Real,2016
+Emerging Asia,Real_2016,6.5,Real,2017
+Emerging Asia,Real_2017,6.5,Real,2017
+Emerging Asia,Real_2017,6.6,Real,2018
+Emerging Asia,Real_2018,6.4,Real,2018
+Emerging Asia,Real_2018,6.3,Real,2019
+Emerging Asia,Real_2019,5.5,Real,2019
+Emerging Asia,Real_2019,5.4,Real,2020
+Emerging Asia,Real_2020,-0.8,Real,2020
+Emerging Asia,Real_2021,7.2,Real,2021
+Emerging Asia,Real_2021,7.5,Real,2022
+Emerging Asia,Real_2022,4.5,Real,2022
+Emerging Asia,Real_2022,4.4,Real,2023
+Emerging Asia,Real_2023,5.7,Real,2023
+Euro Area,Pred_2005,NA,Predicted,2004
+Euro Area,Pred_2006,NA,Predicted,2004
+Euro Area,Pred_2007,NA,Predicted,2006
+Euro Area,Pred_2008,NA,Predicted,2006
+Euro Area,Pred_2008,NA,Predicted,2007
+Euro Area,Pred_2009,NA,Predicted,2007
+Euro Area,Pred_2009,-4.2,Predicted,2008
+Euro Area,Pred_2010,0.3,Predicted,2008
+Euro Area,Pred_2010,1,Predicted,2009
+Euro Area,Pred_2011,1.3,Predicted,2009
+Euro Area,Pred_2011,1.6,Predicted,2010
+Euro Area,Pred_2012,1.1,Predicted,2010
+Euro Area,Pred_2012,-0.4,Predicted,2011
+Euro Area,Pred_2013,0.2,Predicted,2011
+Euro Area,Pred_2013,-0.6,Predicted,2012
+Euro Area,Pred_2014,2.7,Predicted,2012
+Euro Area,Pred_2014,0.8,Predicted,2013
+Euro Area,Pred_2015,1.3,Predicted,2013
+Euro Area,Pred_2015,1.5,Predicted,2014
+Euro Area,Pred_2016,1.6,Predicted,2014
+Euro Area,Pred_2016,1.7,Predicted,2015
+Euro Area,Pred_2017,2.5,Predicted,2015
+Euro Area,Pred_2017,2.1,Predicted,2016
+Euro Area,Pred_2018,1.9,Predicted,2016
+Euro Area,Pred_2018,2,Predicted,2017
+Euro Area,Pred_2019,1.9,Predicted,2017
+Euro Area,Pred_2019,1.2,Predicted,2018
+Euro Area,Pred_2020,1.4,Predicted,2018
+Euro Area,Pred_2020,-8.3,Predicted,2019
+Euro Area,Pred_2021,5.2,Predicted,2019
+Euro Area,Pred_2021,5,Predicted,2020
+Euro Area,Pred_2022,4.3,Predicted,2020
+Euro Area,Pred_2022,3.1,Predicted,2021
+Euro Area,Pred_2023,0.5,Predicted,2021
+Euro Area,Pred_2023,0.9,Predicted,2022
+Euro Area,Pred_2024,1.5,Predicted,2022
+Euro Area,Pred_2024,0.8,Predicted,2023
+Euro Area,Pred_2025,1.2,Predicted,2023
+Euro Area,Real_2003,NA,Real,2004
+Euro Area,Real_2004,NA,Real,2004
+Euro Area,Real_2005,NA,Real,2006
+Euro Area,Real_2006,NA,Real,2006
+Euro Area,Real_2006,NA,Real,2007
+Euro Area,Real_2007,NA,Real,2007
+Euro Area,Real_2007,2.7,Real,2008
+Euro Area,Real_2008,0.7,Real,2008
+Euro Area,Real_2008,0.6,Real,2009
+Euro Area,Real_2009,-4.1,Real,2009
+Euro Area,Real_2009,-4.3,Real,2010
+Euro Area,Real_2010,1.8,Real,2010
+Euro Area,Real_2010,2,Real,2011
+Euro Area,Real_2011,1.4,Real,2011
+Euro Area,Real_2011,1.5,Real,2012
+Euro Area,Real_2012,-0.6,Real,2012
+Euro Area,Real_2012,-0.7,Real,2013
+Euro Area,Real_2012,-0.4,Real,2013
+Euro Area,Real_2013,-0.3,Real,2014
+Euro Area,Real_2014,0.9,Real,2014
+Euro Area,Real_2014,1.1,Real,2015
+Euro Area,Real_2015,2,Real,2015
+Euro Area,Real_2015,2,Real,2016
+Euro Area,Real_2016,1.8,Real,2016
+Euro Area,Real_2016,1.9,Real,2017
+Euro Area,Real_2017,2.4,Real,2017
+Euro Area,Real_2017,2.5,Real,2018
+Euro Area,Real_2018,1.9,Real,2018
+Euro Area,Real_2018,1.8,Real,2019
+Euro Area,Real_2019,1.3,Real,2019
+Euro Area,Real_2019,1.5,Real,2020
+Euro Area,Real_2020,-6.3,Real,2020
+Euro Area,Real_2021,5.2,Real,2021
+Euro Area,Real_2021,5.3,Real,2022
+Euro Area,Real_2022,3.5,Real,2022
+Euro Area,Real_2022,3.3,Real,2023
+Euro Area,Real_2023,0.4,Real,2023
+India,Pred_2005,7.1,Predicted,2004
+India,Pred_2006,6.3,Predicted,2004
+India,Pred_2007,8.9,Predicted,2006
+India,Pred_2008,8.4,Predicted,2006
+India,Pred_2008,7.9,Predicted,2007
+India,Pred_2009,6.9,Predicted,2007
+India,Pred_2009,5.4,Predicted,2008
+India,Pred_2010,6.4,Predicted,2008
+India,Pred_2010,9.4,Predicted,2009
+India,Pred_2011,8.4,Predicted,2009
+India,Pred_2011,7.8,Predicted,2010
+India,Pred_2012,7.5,Predicted,2010
+India,Pred_2012,4.9,Predicted,2011
+India,Pred_2013,6,Predicted,2011
+India,Pred_2013,5.6,Predicted,2012
+India,Pred_2014,7,Predicted,2012
+India,Pred_2014,5.6,Predicted,2013
+India,Pred_2015,6.4,Predicted,2013
+India,Pred_2015,7.3,Predicted,2014
+India,Pred_2016,7.5,Predicted,2014
+India,Pred_2016,7.6,Predicted,2015
+India,Pred_2017,7.6,Predicted,2015
+India,Pred_2017,6.7,Predicted,2016
+India,Pred_2018,7.4,Predicted,2016
+India,Pred_2018,7.3,Predicted,2017
+India,Pred_2019,7.4,Predicted,2017
+India,Pred_2019,6.1,Predicted,2018
+India,Pred_2020,7,Predicted,2018
+India,Pred_2020,-10.3,Predicted,2019
+India,Pred_2021,8.8,Predicted,2019
+India,Pred_2021,9.5,Predicted,2020
+India,Pred_2022,8.5,Predicted,2020
+India,Pred_2022,6.8,Predicted,2021
+India,Pred_2023,6.1,Predicted,2021
+India,Pred_2023,6.1,Predicted,2022
+India,Pred_2024,6.3,Predicted,2022
+India,Pred_2024,7,Predicted,2023
+India,Pred_2025,6.5,Predicted,2023
+India,Real_2003,7.4,Real,2004
+India,Real_2004,7.3,Real,2004
+India,Real_2005,9,Real,2006
+India,Real_2006,9.7,Real,2006
+India,Real_2006,9.8,Real,2007
+India,Real_2007,9.3,Real,2007
+India,Real_2007,9.4,Real,2008
+India,Real_2008,7.3,Real,2008
+India,Real_2008,6.4,Real,2009
+India,Real_2009,5.7,Real,2009
+India,Real_2009,6.8,Real,2010
+India,Real_2010,10.1,Real,2010
+India,Real_2010,10.1,Real,2011
+India,Real_2011,6.8,Real,2011
+India,Real_2011,6.3,Real,2012
+India,Real_2012,3.2,Real,2012
+India,Real_2012,4.7,Real,2013
+India,Real_2012,5,Real,2013
+India,Real_2013,6.9,Real,2014
+India,Real_2014,7.3,Real,2014
+India,Real_2014,7.2,Real,2015
+India,Real_2015,7.6,Real,2015
+India,Real_2015,8,Real,2016
+India,Real_2016,7.1,Real,2016
+India,Real_2016,7.1,Real,2017
+India,Real_2017,6.7,Real,2017
+India,Real_2017,7.2,Real,2018
+India,Real_2018,6.8,Real,2018
+India,Real_2018,6.1,Real,2019
+India,Real_2019,4.2,Real,2019
+India,Real_2019,4,Real,2020
+India,Real_2020,-7.3,Real,2020
+India,Real_2021,8.7,Real,2021
+India,Real_2021,9.1,Real,2022
+India,Real_2022,7.2,Real,2022
+India,Real_2022,7,Real,2023
+India,Real_2023,8.2,Real,2023
+Japan,Pred_2005,2,Predicted,2004
+Japan,Pred_2006,2,Predicted,2004
+Japan,Pred_2007,2,Predicted,2006
+Japan,Pred_2008,1.7,Predicted,2006
+Japan,Pred_2008,0.7,Predicted,2007
+Japan,Pred_2009,0.5,Predicted,2007
+Japan,Pred_2009,-5.4,Predicted,2008
+Japan,Pred_2010,1.7,Predicted,2008
+Japan,Pred_2010,2.4,Predicted,2009
+Japan,Pred_2011,1.8,Predicted,2009
+Japan,Pred_2011,-0.5,Predicted,2010
+Japan,Pred_2012,2.3,Predicted,2010
+Japan,Pred_2012,2.2,Predicted,2011
+Japan,Pred_2013,1.2,Predicted,2011
+Japan,Pred_2013,2,Predicted,2012
+Japan,Pred_2014,0.9,Predicted,2012
+Japan,Pred_2014,0.9,Predicted,2013
+Japan,Pred_2015,0.8,Predicted,2013
+Japan,Pred_2015,0.6,Predicted,2014
+Japan,Pred_2016,1,Predicted,2014
+Japan,Pred_2016,0.5,Predicted,2015
+Japan,Pred_2017,0.6,Predicted,2015
+Japan,Pred_2017,1.5,Predicted,2016
+Japan,Pred_2018,0.7,Predicted,2016
+Japan,Pred_2018,1.1,Predicted,2017
+Japan,Pred_2019,0.9,Predicted,2017
+Japan,Pred_2019,0.9,Predicted,2018
+Japan,Pred_2020,0.5,Predicted,2018
+Japan,Pred_2020,-5.3,Predicted,2019
+Japan,Pred_2021,2.3,Predicted,2019
+Japan,Pred_2021,2.4,Predicted,2020
+Japan,Pred_2022,3.2,Predicted,2020
+Japan,Pred_2022,1.7,Predicted,2021
+Japan,Pred_2023,1.6,Predicted,2021
+Japan,Pred_2023,1.4,Predicted,2022
+Japan,Pred_2024,1,Predicted,2022
+Japan,Pred_2024,0.3,Predicted,2023
+Japan,Pred_2025,1.1,Predicted,2023
+Japan,Real_2003,1.4,Real,2004
+Japan,Real_2004,2.7,Real,2004
+Japan,Real_2005,1.9,Real,2006
+Japan,Real_2006,2.2,Real,2006
+Japan,Real_2006,2.4,Real,2007
+Japan,Real_2007,2.1,Real,2007
+Japan,Real_2007,2.3,Real,2008
+Japan,Real_2008,-0.7,Real,2008
+Japan,Real_2008,-1.2,Real,2009
+Japan,Real_2009,-5.2,Real,2009
+Japan,Real_2009,-6.3,Real,2010
+Japan,Real_2010,4,Real,2010
+Japan,Real_2010,4.5,Real,2011
+Japan,Real_2011,-0.8,Real,2011
+Japan,Real_2011,-0.6,Real,2012
+Japan,Real_2012,1.9,Real,2012
+Japan,Real_2012,1.5,Real,2013
+Japan,Real_2012,1.5,Real,2013
+Japan,Real_2013,1.6,Real,2014
+Japan,Real_2014,-0.1,Real,2014
+Japan,Real_2014,0,Real,2015
+Japan,Real_2015,0.5,Real,2015
+Japan,Real_2015,1.1,Real,2016
+Japan,Real_2016,1,Real,2016
+Japan,Real_2016,1,Real,2017
+Japan,Real_2017,1.7,Real,2017
+Japan,Real_2017,1.9,Real,2018
+Japan,Real_2018,0.8,Real,2018
+Japan,Real_2018,0.3,Real,2019
+Japan,Real_2019,0.7,Real,2019
+Japan,Real_2019,0,Real,2020
+Japan,Real_2020,-4.6,Real,2020
+Japan,Real_2021,1.7,Real,2021
+Japan,Real_2021,2.2,Real,2022
+Japan,Real_2022,1,Real,2022
+Japan,Real_2022,1.2,Real,2023
+Japan,Real_2023,1.7,Real,2023
+USA,Pred_2005,3.5,Predicted,2004
+USA,Pred_2006,3.3,Predicted,2004
+USA,Pred_2007,1.9,Predicted,2006
+USA,Pred_2008,1.9,Predicted,2006
+USA,Pred_2008,1.6,Predicted,2007
+USA,Pred_2009,0.1,Predicted,2007
+USA,Pred_2009,-2.7,Predicted,2008
+USA,Pred_2010,1.5,Predicted,2008
+USA,Pred_2010,3.3,Predicted,2009
+USA,Pred_2011,2.9,Predicted,2009
+USA,Pred_2011,1.5,Predicted,2010
+USA,Pred_2012,1.8,Predicted,2010
+USA,Pred_2012,2.2,Predicted,2011
+USA,Pred_2013,2.1,Predicted,2011
+USA,Pred_2013,1.7,Predicted,2012
+USA,Pred_2014,2.1,Predicted,2012
+USA,Pred_2014,2.2,Predicted,2013
+USA,Pred_2015,3.1,Predicted,2013
+USA,Pred_2015,2.6,Predicted,2014
+USA,Pred_2016,2.8,Predicted,2014
+USA,Pred_2016,1.6,Predicted,2015
+USA,Pred_2017,2.2,Predicted,2015
+USA,Pred_2017,2.2,Predicted,2016
+USA,Pred_2018,2.3,Predicted,2016
+USA,Pred_2018,2.9,Predicted,2017
+USA,Pred_2019,2.5,Predicted,2017
+USA,Pred_2019,2.4,Predicted,2018
+USA,Pred_2020,2.1,Predicted,2018
+USA,Pred_2020,-4.3,Predicted,2019
+USA,Pred_2021,3.1,Predicted,2019
+USA,Pred_2021,6,Predicted,2020
+USA,Pred_2022,5.2,Predicted,2020
+USA,Pred_2022,1.6,Predicted,2021
+USA,Pred_2023,1,Predicted,2021
+USA,Pred_2023,1.8,Predicted,2022
+USA,Pred_2024,1,Predicted,2022
+USA,Pred_2024,2.8,Predicted,2023
+USA,Pred_2025,2.2,Predicted,2023
+USA,Real_2003,2.7,Real,2004
+USA,Real_2004,4.2,Real,2004
+USA,Real_2005,3.1,Real,2006
+USA,Real_2006,2.9,Real,2006
+USA,Real_2006,2.8,Real,2007
+USA,Real_2007,2,Real,2007
+USA,Real_2007,2.1,Real,2008
+USA,Real_2008,0.4,Real,2008
+USA,Real_2008,0.4,Real,2009
+USA,Real_2009,-2.4,Real,2009
+USA,Real_2009,-3.5,Real,2010
+USA,Real_2010,3,Real,2010
+USA,Real_2010,2.4,Real,2011
+USA,Real_2011,1.8,Real,2011
+USA,Real_2011,1.8,Real,2012
+USA,Real_2012,2.2,Real,2012
+USA,Real_2012,2.3,Real,2013
+USA,Real_2012,2.2,Real,2013
+USA,Real_2013,1.5,Real,2014
+USA,Real_2014,2.4,Real,2014
+USA,Real_2014,2.4,Real,2015
+USA,Real_2015,2.6,Real,2015
+USA,Real_2015,2.9,Real,2016
+USA,Real_2016,1.5,Real,2016
+USA,Real_2016,1.6,Real,2017
+USA,Real_2017,2.2,Real,2017
+USA,Real_2017,2.4,Real,2018
+USA,Real_2018,2.9,Real,2018
+USA,Real_2018,3,Real,2019
+USA,Real_2019,2.2,Real,2019
+USA,Real_2019,2.3,Real,2020
+USA,Real_2020,-3.4,Real,2020
+USA,Real_2021,5.7,Real,2021
+USA,Real_2021,5.9,Real,2022
+USA,Real_2022,2.1,Real,2022
+USA,Real_2022,2.5,Real,2023
+USA,Real_2023,2.9,Real,2023
+World Output,Pred_2005,4.3,Predicted,2004
+World Output,Pred_2006,4.3,Predicted,2004
+World Output,Pred_2007,5.2,Predicted,2006
+World Output,Pred_2008,4.8,Predicted,2006
+World Output,Pred_2008,3.9,Predicted,2007
+World Output,Pred_2009,3,Predicted,2007
+World Output,Pred_2009,-1.1,Predicted,2008
+World Output,Pred_2010,3.1,Predicted,2008
+World Output,Pred_2010,4.6,Predicted,2009
+World Output,Pred_2011,4.3,Predicted,2009
+World Output,Pred_2011,4,Predicted,2010
+World Output,Pred_2012,4,Predicted,2010
+World Output,Pred_2012,3.3,Predicted,2011
+World Output,Pred_2013,3.6,Predicted,2011
+World Output,Pred_2013,3.1,Predicted,2012
+World Output,Pred_2014,3.8,Predicted,2012
+World Output,Pred_2014,3.3,Predicted,2013
+World Output,Pred_2015,3.8,Predicted,2013
+World Output,Pred_2015,3.1,Predicted,2014
+World Output,Pred_2016,3.6,Predicted,2014
+World Output,Pred_2016,3.1,Predicted,2015
+World Output,Pred_2017,3.4,Predicted,2015
+World Output,Pred_2017,3.6,Predicted,2016
+World Output,Pred_2018,3.7,Predicted,2016
+World Output,Pred_2018,3.7,Predicted,2017
+World Output,Pred_2019,3.7,Predicted,2017
+World Output,Pred_2019,3,Predicted,2018
+World Output,Pred_2020,3.4,Predicted,2018
+World Output,Pred_2020,-4.4,Predicted,2019
+World Output,Pred_2021,5.2,Predicted,2019
+World Output,Pred_2021,5.9,Predicted,2020
+World Output,Pred_2022,4.9,Predicted,2020
+World Output,Pred_2022,3.2,Predicted,2021
+World Output,Pred_2023,2.7,Predicted,2021
+World Output,Pred_2023,3,Predicted,2022
+World Output,Pred_2024,3,Predicted,2022
+World Output,Pred_2024,3.2,Predicted,2023
+World Output,Pred_2025,3.2,Predicted,2023
+World Output,Real_2003,4,Real,2004
+World Output,Real_2004,5.1,Real,2004
+World Output,Real_2005,4.8,Real,2006
+World Output,Real_2006,5.4,Real,2006
+World Output,Real_2006,5.1,Real,2007
+World Output,Real_2007,5,Real,2007
+World Output,Real_2007,5.2,Real,2008
+World Output,Real_2008,3,Real,2008
+World Output,Real_2008,3,Real,2009
+World Output,Real_2009,-0.6,Real,2009
+World Output,Real_2009,-0.7,Real,2010
+World Output,Real_2010,5.1,Real,2010
+World Output,Real_2010,5.1,Real,2011
+World Output,Real_2011,3.8,Real,2011
+World Output,Real_2011,3.9,Real,2012
+World Output,Real_2012,3.1,Real,2012
+World Output,Real_2012,3.4,Real,2013
+World Output,Real_2012,3.3,Real,2013
+World Output,Real_2013,3.3,Real,2014
+World Output,Real_2014,3.4,Real,2014
+World Output,Real_2014,3.4,Real,2015
+World Output,Real_2015,3.2,Real,2015
+World Output,Real_2015,3.4,Real,2016
+World Output,Real_2016,3.2,Real,2016
+World Output,Real_2016,3.3,Real,2017
+World Output,Real_2017,3.7,Real,2017
+World Output,Real_2017,3.8,Real,2018
+World Output,Real_2018,3.6,Real,2018
+World Output,Real_2018,3.5,Real,2019
+World Output,Real_2019,2.8,Real,2019
+World Output,Real_2019,2.8,Real,2020
+World Output,Real_2020,-3.1,Real,2020
+World Output,Real_2021,6,Real,2021
+World Output,Real_2021,6.3,Real,2022
+World Output,Real_2022,3.5,Real,2022
+World Output,Real_2022,3.6,Real,2023
+World Output,Real_2023,3.3,Real,2023
