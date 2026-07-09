@@ -1,0 +1,804 @@
+Product_Name,Unit,Weight,Base_Year,Price,Quarter
+Overall Index,-,100,2070/71 ,105.4,1st
+Cereals,Kg,58.02,2070/71 ,103.9,1st
+Maize,Kg,25.15,2070/71 ,103.3,1st
+Paddy,Kg,31.2,2070/71 ,104.1,1st
+Fruits,Kg,4.45,2070/71 ,105.2,1st
+Vegetables,Kg,11.76,2070/71 ,108.2,1st
+Spices,Kg,2.41,2070/71 ,110.7,1st
+Other Crops,Kg,0.83,2070/71 ,100.2,1st
+Livestock,Kg,8.52,2070/71 ,108.1,1st
+Poultry,Kg,1.41,2070/71 ,102.4,1st
+Fish,Kg,0.76,2070/71 ,109.6,1st
+Milk,Ltr.,10.57,2070/71 ,107.4,1st
+Egg,Pieces,1.28,2070/71 ,105.1,1st
+Overall Index,-,100,2070/71 ,118.8,2nd
+Cereals,Kg,35,2070/71 ,105.9,2nd
+Paddy,Kg,29.75,2070/71 ,105.8,2nd
+Leguminous,Kg,3.32,2070/71 ,108.8,2nd
+Oilseed,Kg,0.28,2070/71 ,116.7,2nd
+Fruits,Kg,6.97,2070/71 ,112.3,2nd
+Vegetables,Kg,11.26,2070/71 ,116.1,2nd
+Spices,Kg,9.78,2070/71 ,122.6,2nd
+Livestock,Kg,12.58,2070/71 ,110.3,2nd
+Poultry,Kg,2.25,2070/71 ,116.2,2nd
+Fish,Kg,1.1,2070/71 ,106.8,2nd
+Milk,Ltr.,15.49,2070/71 ,107.8,2nd
+Egg,Pieces,1.97,2070/71 ,114.5,2nd
+Overall Index,-,100,2070/71 ,109.6,3rd
+Cereal Crops,Kg,9.13,2070/71 ,108.2,3rd
+Wheat,Kg,8.9,2070/71 ,108.3,3rd
+Tuber Crop,Kg,18.79,2070/71 ,117.4,3rd
+Pulse Crop,Kg,7.09,2070/71 ,106.4,3rd
+Oilseed Crops,Kg,9.99,2070/71 ,105.5,3rd
+Fruits Crops,Kg,2.57,2070/71 ,108.5,3rd
+Vegetable Crops,Kg,9.81,2070/71 ,113.4,3rd
+Spice Crop,Kg,4,2070/71 ,110.5,3rd
+Other Crops,Kg,8.7,2070/71 ,100.8,3rd
+Animals,Kg,11.39,2070/71 ,112.7,3rd
+Birds,Kg,1.82,2070/71 ,107.2,3rd
+Fish,Kg,1,2070/71 ,109.4,3rd
+Milk,Ltr.,14.02,2070/71 ,105.2,3rd
+Egg,Pieces,1.68,2070/71 ,111.5,3rd
+Overall Index,-,100,2070/71 ,110.5,4th
+Cereals,Kg,34.9,2070/71 ,109.9,4th
+Wheat,Kg,22.5,2070/71 ,111.6,4th
+Paddy,Kg,12,2070/71 ,106.9,4th
+Tubers,Kg,19.3,2070/71 ,116.5,4th
+Leguminous,Kg,3.1,2070/71 ,104,4th
+Fruits,Kg,3.8,2070/71 ,110.7,4th
+Vegetables,Kg,10,2070/71 ,105.8,4th
+Spices,Kg,2.7,2070/71 ,105.6,4th
+Other Crops,Kg,0,2070/71 ,105,4th
+Livestock,Kg,9.8,2070/71 ,111.3,4th
+Poultry,Kg,1.6,2070/71 ,113.1,4th
+Fish,Kg,0.8,2070/71 ,102.9,4th
+Milk,Ltr.,12.3,2070/71 ,107.6,4th
+Egg,Pieces,1.5,2070/71 ,117.5,4th
+Overall Index,-,100,2070/71 ,108.7,ANN
+Cereals,Kg,35.81,2070/71 ,106.1,ANN
+Wheat,Kg,8.17,2070/71 ,110.8,ANN
+Maize,Kg,7.5,2070/71 ,103.3,ANN
+Paddy,Kg,18.42,2070/71 ,105.1,ANN
+Tubers,Kg,9.51,2070/71 ,116.9,ANN
+Leguminous,Kg,3.14,2070/71 ,106.3,ANN
+Oilseed,Kg,2.38,2070/71 ,105.8,ANN
+Fruits,Kg,4.24,2070/71 ,109.3,ANN
+Vegetables,Kg,10.73,2070/71 ,109.7,ANN
+Spices,Kg,4.42,2070/71 ,114.9,ANN
+Other Crops,Kg,2.22,2070/71 ,101,ANN
+Livestock,Kg,10.41,2070/71 ,110.7,ANN
+Poultry,Kg,1.79,2070/71 ,109.8,ANN
+Fish,Kg,0.91,2070/71 ,107.2,ANN
+Milk,Ltr.,12.8,2070/71 ,107,ANN
+Egg,Pieces,1.64,2070/71 ,112.2,ANN
+Overall Index,-,100,2071/72 ,123,1st
+Cereals,Kg,58.02,2071/72 ,111.9,1st
+Maize,Kg,25.15,2071/72 ,109.4,1st
+Paddy,Kg,31.2,2071/72 ,111,1st
+Fruits,Kg,4.45,2071/72 ,108.3,1st
+Vegetables,Kg,11.76,2071/72 ,114.4,1st
+Spices,Kg,2.41,2071/72 ,109.9,1st
+Other Crops,Kg,0.83,2071/72 ,144.6,1st
+Livestock,Kg,8.52,2071/72 ,122.5,1st
+Poultry,Kg,1.41,2071/72 ,119,1st
+Fish,Kg,0.76,2071/72 ,102.3,1st
+Milk,Ltr.,10.57,2071/72 ,119.4,1st
+Egg,Pieces,1.28,2071/72 ,112.6,1st
+Overall Index,-,100,2071/72 ,119.51,2nd
+Cereals,Kg,35,2071/72 ,117,2nd
+Paddy,Kg,29.75,2071/72 ,116.31,2nd
+Leguminous,Kg,3.32,2071/72 ,111.56,2nd
+Oilseed,Kg,0.28,2071/72 ,127.6,2nd
+Fruits,Kg,6.97,2071/72 ,118.8,2nd
+Vegetables,Kg,11.26,2071/72 ,110.53,2nd
+Spices,Kg,9.78,2071/72 ,146.48,2nd
+Livestock,Kg,12.58,2071/72 ,121.02,2nd
+Poultry,Kg,2.25,2071/72 ,101.79,2nd
+Fish,Kg,1.1,2071/72 ,117.89,2nd
+Milk,Ltr.,15.49,2071/72 ,118.17,2nd
+Egg,Pieces,1.97,2071/72 ,118.1,2nd
+Overall Index,-,100,2071/72 ,114.3,3rd
+Cereal Crops,Kg,9.13,2071/72 ,108.4,3rd
+Wheat,Kg,8.9,2071/72 ,108.4,3rd
+Tuber Crop,Kg,18.79,2071/72 ,112.4,3rd
+Pulse Crop,Kg,7.09,2071/72 ,122.8,3rd
+Oilseed Crops,Kg,9.99,2071/72 ,114,3rd
+Fruits Crops,Kg,2.57,2071/72 ,116.2,3rd
+Vegetable Crops,Kg,9.81,2071/72 ,105.5,3rd
+Spice Crop,Kg,4,2071/72 ,122.7,3rd
+Other Crops,Kg,8.7,2071/72 ,106.8,3rd
+Animals,Kg,11.39,2071/72 ,120.3,3rd
+Birds,Kg,1.82,2071/72 ,106.9,3rd
+Fish,Kg,1,2071/72 ,109.4,3rd
+Milk,Ltr.,14.02,2071/72 ,121,3rd
+Egg,Pieces,1.68,2071/72 ,116.4,3rd
+Overall Index,-,100,2071/72 ,110.4,4th
+Cereals,Kg,34.9,2071/72 ,110.3,4th
+Wheat,Kg,22.5,2071/72 ,112.5,4th
+Paddy,Kg,12,2071/72 ,106.1,4th
+Tubers,Kg,19.3,2071/72 ,101,4th
+Leguminous,Kg,3.1,2071/72 ,124.2,4th
+Fruits,Kg,3.8,2071/72 ,115,4th
+Vegetables,Kg,10,2071/72 ,107.3,4th
+Spices,Kg,2.7,2071/72 ,108.9,4th
+Other Crops,Kg,0,2071/72 ,105,4th
+Livestock,Kg,9.8,2071/72 ,119.5,4th
+Poultry,Kg,1.6,2071/72 ,106.3,4th
+Fish,Kg,0.8,2071/72 ,117.8,4th
+Milk,Ltr.,12.3,2071/72 ,117,4th
+Egg,Pieces,1.5,2071/72 ,104.6,4th
+Overall Index,-,100,2071/72 ,113.6,ANN
+Cereals,Kg,35.81,2071/72 ,111.1,ANN
+Wheat,Kg,8.17,2071/72 ,111.5,ANN
+Maize,Kg,7.5,2071/72 ,111,ANN
+Paddy,Kg,18.42,2071/72 ,110.5,ANN
+Tubers,Kg,9.51,2071/72 ,106.1,ANN
+Leguminous,Kg,3.14,2071/72 ,120.8,ANN
+Oilseed,Kg,2.38,2071/72 ,114.4,ANN
+Fruits,Kg,4.24,2071/72 ,116.2,ANN
+Vegetables,Kg,10.73,2071/72 ,108.3,ANN
+Spices,Kg,4.42,2071/72 ,134.5,ANN
+Other Crops,Kg,2.22,2071/72 ,108.3,ANN
+Livestock,Kg,10.41,2071/72 ,120,ANN
+Poultry,Kg,1.79,2071/72 ,104.4,ANN
+Fish,Kg,0.91,2071/72 ,116.1,ANN
+Milk,Ltr.,12.8,2071/72 ,117.2,ANN
+Egg,Pieces,1.64,2071/72 ,114.4,ANN
+overall index,-,100,2072/73 ,121.6,1st
+Cereals,Kg,58.02,2072/73 ,119.5,1st
+Maize,Kg,25.15,2072/73 ,123.5,1st
+Paddy,Kg,31.2,2072/73 ,116.5,1st
+Fruits,Kg,4.45,2072/73 ,123.9,1st
+Vegetables,Kg,11.76,2072/73 ,118.9,1st
+Spices,Kg,2.41,2072/73 ,141.7,1st
+Other Crops,Kg,0.83,2072/73 ,156,1st
+Livestock,Kg,8.52,2072/73 ,122.6,1st
+Poultry,Kg,1.41,2072/73 ,108.7,1st
+Fish,Kg,0.76,2072/73 ,126,1st
+Milk,Ltr.,10.57,2072/73 ,126.5,1st
+Egg,Pieces,1.28,2072/73 ,136.4,1st
+Overall Index,-,100,2072/73 ,126.1,2nd
+Cereals,Kg,35,2072/73 ,123.65,2nd
+Paddy,Kg,29.75,2072/73 ,124.27,2nd
+Leguminous,Kg,3.32,2072/73 ,131.82,2nd
+Oilseed,Kg,0.28,2072/73 ,129.48,2nd
+Fruits,Kg,6.97,2072/73 ,127.98,2nd
+Vegetables,Kg,11.26,2072/73 ,123.56,2nd
+Spices,Kg,9.78,2072/73 ,133.84,2nd
+Livestock,Kg,12.58,2072/73 ,125.5,2nd
+Poultry,Kg,2.25,2072/73 ,112.2,2nd
+Fish,Kg,1.1,2072/73 ,120.96,2nd
+Milk,Ltr.,15.49,2072/73 ,129.46,2nd
+Egg,Pieces,1.97,2072/73 ,124.9,2nd
+Overall Index,-,100,2072/73 ,121.5,3rd
+Cereal Crops,Kg,9.13,2072/73 ,112.8,3rd
+Wheat,Kg,8.9,2072/73 ,112.8,3rd
+Tuber Crop,Kg,18.79,2072/73 ,121,3rd
+Pulse Crop,Kg,7.09,2072/73 ,145.6,3rd
+Oilseed Crops,Kg,9.99,2072/73 ,125.1,3rd
+Fruits Crops,Kg,2.57,2072/73 ,124.8,3rd
+Vegetable Crops,Kg,9.81,2072/73 ,120.6,3rd
+Spice Crop,Kg,4,2072/73 ,121.9,3rd
+Other Crops,Kg,8.7,2072/73 ,101,3rd
+Animals,Kg,11.39,2072/73 ,121.8,3rd
+Birds,Kg,1.82,2072/73 ,115.5,3rd
+Fish,Kg,1,2072/73 ,112.9,3rd
+Milk,Ltr.,14.02,2072/73 ,126.6,3rd
+Egg,Pieces,1.68,2072/73 ,124.4,3rd
+Overall Index,-,100,2072/73 ,118,4th
+Cereals,Kg,34.9,2072/73 ,113.9,4th
+Wheat,Kg,22.5,2072/73 ,115.5,4th
+Paddy,Kg,12,2072/73 ,110.8,4th
+Tubers,Kg,19.3,2072/73 ,115,4th
+Leguminous,Kg,3.1,2072/73 ,145.7,4th
+Fruits,Kg,3.8,2072/73 ,119.5,4th
+Vegetables,Kg,10,2072/73 ,121.2,4th
+Spices,Kg,2.7,2072/73 ,111.4,4th
+Other Crops,Kg,0,2072/73 ,117,4th
+Livestock,Kg,9.8,2072/73 ,120.5,4th
+Poultry,Kg,1.6,2072/73 ,110.1,4th
+Fish,Kg,0.8,2072/73 ,118.9,4th
+Milk,Ltr.,12.3,2072/73 ,124.1,4th
+Egg,Pieces,1.5,2072/73 ,124.9,4th
+Overall Index,-,100,2072/73 ,121.5,ANN
+Cereals,Kg,35.81,2072/73 ,118.5,ANN
+Wheat,Kg,8.17,2072/73 ,114.8,ANN
+Maize,Kg,7.5,2072/73 ,123.5,ANN
+Paddy,Kg,18.42,2072/73 ,118,ANN
+Tubers,Kg,9.51,2072/73 ,117.7,ANN
+Leguminous,Kg,3.14,2072/73 ,142.7,ANN
+Oilseed,Kg,2.38,2072/73 ,125.2,ANN
+Fruits,Kg,4.24,2072/73 ,124.4,ANN
+Vegetables,Kg,10.73,2072/73 ,120.5,ANN
+Spices,Kg,4.42,2072/73 ,128.8,ANN
+Other Crops,Kg,2.22,2072/73 ,105.5,ANN
+Livestock,Kg,10.41,2072/73 ,122.6,ANN
+Poultry,Kg,1.79,2072/73 ,111.7,ANN
+Fish,Kg,0.91,2072/73 ,119.6,ANN
+Milk,Ltr.,12.8,2072/73 ,126.6,ANN
+Egg,Pieces,1.64,2072/73 ,127.5,ANN
+Overall Index,-,100,2073/74,126,1st
+Cereals,Kg,58.02,2073/74,122.6,1st
+Maize,Kg,25.15,2073/74,128.3,1st
+Paddy,Kg,31.2,2073/74,118.4,1st
+Fruits,Kg,4.45,2073/74,135.7,1st
+Vegetables,Kg,11.76,2073/74,128.7,1st
+Spices,Kg,2.41,2073/74,130.6,1st
+Other Crops,Kg,0.83,2073/74,165.6,1st
+Livestock,Kg,8.52,2073/74,127.8,1st
+Poultry,Kg,1.41,2073/74,114.9,1st
+Fish,Kg,0.76,2073/74,127.4,1st
+Milk,Ltr.,10.57,2073/74,131.2,1st
+Egg,Pieces,1.28,2073/74,138.2,1st
+Overall Index,-,100,2073/74,127.93,2nd
+Cereals,Kg,35,2073/74,126.83,2nd
+Paddy,Kg,29.75,2073/74,125.99,2nd
+Leguminous,Kg,3.32,2073/74,146.19,2nd
+Oilseed,Kg,0.28,2073/74,128.53,2nd
+Fruits,Kg,6.97,2073/74,133.59,2nd
+Vegetables,Kg,11.26,2073/74,122.06,2nd
+Spices,Kg,9.78,2073/74,116.13,2nd
+Livestock,Kg,12.58,2073/74,131.58,2nd
+Poultry,Kg,2.25,2073/74,109.29,2nd
+Fish,Kg,1.1,2073/74,127.82,2nd
+Milk,Ltr.,15.49,2073/74,134.3,2nd
+Egg,Pieces,1.97,2073/74,136.54,2nd
+Overall Index,-,100,2073/74,123,3rd
+Cereal Crops,Kg,9.13,2073/74,115.3,3rd
+Wheat,Kg,8.9,2073/74,115.2,3rd
+Tuber Crop,Kg,18.79,2073/74,109.2,3rd
+Pulse Crop,Kg,7.09,2073/74,137.5,3rd
+Oilseed Crops,Kg,9.99,2073/74,133.6,3rd
+Fruits Crops,Kg,2.57,2073/74,131.8,3rd
+Vegetable Crops,Kg,9.81,2073/74,113.3,3rd
+Spice Crop,Kg,4,2073/74,125.8,3rd
+Other Crops,Kg,8.7,2073/74,119.7,3rd
+Animals,Kg,11.39,2073/74,130.2,3rd
+Birds,Kg,1.82,2073/74,109.9,3rd
+Fish,Kg,1,2073/74,121.8,3rd
+Milk,Ltr.,14.02,2073/74,132.2,3rd
+Egg,Pieces,1.68,2073/74,140.6,3rd
+Overall Index,-,100,2073/74,117.2,4th
+Cereals,Kg,34.9,2073/74,115.1,4th
+Wheat,Kg,22.5,2073/74,120.1,4th
+Paddy,Kg,12,2073/74,105.5,4th
+Tubers,Kg,19.3,2073/74,105.6,4th
+Leguminous,Kg,3.1,2073/74,132.2,4th
+Fruits,Kg,3.8,2073/74,135,4th
+Vegetables,Kg,10,2073/74,107.1,4th
+Spices,Kg,2.7,2073/74,119.3,4th
+Other Crops,Kg,0,2073/74,120,4th
+Livestock,Kg,9.8,2073/74,127.9,4th
+Poultry,Kg,1.6,2073/74,109.6,4th
+Fish,Kg,0.8,2073/74,121.9,4th
+Milk,Ltr.,12.3,2073/74,129.8,4th
+Egg,Pieces,1.5,2073/74,135.1,4th
+Overall Index,-,100,2073/74,123,ANN
+Cereals,Kg,35.81,2073/74,121.1,ANN
+Wheat,Kg,8.17,2073/74,118.9,ANN
+Maize,Kg,7.5,2073/74,128.3,ANN
+Paddy,Kg,18.42,2073/74,118.6,ANN
+Tubers,Kg,9.51,2073/74,107.2,ANN
+Leguminous,Kg,3.14,2073/74,137.9,ANN
+Oilseed,Kg,2.38,2073/74,133.5,ANN
+Fruits,Kg,4.24,2073/74,134.2,ANN
+Vegetables,Kg,10.73,2073/74,116.2,ANN
+Spices,Kg,4.42,2073/74,120.7,ANN
+Other Crops,Kg,2.22,2073/74,123.7,ANN
+Livestock,Kg,10.41,2073/74,129.4,ANN
+Poultry,Kg,1.79,2073/74,110.9,ANN
+Fish,Kg,0.91,2073/74,124.6,ANN
+Milk,Ltr.,12.8,2073/74,131.8,ANN
+Egg,Pieces,1.64,2073/74,137.7,ANN
+Overall Index,-,100,2074/75,130,1st
+Cereals,Kg,58.02,2074/75,123.5,1st
+Maize,Kg,25.15,2074/75,128.5,1st
+Paddy,Kg,31.2,2074/75,120,1st
+Fruits,Kg,4.45,2074/75,161.5,1st
+Vegetables,Kg,11.76,2074/75,138.7,1st
+Spices,Kg,2.41,2074/75,110.5,1st
+Other Crops,Kg,0.83,2074/75,164.8,1st
+Livestock,Kg,8.52,2074/75,137.2,1st
+Poultry,Kg,1.41,2074/75,111.4,1st
+Fish,Kg,0.76,2074/75,127.5,1st
+Milk,Ltr.,10.57,2074/75,139,1st
+Egg,Pieces,1.28,2074/75,149.8,1st
+Overall Index,-,100,2074/75,132.58,2nd
+Cereals,Kg,35,2074/75,128.95,2nd
+Paddy,Kg,29.75,2074/75,125.44,2nd
+Leguminous,Kg,3.32,2074/75,135.4,2nd
+Oilseed,Kg,0.28,2074/75,126.78,2nd
+Fruits,Kg,6.97,2074/75,146.06,2nd
+Vegetables,Kg,11.26,2074/75,138.94,2nd
+Spices,Kg,9.78,2074/75,103.6,2nd
+Livestock,Kg,12.58,2074/75,139.66,2nd
+Poultry,Kg,2.25,2074/75,112.98,2nd
+Fish,Kg,1.1,2074/75,130.45,2nd
+Milk,Ltr.,15.49,2074/75,143.37,2nd
+Egg,Pieces,1.97,2074/75,146.48,2nd
+Overall Index,-,100,2074/75,129,3rd
+Cereal Crops,Kg,9.13,2074/75,121,3rd
+Wheat,Kg,8.9,2074/75,121.1,3rd
+Tuber Crop,Kg,18.79,2074/75,119.5,3rd
+Pulse Crop,Kg,7.09,2074/75,124.5,3rd
+Oilseed Crops,Kg,9.99,2074/75,135.3,3rd
+Fruits Crops,Kg,2.57,2074/75,140.1,3rd
+Vegetable Crops,Kg,9.81,2074/75,130.9,3rd
+Spice Crop,Kg,4,2074/75,129.7,3rd
+Other Crops,Kg,8.7,2074/75,120.9,3rd
+Animals,Kg,11.39,2074/75,137.2,3rd
+Birds,Kg,1.82,2074/75,111.7,3rd
+Fish,Kg,1,2074/75,135.3,3rd
+Milk,Ltr.,14.02,2074/75,139.6,3rd
+Egg,Pieces,1.68,2074/75,144.6,3rd
+Overall Index,-,100,2074/75,122.5,4th
+Cereals,Kg,34.9,2074/75,118.6,4th
+Wheat,Kg,22.5,2074/75,119.7,4th
+Paddy,Kg,12,2074/75,116,4th
+Tubers,Kg,19.3,2074/75,115.6,4th
+Leguminous,Kg,3.1,2074/75,126.7,4th
+Fruits,Kg,3.8,2074/75,127.1,4th
+Vegetables,Kg,10,2074/75,119.5,4th
+Spices,Kg,2.7,2074/75,124.1,4th
+Other Crops,Kg,0,2074/75,130.8,4th
+Livestock,Kg,9.8,2074/75,134.5,4th
+Poultry,Kg,1.6,2074/75,108.3,4th
+Fish,Kg,0.8,2074/75,129.8,4th
+Milk,Ltr.,12.3,2074/75,133.6,4th
+Egg,Pieces,1.5,2074/75,144.3,4th
+Overall Index,-,100,2074/75,128.2,ANN
+Cereals,Kg,35.81,2074/75,123.1,ANN
+Wheat,Kg,8.17,2074/75,120.1,ANN
+Maize,Kg,7.5,2074/75,128.5,ANN
+Paddy,Kg,18.42,2074/75,121,ANN
+Tubers,Kg,9.51,2074/75,117.4,ANN
+Leguminous,Kg,3.14,2074/75,127.4,ANN
+Oilseed,Kg,2.38,2074/75,135.1,ANN
+Fruits,Kg,4.24,2074/75,145.3,ANN
+Vegetables,Kg,10.73,2074/75,130.4,ANN
+Spices,Kg,4.42,2074/75,113.8,ANN
+Other Crops,Kg,2.22,2074/75,131.4,ANN
+Livestock,Kg,10.41,2074/75,137.1,ANN
+Poultry,Kg,1.79,2074/75,111.1,ANN
+Fish,Kg,0.91,2074/75,130.8,ANN
+Milk,Ltr.,12.8,2074/75,138.8,ANN
+Egg,Pieces,1.64,2074/75,146.2,ANN
+Overall Index,-,100,2075/76,132.4,1st
+Cereals,Kg,58.02,2075/76,125.1,1st
+Maize,Kg,25.15,2075/76,130.5,1st
+Paddy,Kg,31.2,2075/76,120.4,1st
+Fruits,Kg,4.45,2075/76,161.1,1st
+Vegetables,Kg,11.76,2075/76,138.3,1st
+Spices,Kg,2.41,2075/76,112.7,1st
+Other Crops,Kg,0.83,2075/76,181.2,1st
+Livestock,Kg,8.52,2075/76,143.8,1st
+Poultry,Kg,1.41,2075/76,105.6,1st
+Fish,Kg,0.76,2075/76,133.8,1st
+Milk,Ltr.,10.57,2075/76,146.1,1st
+Egg,Pieces,1.28,2075/76,154.7,1st
+Overall Index,-,100,2075/76,137.92,2nd
+Cereals,Kg,35,2075/76,142.66,2nd
+Paddy,Kg,29.75,2075/76,140.63,2nd
+Leguminous,Kg,3.32,2075/76,138.42,2nd
+Oilseed,Kg,0.28,2075/76,122.14,2nd
+Fruits,Kg,6.97,2075/76,147.51,2nd
+Vegetables,Kg,11.26,2075/76,117.34,2nd
+Spices,Kg,9.78,2075/76,114.44,2nd
+Livestock,Kg,12.58,2075/76,149.44,2nd
+Poultry,Kg,2.25,2075/76,107.35,2nd
+Fish,Kg,1.1,2075/76,136.58,2nd
+Milk,Ltr.,15.49,2075/76,146.83,2nd
+Egg,Pieces,1.97,2075/76,147.4,2nd
+Overall Index,-,100,2075/76,132.2,3rd
+Cereal Crops,Kg,9.13,2075/76,130.1,3rd
+Wheat,Kg,8.9,2075/76,130.3,3rd
+Tuber Crop,Kg,18.79,2075/76,120.7,3rd
+Pulse Crop,Kg,7.09,2075/76,119.8,3rd
+Oilseed Crops,Kg,9.99,2075/76,145.8,3rd
+Fruits Crops,Kg,2.57,2075/76,148.8,3rd
+Vegetable Crops,Kg,9.81,2075/76,125.4,3rd
+Spice Crop,Kg,4,2075/76,128,3rd
+Other Crops,Kg,8.7,2075/76,121,3rd
+Animals,Kg,11.39,2075/76,143.3,3rd
+Birds,Kg,1.82,2075/76,106.9,3rd
+Fish,Kg,1,2075/76,142.5,3rd
+Milk,Ltr.,14.02,2075/76,147.4,3rd
+Egg,Pieces,1.68,2075/76,146.5,3rd
+Overall Index,-,100,2075/76,128.3,4th
+Cereals,Kg,34.9,2075/76,129.4,4th
+Wheat,Kg,22.5,2075/76,134.7,4th
+Paddy,Kg,12,2075/76,119.1,4th
+Tubers,Kg,19.3,2075/76,110.6,4th
+Leguminous,Kg,3.1,2075/76,127,4th
+Fruits,Kg,3.8,2075/76,141.9,4th
+Vegetables,Kg,10,2075/76,126.7,4th
+Spices,Kg,2.7,2075/76,113.4,4th
+Other Crops,Kg,0,2075/76,172.4,4th
+Livestock,Kg,9.8,2075/76,143.4,4th
+Poultry,Kg,1.6,2075/76,107.5,4th
+Fish,Kg,0.8,2075/76,134.8,4th
+Milk,Ltr.,12.3,2075/76,142.9,4th
+Egg,Pieces,1.5,2075/76,134.5,4th
+Overall Index,-,100,2075/76,132.2,ANN
+Cereals,Kg,35.81,2075/76,130,ANN
+Wheat,Kg,8.17,2075/76,133.6,ANN
+Maize,Kg,7.5,2075/76,130.5,ANN
+Paddy,Kg,18.42,2075/76,126.7,ANN
+Tubers,Kg,9.51,2075/76,115.1,ANN
+Leguminous,Kg,3.14,2075/76,125.6,ANN
+Oilseed,Kg,2.38,2075/76,145.2,ANN
+Fruits,Kg,4.24,2075/76,150.4,ANN
+Vegetables,Kg,10.73,2075/76,127.5,ANN
+Spices,Kg,4.42,2075/76,116.3,ANN
+Other Crops,Kg,2.22,2075/76,126,ANN
+Livestock,Kg,10.41,2075/76,144.9,ANN
+Poultry,Kg,1.79,2075/76,106.9,ANN
+Fish,Kg,0.91,2075/76,137,ANN
+Milk,Ltr.,12.8,2075/76,145.8,ANN
+Egg,Pieces,1.64,2075/76,145.6,ANN
+Overall Index,-,100,2076/77,141.3,1st
+Cereals,Kg,58.02,2076/77,134.8,1st
+Maize,Kg,25.15,2076/77,153.7,1st
+Paddy,Kg,31.2,2076/77,119.4,1st
+Fruits,Kg,4.45,2076/77,177.8,1st
+Vegetables,Kg,11.76,2076/77,149.6,1st
+Spices,Kg,2.41,2076/77,112.5,1st
+Other Crops,Kg,0.83,2076/77,174,1st
+Livestock,Kg,8.52,2076/77,150.7,1st
+Poultry,Kg,1.41,2076/77,109,1st
+Fish,Kg,0.76,2076/77,143.7,1st
+Milk,Ltr.,10.57,2076/77,151.9,1st
+Egg,Pieces,1.28,2076/77,156.1,1st
+Overall Index,-,100,2076/77,152.87,2nd
+Cereals,Kg,35,2076/77,144.71,2nd
+Paddy,Kg,29.75,2076/77,141.6,2nd
+Leguminous,Kg,3.32,2076/77,137.46,2nd
+Oilseed,Kg,0.28,2076/77,128.72,2nd
+Fruits,Kg,6.97,2076/77,174.14,2nd
+Vegetables,Kg,11.26,2076/77,163.64,2nd
+Spices,Kg,9.78,2076/77,147.85,2nd
+Livestock,Kg,12.58,2076/77,161.12,2nd
+Poultry,Kg,2.25,2076/77,114.99,2nd
+Fish,Kg,1.1,2076/77,149.98,2nd
+Milk,Ltr.,15.49,2076/77,160.51,2nd
+Egg,Pieces,1.97,2076/77,147.45,2nd
+Overall Index,-,100,2076/77,146.2,3rd
+Cereal Crops,Kg,9.13,2076/77,146.9,3rd
+Wheat,Kg,8.9,2076/77,147.2,3rd
+Tuber Crop,Kg,18.79,2076/77,145,3rd
+Pulse Crop,Kg,7.09,2076/77,123.8,3rd
+Oilseed Crops,Kg,9.99,2076/77,159.3,3rd
+Fruits Crops,Kg,2.57,2076/77,168.8,3rd
+Vegetable Crops,Kg,9.81,2076/77,145.8,3rd
+Spice Crop,Kg,4,2076/77,152.4,3rd
+Other Crops,Kg,8.7,2076/77,121.1,3rd
+Animals,Kg,11.39,2076/77,157.6,3rd
+Birds,Kg,1.82,2076/77,105.7,3rd
+Fish,Kg,1,2076/77,135.2,3rd
+Milk,Ltr.,14.02,2076/77,155.4,3rd
+Egg,Pieces,1.68,2076/77,148.4,3rd
+Overall Index,-,100,2076/77,137.5,4th
+Cereals,Kg,34.9,2076/77,140.2,4th
+Wheat,Kg,22.5,2076/77,141.3,4th
+Paddy,Kg,12,2076/77,137.6,4th
+Tubers,Kg,19.3,2076/77,127,4th
+Leguminous,Kg,3.1,2076/77,124.7,4th
+Fruits,Kg,3.8,2076/77,141.6,4th
+Vegetables,Kg,10,2076/77,134.2,4th
+Spices,Kg,2.7,2076/77,119.8,4th
+Other Crops,Kg,0,2076/77,192.5,4th
+Livestock,Kg,9.8,2076/77,153.7,4th
+Poultry,Kg,1.6,2076/77,109.6,4th
+Fish,Kg,0.8,2076/77,134.9,4th
+Milk,Ltr.,12.3,2076/77,145.5,4th
+Egg,Pieces,1.5,2076/77,143.2,4th
+Overall Index,-,100,2076/77,143.7,ANN
+Cereals,Kg,35.81,2076/77,138.9,ANN
+Wheat,Kg,8.17,2076/77,142.8,ANN
+Maize,Kg,7.5,2076/77,153.7,ANN
+Paddy,Kg,18.42,2076/77,129.8,ANN
+Tubers,Kg,9.51,2076/77,135.1,ANN
+Leguminous,Kg,3.14,2076/77,126.9,ANN
+Oilseed,Kg,2.38,2076/77,158.6,ANN
+Fruits,Kg,4.24,2076/77,166.8,ANN
+Vegetables,Kg,10.73,2076/77,147.6,ANN
+Spices,Kg,4.42,2076/77,137.8,ANN
+Other Crops,Kg,2.22,2076/77,125.5,ANN
+Livestock,Kg,10.41,2076/77,155.9,ANN
+Poultry,Kg,1.79,2076/77,109.8,ANN
+Fish,Kg,0.91,2076/77,140.8,ANN
+Milk,Ltr.,12.8,2076/77,153.2,ANN
+Egg,Pieces,1.64,2076/77,148.7,ANN
+Overall Index,-,100,2077/78,147.7,1st
+Cereals,Kg,58.02,2077/78,137.8,1st
+Maize,Kg,25.15,2077/78,154.6,1st
+Paddy,Kg,31.2,2077/78,124.2,1st
+Fruits,Kg,4.45,2077/78,187.9,1st
+Vegetables,Kg,11.76,2077/78,166.4,1st
+Spices,Kg,2.41,2077/78,111.7,1st
+Other Crops,Kg,0.83,2077/78,212.7,1st
+Livestock,Kg,8.52,2077/78,162.5,1st
+Poultry,Kg,1.41,2077/78,109.5,1st
+Fish,Kg,0.76,2077/78,147.2,1st
+Milk,Ltr.,10.57,2077/78,158.6,1st
+Egg,Pieces,1.28,2077/78,161.1,1st
+Overall Index,-,100,2077/78,162.48,2nd
+Cereals,Kg,35,2077/78,156.66,2nd
+Paddy,Kg,29.75,2077/78,151.72,2nd
+Leguminous,Kg,3.32,2077/78,145.06,2nd
+Oilseed,Kg,0.28,2077/78,142.39,2nd
+Fruits,Kg,6.97,2077/78,175.73,2nd
+Vegetables,Kg,11.26,2077/78,174.11,2nd
+Spices,Kg,9.78,2077/78,161.51,2nd
+Livestock,Kg,12.58,2077/78,175.79,2nd
+Poultry,Kg,2.25,2077/78,117.21,2nd
+Fish,Kg,1.1,2077/78,150.06,2nd
+Milk,Ltr.,15.49,2077/78,164.05,2nd
+Egg,Pieces,1.97,2077/78,150.74,2nd
+Overall Index,-,100,2077/78,153.7,3rd
+Cereal Crops,Kg,9.13,2077/78,150.9,3rd
+Wheat,Kg,8.9,2077/78,151.3,3rd
+Tuber Crop,Kg,18.79,2077/78,153.3,3rd
+Pulse Crop,Kg,7.09,2077/78,137,3rd
+Oilseed Crops,Kg,9.99,2077/78,162.6,3rd
+Fruits Crops,Kg,2.57,2077/78,175.7,3rd
+Vegetable Crops,Kg,9.81,2077/78,148.2,3rd
+Spice Crop,Kg,4,2077/78,176,3rd
+Other Crops,Kg,8.7,2077/78,121,3rd
+Animals,Kg,11.39,2077/78,171.3,3rd
+Birds,Kg,1.82,2077/78,120.9,3rd
+Fish,Kg,1,2077/78,141,3rd
+Milk,Ltr.,14.02,2077/78,163,3rd
+Egg,Pieces,1.68,2077/78,152.6,3rd
+Overall Index,-,100,2077/78,151.6,4th
+Cereals,Kg,34.9,2077/78,152.7,4th
+Wheat,Kg,22.5,2077/78,151.8,4th
+Paddy,Kg,12,2077/78,153.9,4th
+Tubers,Kg,19.3,2077/78,142.6,4th
+Leguminous,Kg,3.1,2077/78,144.6,4th
+Fruits,Kg,3.8,2077/78,163.7,4th
+Vegetables,Kg,10,2077/78,145.6,4th
+Spices,Kg,2.7,2077/78,149.1,4th
+Other Crops,Kg,0,2077/78,194.9,4th
+Livestock,Kg,9.8,2077/78,172.5,4th
+Poultry,Kg,1.6,2077/78,121,4th
+Fish,Kg,0.8,2077/78,139.6,4th
+Milk,Ltr.,12.3,2077/78,154.5,4th
+Egg,Pieces,1.5,2077/78,153.5,4th
+Overall Index,-,100,2077/78,153,ANN
+Cereals,Kg,35.81,2077/78,146.3,ANN
+Wheat,Kg,8.17,2077/78,151.7,ANN
+Maize,Kg,7.5,2077/78,154.6,ANN
+Paddy,Kg,18.42,2077/78,138.3,ANN
+Tubers,Kg,9.51,2077/78,147.4,ANN
+Leguminous,Kg,3.14,2077/78,140.7,ANN
+Oilseed,Kg,2.38,2077/78,162.1,ANN
+Fruits,Kg,4.24,2077/78,176.5,ANN
+Vegetables,Kg,10.73,2077/78,158.5,ANN
+Spices,Kg,4.42,2077/78,153.4,ANN
+Other Crops,Kg,2.22,2077/78,128.2,ANN
+Livestock,Kg,10.41,2077/78,170.7,ANN
+Poultry,Kg,1.79,2077/78,117.3,ANN
+Fish,Kg,0.91,2077/78,144.4,ANN
+Milk,Ltr.,12.8,2077/78,160,ANN
+Egg,Pieces,1.64,2077/78,154.4,ANN
+Overall Index,-,100,2078/79,156.6,1st
+Cereals,Kg,58.02,2078/79,145,1st
+Maize,Kg,25.15,2078/79,157.6,1st
+Paddy,Kg,31.2,2078/79,133.7,1st
+Fruits,Kg,4.45,2078/79,205.3,1st
+Vegetables,Kg,11.76,2078/79,173.7,1st
+Spices,Kg,2.41,2078/79,120.7,1st
+Other Crops,Kg,0.83,2078/79,250.6,1st
+Livestock,Kg,8.52,2078/79,177.6,1st
+Poultry,Kg,1.41,2078/79,125.2,1st
+Fish,Kg,0.76,2078/79,152.1,1st
+Milk,Ltr.,10.57,2078/79,167.8,1st
+Egg,Pieces,1.28,2078/79,168,1st
+Overall Index,-,100,2078/79,167.37,2nd
+Cereals,Kg,35,2078/79,161.09,2nd
+Paddy,Kg,29.75,2078/79,155.4,2nd
+Leguminous,Kg,3.32,2078/79,155.6,2nd
+Oilseed,Kg,0.28,2078/79,151.91,2nd
+Fruits,Kg,6.97,2078/79,182.94,2nd
+Vegetables,Kg,11.26,2078/79,176.5,2nd
+Spices,Kg,9.78,2078/79,162.64,2nd
+Livestock,Kg,12.58,2078/79,182.41,2nd
+Poultry,Kg,2.25,2078/79,126.32,2nd
+Fish,Kg,1.1,2078/79,151.18,2nd
+Milk,Ltr.,15.49,2078/79,168.11,2nd
+Egg,Pieces,1.97,2078/79,171.22,2nd
+Overall Index,-,100,2078/79,164.6,3rd
+Cereal Crops,Kg,9.13,2078/79,166,3rd
+Wheat,Kg,8.9,2078/79,166.4,3rd
+Tuber Crop,Kg,18.79,2078/79,154.5,3rd
+Pulse Crop,Kg,7.09,2078/79,149,3rd
+Oilseed Crops,Kg,9.99,2078/79,195.9,3rd
+Fruits Crops,Kg,2.57,2078/79,182.3,3rd
+Vegetable Crops,Kg,9.81,2078/79,156.7,3rd
+Spice Crop,Kg,4,2078/79,181.2,3rd
+Other Crops,Kg,8.7,2078/79,130.8,3rd
+Animals,Kg,11.39,2078/79,184.9,3rd
+Birds,Kg,1.82,2078/79,132.2,3rd
+Fish,Kg,1,2078/79,150.3,3rd
+Milk,Ltr.,14.02,2078/79,169.5,3rd
+Egg,Pieces,1.68,2078/79,169.3,3rd
+Overall Index,-,100,2078/79,160.3,4th
+Cereals,Kg,34.9,2078/79,163.8,4th
+Wheat,Kg,22.5,2078/79,166.4,4th
+Paddy,Kg,12,2078/79,158.3,4th
+Tubers,Kg,19.3,2078/79,149.9,4th
+Leguminous,Kg,3.1,2078/79,152.5,4th
+Fruits,Kg,3.8,2078/79,176.3,4th
+Vegetables,Kg,10,2078/79,151.8,4th
+Spices,Kg,2.7,2078/79,145.4,4th
+Other Crops,Kg,0,2078/79,211.9,4th
+Livestock,Kg,9.8,2078/79,181,4th
+Poultry,Kg,1.6,2078/79,129.8,4th
+Fish,Kg,0.8,2078/79,147.7,4th
+Milk,Ltr.,12.3,2078/79,161.6,4th
+Egg,Pieces,1.5,2078/79,167.9,4th
+Overall Index,-,100,2078/79,162,ANN
+Cereals,Kg,35.81,2078/79,157.4,ANN
+Wheat,Kg,8.17,2078/79,166.4,ANN
+Maize,Kg,7.5,2078/79,157.9,ANN
+Paddy,Kg,18.42,2078/79,150.3,ANN
+Tubers,Kg,9.51,2078/79,152,ANN
+Leguminous,Kg,3.14,2078/79,151.3,ANN
+Oilseed,Kg,2.38,2078/79,194.9,ANN
+Fruits,Kg,4.24,2078/79,188.1,ANN
+Vegetables,Kg,10.73,2078/79,162,ANN
+Spices,Kg,4.42,2078/79,150.2,ANN
+Other Crops,Kg,2.22,2078/79,139.9,ANN
+Livestock,Kg,10.41,2078/79,181.6,ANN
+Poultry,Kg,1.79,2078/79,128.3,ANN
+Fish,Kg,0.91,2078/79,149.9,ANN
+Milk,Ltr.,12.8,2078/79,166.5,ANN
+Egg,Pieces,1.64,2078/79,169.4,ANN
+Overall Index,-,100,2079/80,167.2,1st
+Cereals,Kg,58.02,2079/80,160.6,1st
+Maize,Kg,25.15,2079/80,165.4,1st
+Paddy,Kg,31.2,2079/80,155.9,1st
+Fruits,Kg,4.45,2079/80,208.2,1st
+Vegetables,Kg,11.76,2079/80,176.8,1st
+Spices,Kg,2.41,2079/80,100.9,1st
+Other Crops,Kg,0.83,2079/80,171.4,1st
+Livestock,Kg,8.52,2079/80,186.4,1st
+Poultry,Kg,1.41,2079/80,134.9,1st
+Fish,Kg,0.76,2079/80,174.3,1st
+Milk,Ltr.,10.57,2079/80,178,1st
+Egg,Pieces,1.28,2079/80,175,1st
+Overall Index,-,100,2079/80,172.4,2nd
+Cereals,Kg,35,2079/80,163.15,2nd
+Paddy,Kg,29.75,2079/80,157.3,2nd
+Leguminous,Kg,3.32,2079/80,158.51,2nd
+Oilseed,Kg,0.28,2079/80,163.43,2nd
+Fruits,Kg,6.97,2079/80,195.38,2nd
+Vegetables,Kg,11.26,2079/80,177.31,2nd
+Spices,Kg,9.78,2079/80,162.75,2nd
+Livestock,Kg,12.58,2079/80,191.4,2nd
+Poultry,Kg,2.25,2079/80,137.39,2nd
+Fish,Kg,1.1,2079/80,170.72,2nd
+Milk,Ltr.,15.49,2079/80,178.47,2nd
+Egg,Pieces,1.97,2079/80,171.96,2nd
+Overall Index,-,100,2079/80,169.9,3rd
+Cereal Crops,Kg,9.13,2079/80,182,3rd
+Wheat,Kg,8.9,2079/80,182.2,3rd
+Tuber Crop,Kg,18.79,2079/80,143.9,3rd
+Pulse Crop,Kg,7.09,2079/80,167.2,3rd
+Oilseed Crops,Kg,9.99,2079/80,206.9,3rd
+Fruits Crops,Kg,2.57,2079/80,189.1,3rd
+Vegetable Crops,Kg,9.81,2079/80,160.7,3rd
+Spice Crop,Kg,4,2079/80,194.5,3rd
+Other Crops,Kg,8.7,2079/80,136,3rd
+Animals,Kg,11.39,2079/80,191.2,3rd
+Birds,Kg,1.82,2079/80,137.1,3rd
+Fish,Kg,1,2079/80,160.1,3rd
+Milk,Ltr.,14.02,2079/80,176.6,3rd
+Egg,Pieces,1.68,2079/80,171.4,3rd
+Overall Index,-,100,2079/80,N/A,4th
+Cereals,Kg,34.9,2079/80,N/A,4th
+Wheat,Kg,22.5,2079/80,N/A,4th
+Paddy,Kg,12,2079/80,N/A,4th
+Tubers,Kg,19.3,2079/80,N/A,4th
+Leguminous,Kg,3.1,2079/80,N/A,4th
+Fruits,Kg,3.8,2079/80,N/A,4th
+Vegetables,Kg,10,2079/80,N/A,4th
+Spices,Kg,2.7,2079/80,N/A,4th
+Other Crops,Kg,0,2079/80,N/A,4th
+Livestock,Kg,9.8,2079/80,N/A,4th
+Poultry,Kg,1.6,2079/80,N/A,4th
+Fish,Kg,0.8,2079/80,N/A,4th
+Milk,Ltr.,12.3,2079/80,N/A,4th
+Egg,Pieces,1.5,2079/80,N/A,4th
+Overall Index,-,100,2079/80,169.6,ANN
+Cereals,Kg,35.81,2079/80,166.5,ANN
+Wheat,Kg,8.17,2079/80,181.7,ANN
+Maize,Kg,7.5,2079/80,165.4,ANN
+Paddy,Kg,18.42,2079/80,158.1,ANN
+Tubers,Kg,9.51,2079/80,147.3,ANN
+Leguminous,Kg,3.14,2079/80,165.3,ANN
+Oilseed,Kg,2.38,2079/80,205.9,ANN
+Fruits,Kg,4.24,2079/80,195.2,ANN
+Vegetables,Kg,10.73,2079/80,170.3,ANN
+Spices,Kg,4.42,2079/80,158.4,ANN
+Other Crops,Kg,2.22,2079/80,139.5,ANN
+Livestock,Kg,10.41,2079/80,188.6,ANN
+Poultry,Kg,1.79,2079/80,136.8,ANN
+Fish,Kg,0.91,2079/80,169.5,ANN
+Milk,Ltr.,12.8,2079/80,178.2,ANN
+Egg,Pieces,1.64,2079/80,171.8,ANN
+Overall Index,-,100,2080/81,177.8,1st
+Cereals,Kg,58.02,2080/81,174.2,1st
+Maize,Kg,25.15,2080/81,179,1st
+Paddy,Kg,31.2,2080/81,169.6,1st
+Fruits,Kg,4.45,2080/81,211.2,1st
+Vegetables,Kg,11.76,2080/81,181.6,1st
+Spices,Kg,2.41,2080/81,107.8,1st
+Other Crops,Kg,0.83,2080/81,178.6,1st
+Livestock,Kg,8.52,2080/81,191,1st
+Poultry,Kg,1.41,2080/81,135.8,1st
+Fish,Kg,0.76,2080/81,187.5,1st
+Milk,Ltr.,10.57,2080/81,190.2,1st
+Egg,Pieces,1.28,2080/81,176.2,1st
+Overall Index,-,100,2080/81,180.93,2nd
+Cereals,Kg,35,2080/81,175.2,2nd
+Maize,Kg,29.75,2080/81,169.81,2nd
+Paddy,Kg,3.32,2080/81,171.65,2nd
+Fruits,Kg,0.28,2080/81,170.18,2nd
+Vegetables,Kg,6.97,2080/81,201.27,2nd
+Spices,Kg,11.26,2080/81,179.82,2nd
+Other Crops,Kg,9.78,2080/81,165.17,2nd
+Livestock,Kg,12.58,2080/81,193.93,2nd
+Poultry,Kg,2.25,2080/81,140.36,2nd
+Fish,Kg,1.1,2080/81,173.82,2nd
+Milk,Ltr.,15.49,2080/81,194.22,2nd
+Egg,Pieces,1.97,2080/81,175.16,2nd
+Overall Index,-,100,2080/81,177.2,3rd
+Cereal Crops,Kg,9.13,2080/81,192.3,3rd
+Wheat,Kg,8.9,2080/81,192.4,3rd
+Tuber Crop,Kg,18.79,2080/81,163.2,3rd
+Pulse Crop,Kg,7.09,2080/81,170.9,3rd
+Oilseed Crops,Kg,9.99,2080/81,190.3,3rd
+Fruits Crops,Kg,2.57,2080/81,185.3,3rd
+Vegetable Crops,Kg,9.81,2080/81,170.5,3rd
+Spice Crop,Kg,4,2080/81,202.3,3rd
+Other Crops,Kg,8.7,2080/81,143.2,3rd
+Animals,Kg,11.39,2080/81,188.2,3rd
+Birds,Kg,1.82,2080/81,142.7,3rd
+Fish,Kg,1,2080/81,173.3,3rd
+Milk,Ltr.,14.02,2080/81,192.4,3rd
+Egg,Pieces,1.68,2080/81,180.3,3rd
+Overall Index,-,100,80/81,N/A,4th
+Cereals,Kg,34.9,80/81,N/A,4th
+Wheat,Kg,22.5,80/81,N/A,4th
+Paddy,Kg,12,80/81,N/A,4th
+Tubers,Kg,19.3,80/81,N/A,4th
+Leguminous,Kg,3.1,80/81,N/A,4th
+Fruits,Kg,3.8,80/81,N/A,4th
+Vegetables,Kg,10,80/81,N/A,4th
+Spices,Kg,2.7,80/81,N/A,4th
+Other Crops,Kg,0,80/81,N/A,4th
+Livestock,Kg,9.8,80/81,N/A,4th
+Poultry,Kg,1.6,80/81,N/A,4th
+Fish,Kg,0.8,80/81,N/A,4th
+Milk,Ltr.,12.3,80/81,N/A,4th
+Egg,Pieces,1.5,80/81,N/A,4th
+Overall Index,-,100,2080/81,N/A,ANN
+Cereals,Kg,35.81,2080/81,N/A,ANN
+Wheat,Kg,8.17,2080/81,N/A,ANN
+Maize,Kg,7.5,2080/81,N/A,ANN
+Paddy,Kg,18.42,2080/81,N/A,ANN
+Tubers,Kg,9.51,2080/81,N/A,ANN
+Leguminous,Kg,3.14,2080/81,N/A,ANN
+Oilseed,Kg,2.38,2080/81,N/A,ANN
+Fruits,Kg,4.24,2080/81,N/A,ANN
+Vegetables,Kg,10.73,2080/81,N/A,ANN
+Spices,Kg,4.42,2080/81,N/A,ANN
+Other Crops,Kg,2.22,2080/81,N/A,ANN
+Livestock,Kg,10.41,2080/81,N/A,ANN
+Poultry,Kg,1.79,2080/81,N/A,ANN
+Fish,Kg,0.91,2080/81,N/A,ANN
+Milk,Ltr.,12.8,2080/81,N/A,ANN
+Egg,Pieces,1.64,2080/81,N/A,ANN
