@@ -1,0 +1,10 @@
+#frontend
+frontend/node_modules/
+frontend/dist
+
+#Environment files
+.env
+.env.local
+
+#logs
+*.log
