@@ -11,6 +11,7 @@ import News from "../pages/News";
 import Reports from "../pages/Reports";
 import Research from "../pages/Research";
 import Login from "../pages/Login";
+import Signup from "../pages/Signup";
 import Support from "../pages/Support";
 import NotFound from "../pages/NotFound";
 
@@ -117,6 +118,7 @@ export default function AppRoutes() {
 
         {/* Public route */}
         <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
 
         {/* Catch-all */}
         <Route path="*" element={<NotFound />} />

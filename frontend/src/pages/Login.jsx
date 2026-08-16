@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, EyeOff, BarChart3, MapPinned } from "lucide-react";
+import { auth } from "../services/auth";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -11,14 +12,14 @@ export default function Login() {
 
   const handleLogin = (e) => {
     e.preventDefault();
-
-    // Temporary Login
-    if (email === "admin@gmail.com" && password === "admin123") {
-      localStorage.setItem("token", "loggedIn");
-      navigate("/national");
-    } else {
-      alert("Invalid Email or Password");
-    }
+    (async () => {
+      try {
+        await auth.login({ username: email, password });
+        navigate("/national");
+      } catch (err) {
+        alert(err.message || 'Login failed');
+      }
+    })();
   };
 
   return (

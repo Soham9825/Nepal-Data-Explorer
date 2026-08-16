@@ -1,6 +1,6 @@
 // API Service - Ready for when backend is available
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/analytics';
 
 export const tourismAPI = {
   /**
@@ -9,14 +9,14 @@ export const tourismAPI = {
    */
   getDashboardData: async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/tourism/dashboard`, {
+      const response = await fetch(`${API_BASE_URL}/tourism/`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
-        // Add authorization if needed
-        // credentials: 'include',
+        // include cookies for session authentication
+        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -32,15 +32,38 @@ export const tourismAPI = {
   },
 
   /**
+   * Fetch full analytics overview (dashboard)
+   */
+  getOverview: async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/dashboard/`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        credentials: 'include',
+      });
+
+      if (!response.ok) throw new Error(`API Error: ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      console.error('Overview API error:', error);
+      throw error;
+    }
+  },
+
+  /**
    * Fetch tourism data for specific year
    */
   getDataByYear: async (year) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/tourism/year/${year}`, {
+      const response = await fetch(`${API_BASE_URL}/tourism/year/${year}/`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -61,14 +84,15 @@ export const tourismAPI = {
     try {
       const queryParams = new URLSearchParams(filters).toString();
       const url = queryParams 
-        ? `${API_BASE_URL}/tourism?${queryParams}`
-        : `${API_BASE_URL}/tourism`;
+        ? `${API_BASE_URL}/tourism/?${queryParams}`
+        : `${API_BASE_URL}/tourism/`;
       
       const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
       });
 
       if (!response.ok) {
