@@ -105,7 +105,9 @@ export default function BarChart({
               <g key={groupIndex}>
                 {seriesConfig.map((s, sIndex) => {
                   const value = Number(item[s.key]) || 0;
-                  const barHeight = max ? (value / max) * (VB_HEIGHT - PADDING_Y * 2) : 0;
+                  let barHeight = max ? (value / max) * (VB_HEIGHT - PADDING_Y * 2) : 0;
+                  // Ensure bar height is non-negative to avoid invalid SVG rect dimensions
+                  if (!Number.isFinite(barHeight) || barHeight < 0) barHeight = 0;
                   const x = groupX + sIndex * (barWidth + barGap);
                   const y = VB_HEIGHT - PADDING_Y - barHeight;
                   const barColor = isMultiSeries

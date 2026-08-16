@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import { SectionCard } from '../components/ui/Card';
 import { Icon } from '../components/ui/Icon';
@@ -11,11 +11,12 @@ import DataFooter from '../components/common/DataFooter';
 import { getPlaceIcon } from '../utils/iconMap';
 
 import {
-  TOURISM_STATS,
-  TOURISM_ITEMS,
-  ARRIVALS_HISTORY,
-  REVENUE_HISTORY,
+  TOURISM_STATS as DUMMY_TOURISM_STATS,
+  TOURISM_ITEMS as DUMMY_TOURISM_ITEMS,
+  ARRIVALS_HISTORY as DUMMY_ARRIVALS_HISTORY,
+  REVENUE_HISTORY as DUMMY_REVENUE_HISTORY,
 } from '../data/tourismData';
+import { tourismAPI } from '../services/tourismAPI';
 
 const TABS = [
   { id: 'arrivals', label: 'Tourist Arrivals Trend' },
@@ -41,6 +42,25 @@ const CHART_META = {
 export default function Tourism() {
   const [activeTab, setActiveTab] = useState('arrivals');
   const { title: chartTitle, subtitle: chartSubtitle } = CHART_META[activeTab];
+  const [loading, setLoading] = useState(true);
+  const [tourismData, setTourismData] = useState(null);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const data = await tourismAPI.getDashboardData();
+        if (!mounted) return;
+        setTourismData(data);
+      } catch (err) {
+        console.warn('Could not load tourism data, falling back to dummy data', err);
+        setTourismData(null);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => (mounted = false);
+  }, []);
 
   return (
     <DashboardLayout pageTitle="Tourism">
@@ -57,7 +77,14 @@ export default function Tourism() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {TOURISM_STATS.map((stat, index) => (
+          {(tourismData?.kpis
+            ? [
+                { label: 'Total Tourists', value: tourismData.kpis.total_tourists || 0, icon: 'flight', up: true, change: '', sub: '' },
+                { label: 'Growth %', value: tourismData.kpis.growth_percent || 0, icon: 'trending_up', up: (tourismData.kpis.growth_percent||0) >= 0, change: '', sub: '' },
+                { label: 'Top Source', value: tourismData.kpis.top_source_country ? tourismData.kpis.top_source_country.nationality : '—', icon: 'map', up: true, change: '', sub: '' },
+                { label: 'Forecasts', value: tourismData.popular_destinations ? tourismData.popular_destinations.length : 0, icon: 'bar_chart', up: true, change: '', sub: '' },
+              ]
+            : DUMMY_TOURISM_STATS).map((stat, index) => (
             <div
               key={index}
               className="bg-surface border border-outline-variant rounded-sm p-5 card-shadow"
@@ -117,20 +144,24 @@ export default function Tourism() {
             <div className="border border-outline-variant rounded-sm bg-surface flex-1 min-h-[256px]">
               {activeTab === 'arrivals' && (
                 <LineChart
-                  data={ARRIVALS_HISTORY}
+                  data={
+                    tourismData?.arrival_trend
+                      ? tourismData.arrival_trend.map((r) => ({ year: r.year, tourism: r.total_arrivals }))
+                      : DUMMY_ARRIVALS_HISTORY
+                  }
                   xKey="year"
-                  series={[{ key: 'tourism', color: '#7a5100', label: 'Arrivals (K)' }]}
+                  series={[{ key: 'tourism', color: '#7a5100', label: 'Arrivals' }]}
                   height="100%"
                 />
               )}
 
               {activeTab === 'destinations' && (
                 <BarChart
-                  data={TOURISM_ITEMS.map((d) => ({
-                    name: d.label,
-                    arrivals: parseInt(d.arrivals.replace(/,/g, ''), 10),
-                    color: d.color,
-                  }))}
+                  data={
+                    tourismData?.popular_destinations
+                      ? tourismData.popular_destinations.map((d) => ({ name: d.name, arrivals: d.annual_visitors || 0, color: '#7a5100' }))
+                      : DUMMY_TOURISM_ITEMS.map((d) => ({ name: d.label, arrivals: parseInt(d.arrivals.replace(/,/g, ''), 10), color: d.color }))
+                  }
                   labelKey="name"
                   valueKey="arrivals"
                   height="100%"
@@ -140,7 +171,11 @@ export default function Tourism() {
 
               {activeTab === 'revenue' && (
                 <LineChart
-                  data={REVENUE_HISTORY}
+                  data={
+                    tourismData?.revenue
+                      ? tourismData.revenue.map((r) => ({ year: r.fiscal_year, revenue: r.value }))
+                      : DUMMY_REVENUE_HISTORY
+                  }
                   xKey="year"
                   series={[{ key: 'revenue', color: '#b70011', label: 'Revenue (USD M)' }]}
                   height="100%"
@@ -158,7 +193,18 @@ export default function Tourism() {
           >
             <div className="max-h-[320px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
               <div className="space-y-3">
-                {TOURISM_ITEMS.map((item, index) => (
+                {(tourismData?.popular_destinations
+                  ? tourismData.popular_destinations.map((d) => ({
+                      label: d.name,
+                      arrivals: d.annual_visitors || 0,
+                      color: '#7a5100',
+                      province: d.province,
+                      pct: 0,
+                      trendUp: true,
+                      trend: '',
+                    }))
+                  : DUMMY_TOURISM_ITEMS
+                ).map((item, index) => (
                   <div
                     key={index}
                     className="flex items-center justify-between p-3 bg-surface-lowest rounded-sm border border-outline-variant hover:border-tertiary transition-colors"
