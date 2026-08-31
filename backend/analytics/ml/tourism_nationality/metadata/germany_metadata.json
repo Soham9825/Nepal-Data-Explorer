@@ -1,0 +1,38 @@
+{
+    "dataset_name": "tourist-arrivals-by-major-nationalities",
+    "nationality": "Germany",
+    "model_type": "ARIMA",
+    "model_version": "1.0.0",
+    "source_filename": "8.tourist-arrivals-by-major-nationalities-20142024.csv",
+    "date_frequency": "yearly",
+    "training_start": 2014,
+    "training_end": 2024,
+    "test_start": 2023,
+    "test_end": 2024,
+    "number_of_observations": 11,
+    "forecast_start": 2025,
+    "forecast_end": 2026,
+    "forecast_horizon": 2,
+    "baseline_metrics": {
+        "mae": 13265.394444446545,
+        "rmse": 13399.891980175275,
+        "smape_percent": 60.81366573665324
+    },
+    "selected_model_metrics": {
+        "mae": 1552.5083425998346,
+        "rmse": 1959.9595348360378,
+        "smape_percent": 5.441367700303974
+    },
+    "arima_metrics": {
+        "mae": 1552.5083425998346,
+        "rmse": 1959.9595348360378,
+        "smape_percent": 5.441367700303974
+    },
+    "arima_order": [
+        2,
+        1,
+        1
+    ],
+    "arima_fit_error": null,
+    "creation_timestamp": "2026-07-07T12:06:44.102385+00:00"
+}

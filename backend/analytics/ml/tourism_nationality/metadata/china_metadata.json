@@ -1,0 +1,38 @@
+{
+    "dataset_name": "tourist-arrivals-by-major-nationalities",
+    "nationality": "China",
+    "model_type": "trend_baseline",
+    "model_version": "1.0.0",
+    "source_filename": "8.tourist-arrivals-by-major-nationalities-20142024.csv",
+    "date_frequency": "yearly",
+    "training_start": 2014,
+    "training_end": 2024,
+    "test_start": 2023,
+    "test_end": 2024,
+    "number_of_observations": 11,
+    "forecast_start": 2025,
+    "forecast_end": 2026,
+    "forecast_horizon": 2,
+    "baseline_metrics": {
+        "mae": 64991.60000000149,
+        "rmse": 70239.04242314436,
+        "smape_percent": 127.71187598455055
+    },
+    "selected_model_metrics": {
+        "mae": 64991.60000000149,
+        "rmse": 70239.04242314436,
+        "smape_percent": 127.71187598455055
+    },
+    "arima_metrics": {
+        "mae": 71688.57800286294,
+        "rmse": 74561.51970066439,
+        "smape_percent": 155.17645594271733
+    },
+    "arima_order": [
+        0,
+        1,
+        1
+    ],
+    "arima_fit_error": null,
+    "creation_timestamp": "2026-07-07T12:06:42.408808+00:00"
+}

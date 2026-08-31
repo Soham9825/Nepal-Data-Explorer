@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import re
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -24,6 +25,7 @@ from datasets.models import (
     TouristArrivalByYear,
     TouristArrivalMonthly,
     TrekkerByRegion,
+    PopulationBySex,
     WholesalePriceIndex,
 )
 
@@ -35,8 +37,9 @@ def _clean_text(value: object) -> str:
 
 
 def _parse_int(value: object, *, allow_blank: bool = False) -> int | None:
-    text = _clean_text(value).replace(",", "")
-    if not text or text == "-":
+    text = _clean_text(value).replace(",", "").replace(" ", "")
+    text = re.sub(r"[^0-9\-]", "", text)
+    if not text or text in {"-", "--"}:
         if allow_blank:
             return None
         raise ValueError("Missing integer value")
@@ -44,8 +47,13 @@ def _parse_int(value: object, *, allow_blank: bool = False) -> int | None:
 
 
 def _parse_decimal(value: object, *, allow_blank: bool = False) -> Decimal | None:
-    text = _clean_text(value).replace(",", "")
-    if not text or text in {"-", "NA", "N/A"}:
+    text = _clean_text(value).replace(",", "").replace(" ", "")
+    if not text or text in {"-", "NA", "N/A", "�"}:
+        if allow_blank:
+            return None
+        raise ValueError("Missing decimal value")
+    text = re.sub(r"[^0-9.\-+]", "", text)
+    if not text or text in {"-", ".", "-.", "+"}:
         if allow_blank:
             return None
         raise ValueError("Missing decimal value")
@@ -61,7 +69,7 @@ def _normalize_series_type(value: object) -> str:
 
 
 def _load_csv(path: Path) -> Iterable[dict[str, str]]:
-    with path.open(newline="", encoding="utf-8-sig") as handle:
+    with path.open(newline="", encoding="latin-1") as handle:
         yield from csv.DictReader(handle)
 
 
@@ -186,6 +194,28 @@ class Command(BaseCommand):
                     "metric": _clean_text(row["Metric"]),
                     "value": _parse_decimal(row["Value"], allow_blank=True),
                     "unit": "",
+                },
+            ),
+        ],
+        "population": [
+            DatasetSpec(
+                name="population_by_sex",
+                file_name="NR_Indv01_PopulationBySex.csv",
+                model=PopulationBySex,
+                unique_fields=("area_code", "province_code", "district_code", "area_name"),
+                row_to_defaults=lambda row: {
+                    "area_code": _parse_int(row["area"]),
+                    "province_code": _parse_int(row["prov"], allow_blank=True) or 0,
+                    "district_code": _parse_int(row["dist"], allow_blank=True) or 0,
+                    "area_name": _clean_text(row["area_name"]),
+                    "households": _parse_int(row["nHhld"], allow_blank=True),
+                    "total_population": _parse_int(row["total"], allow_blank=True),
+                    "male": _parse_int(row["male"], allow_blank=True),
+                    "female": _parse_int(row["female"], allow_blank=True),
+                    "avg_household_size": _parse_decimal(row["avg_hhsize"], allow_blank=True),
+                    "sex_ratio": _parse_decimal(row["sex_ratio"], allow_blank=True),
+                    "growth_rate": _parse_decimal(row["growth_rate"], allow_blank=True),
+                    "population_density": _parse_decimal(row["pop_density"], allow_blank=True),
                 },
             ),
         ],

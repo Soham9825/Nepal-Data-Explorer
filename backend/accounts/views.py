@@ -8,6 +8,11 @@ from django.core.exceptions import ValidationError
 import random
 import time
 import re
+from django.http import JsonResponse
+from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_protect
+from django.middleware.csrf import get_token
+import json
 
 
 
@@ -179,6 +184,109 @@ def resend_verification_email(request):
     )
 
     return redirect('verifyemail')
+
+
+# --- JSON API helpers for SPA authentication ---
+
+
+@ensure_csrf_cookie
+def api_get_csrf(request):
+    token = get_token(request)
+    return JsonResponse({'csrfToken': token})
+
+
+@require_POST
+@csrf_protect
+def api_login(request):
+    try:
+        data = json.loads(request.body)
+    except Exception:
+        return JsonResponse({'detail': 'Invalid JSON'}, status=400)
+
+    identifier = data.get('username') or data.get('email')
+    password = data.get('password')
+    remember_me = data.get('remember_me', False)
+
+    if not identifier or not password:
+        return JsonResponse({'detail': 'Missing credentials'}, status=400)
+
+    # allow login by username or email
+    user = authenticate(request, username=identifier, password=password)
+
+    if not user:
+        # try email lookup
+        try:
+            u = CustomUser.objects.get(email=identifier)
+            user = authenticate(request, username=u.username, password=password)
+        except CustomUser.DoesNotExist:
+            user = None
+
+    if user:
+        auth_login(request, user)
+        if remember_me:
+            request.session.set_expiry(60 * 60 * 24 * 30)
+        else:
+            request.session.set_expiry(0)
+        return JsonResponse({'username': user.username, 'email': user.email})
+    else:
+        return JsonResponse({'detail': 'Invalid credentials'}, status=401)
+
+
+@require_POST
+def api_logout_api(request):
+    auth_logout(request)
+    return JsonResponse({'detail': 'logged out'})
+
+
+def api_me(request):
+    try:
+        user = request.user
+    except Exception:
+        user = None
+
+    if user is not None and getattr(user, 'is_authenticated', False):
+        return JsonResponse({'username': user.username, 'email': user.email})
+    return JsonResponse({'detail': 'Not authenticated'}, status=401)
+
+
+@require_POST
+@csrf_protect
+def api_signup(request):
+    try:
+        data = json.loads(request.body)
+    except Exception:
+        return JsonResponse({'detail': 'Invalid JSON'}, status=400)
+
+    username = data.get('username', '').strip()
+    email = data.get('email', '').strip()
+    password = data.get('password', '')
+    confirm_password = data.get('confirm_password', '')
+
+    if not re.match(r'^[A-Za-z0-9_]{3,30}$', username):
+        return JsonResponse({'detail': 'Invalid Username'}, status=400)
+
+    if CustomUser.objects.filter(username=username).exists():
+        return JsonResponse({'detail': 'Username already exists'}, status=400)
+
+    try:
+        validate_email(email)
+    except ValidationError:
+        return JsonResponse({'detail': 'Invalid email address'}, status=400)
+
+    if CustomUser.objects.filter(email=email).exists():
+        return JsonResponse({'detail': 'Email already exists'}, status=400)
+
+    if len(password) < 8:
+        return JsonResponse({'detail': 'Password must be at least 8 characters'}, status=400)
+
+    if password != confirm_password:
+        return JsonResponse({'detail': 'Passwords do not match'}, status=400)
+
+    user = CustomUser.objects.create_user(username=username, email=email, password=password)
+    user.is_verified = True
+    user.save()
+    auth_login(request, user)
+    return JsonResponse({'username': user.username, 'email': user.email})
 
 
 

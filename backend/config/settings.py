@@ -28,7 +28,7 @@ SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 
 # Application definition
@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'accounts',
     'datasets',
+    "news",
     'analytics',
     'django.contrib.admin',
     'django.contrib.auth',
@@ -61,6 +62,15 @@ MIDDLEWARE = [
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
 ]
+CORS_ALLOW_CREDENTIALS = True
+from corsheaders.defaults import default_headers
+
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    'X-CSRFToken',
+]
+
+# Allow the frontend dev server origin for CSRF checks (required for POSTs from the SPA)
+CSRF_TRUSTED_ORIGINS = ['http://localhost:5173']
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
@@ -69,6 +79,13 @@ REST_FRAMEWORK = {
 }
 
 ROOT_URLCONF = 'config.urls'
+
+# Keep auth sessions in signed cookies during local development so a flaky
+# remote Postgres connection does not break every authenticated request.
+SESSION_ENGINE = 'django.contrib.sessions.backends.signed_cookies'
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_SAVE_EVERY_REQUEST = True
 
 TEMPLATES = [
     {
@@ -87,10 +104,32 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "news-cache",
+    }
+}
+
+
+NEWS_RSS_FEEDS = {
+    "himalayan_times": {
+        "name": "The Himalayan Times",
+        "url": "https://www.thehimalayantimes.com/rssFeed/15",
+    },
+    "ratopati": {
+        "name": "Ratopati",
+        "url": "https://english.ratopati.com/rss/",
+    },
+    "nepali_times": {
+        "name": "Nepali Times",
+        "url": "https://nepalitimes.com/feed/",
+    },
+}
+
 
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
-
 
 DATABASES = {
     "default": dj_database_url.parse(

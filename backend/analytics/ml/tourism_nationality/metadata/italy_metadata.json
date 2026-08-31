@@ -1,0 +1,38 @@
+{
+    "dataset_name": "tourist-arrivals-by-major-nationalities",
+    "nationality": "Italy",
+    "model_type": "ARIMA",
+    "model_version": "1.0.0",
+    "source_filename": "8.tourist-arrivals-by-major-nationalities-20142024.csv",
+    "date_frequency": "yearly",
+    "training_start": 2014,
+    "training_end": 2024,
+    "test_start": 2023,
+    "test_end": 2024,
+    "number_of_observations": 11,
+    "forecast_start": 2025,
+    "forecast_end": 2026,
+    "forecast_horizon": 2,
+    "baseline_metrics": {
+        "mae": 8847.813888889388,
+        "rmse": 8914.03213688921,
+        "smape_percent": 95.0571256318183
+    },
+    "selected_model_metrics": {
+        "mae": 5825.56616671908,
+        "rmse": 5875.190649061699,
+        "smape_percent": 53.77225370033474
+    },
+    "arima_metrics": {
+        "mae": 5825.56616671908,
+        "rmse": 5875.190649061699,
+        "smape_percent": 53.77225370033474
+    },
+    "arima_order": [
+        0,
+        1,
+        1
+    ],
+    "arima_fit_error": null,
+    "creation_timestamp": "2026-07-07T12:06:45.888481+00:00"
+}

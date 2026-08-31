@@ -1,0 +1,39 @@
+{
+    "dataset_name": "tourism_monthly",
+    "source_file": "2.tourist-arrivals-by-month-19952024 (3).csv",
+    "columns": [
+        "Year",
+        "Month",
+        "Value"
+    ],
+    "series_key": "all",
+    "model_type": "sarima",
+    "model_version": "tourism_monthly_all_sarima*20260707*025221",
+    "frequency": "MS",
+    "seasonal_period": 12,
+    "training_start": "1995-01-01",
+    "training_end": "2024-12-01",
+    "number_of_observations": 360,
+    "test_period_start": "2024-01-01",
+    "test_period_end": "2024-12-01",
+    "forecast_horizon_months": 24,
+    "forecast_start": "2025-01-01",
+    "forecast_end": "2026-12-01",
+    "forecast_years": [
+        2025,
+        2026
+    ],
+    "metrics": {
+        "seasonal_naive": {
+            "mae": 11812.33,
+            "rmse": 14532.18,
+            "smape_percent": 13.59
+        },
+        "selected_model": {
+            "mae": 7626.59,
+            "rmse": 9702.24,
+            "smape_percent": 8.43
+        }
+    },
+    "created_at": "2026-07-07T02:52:21.284961"
+}

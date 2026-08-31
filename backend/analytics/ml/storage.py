@@ -29,6 +29,11 @@ def save_bundle(bundle: dict, model_path: Path) -> None:
 
 
 def load_bundle(model_path: Path) -> dict:
+    # Support both joblib and pandas pickles for historical bundles
+    if str(model_path).lower().endswith('.pkl'):
+        import pandas as pd
+
+        return pd.read_pickle(model_path)
     return joblib.load(model_path)
 
 
