@@ -134,11 +134,9 @@ class ForecastService:
         return self._store_future_points(artifact, bundle, series_frame, artifact.horizon)
 
     def _load_bundle(self, model_path: Path) -> ForecastBundle:
-        payload = pd.read_pickle(model_path) if model_path.suffix == ".pkl" else None
-        if payload is None:
-            import joblib
+        from .storage import load_bundle
 
-            payload = joblib.load(model_path)
+        payload = load_bundle(model_path)
         return ForecastBundle(
             model=payload["model"],
             feature_columns=list(payload["feature_columns"]),

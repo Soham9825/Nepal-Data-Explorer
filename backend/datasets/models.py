@@ -350,6 +350,38 @@ class GlobalEconomicSeries(models.Model):
         return f"{self.context} - {self.period_label} ({self.series_type})"
 
 
+class PopulationBySex(models.Model):
+    area_code = models.PositiveIntegerField()
+    province_code = models.PositiveIntegerField(default=0)
+    district_code = models.PositiveIntegerField(default=0)
+    area_name = models.CharField(max_length=150)
+    households = models.PositiveIntegerField(null=True, blank=True)
+    total_population = models.PositiveIntegerField(null=True, blank=True)
+    male = models.PositiveIntegerField(null=True, blank=True)
+    female = models.PositiveIntegerField(null=True, blank=True)
+    avg_household_size = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    sex_ratio = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    growth_rate = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    population_density = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+
+    class Meta:
+        ordering = ["area_code", "province_code", "district_code", "area_name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["area_code", "province_code", "district_code", "area_name"],
+                name="unique_population_by_sex_area",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["province_code"]),
+            models.Index(fields=["district_code"]),
+            models.Index(fields=["area_name"]),
+        ]
+
+    def __str__(self):
+        return f"{self.area_name} ({self.area_code}/{self.province_code}/{self.district_code})"
+
+
 class ProvinceMetric(models.Model):
     ECONOMIC = "economic"
     TOURISM = "tourism"

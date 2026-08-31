@@ -1,0 +1,38 @@
+{
+    "dataset_name": "tourist-arrivals-by-major-nationalities",
+    "nationality": "Bangladesh",
+    "model_type": "ARIMA",
+    "model_version": "1.0.0",
+    "source_filename": "8.tourist-arrivals-by-major-nationalities-20142024.csv",
+    "date_frequency": "yearly",
+    "training_start": 2016,
+    "training_end": 2024,
+    "test_start": 2023,
+    "test_end": 2024,
+    "number_of_observations": 9,
+    "forecast_start": 2025,
+    "forecast_end": 2026,
+    "forecast_horizon": 2,
+    "baseline_metrics": {
+        "mae": 32887.160714285914,
+        "rmse": 33691.8333705365,
+        "smape_percent": 123.87727908631057
+    },
+    "selected_model_metrics": {
+        "mae": 22256.7041192252,
+        "rmse": 23988.426812038357,
+        "smape_percent": 69.2378444250192
+    },
+    "arima_metrics": {
+        "mae": 22256.7041192252,
+        "rmse": 23988.426812038357,
+        "smape_percent": 69.2378444250192
+    },
+    "arima_order": [
+        0,
+        1,
+        2
+    ],
+    "arima_fit_error": null,
+    "creation_timestamp": "2026-07-07T12:06:40.922122+00:00"
+}

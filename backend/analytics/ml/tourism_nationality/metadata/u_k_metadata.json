@@ -1,0 +1,38 @@
+{
+    "dataset_name": "tourist-arrivals-by-major-nationalities",
+    "nationality": "U.K.",
+    "model_type": "ARIMA",
+    "model_version": "1.0.0",
+    "source_filename": "8.tourist-arrivals-by-major-nationalities-20142024.csv",
+    "date_frequency": "yearly",
+    "training_start": 2014,
+    "training_end": 2024,
+    "test_start": 2023,
+    "test_end": 2024,
+    "number_of_observations": 11,
+    "forecast_start": 2025,
+    "forecast_end": 2026,
+    "forecast_horizon": 2,
+    "baseline_metrics": {
+        "mae": 49983.23611111753,
+        "rmse": 50211.44449255313,
+        "smape_percent": 174.67796406381413
+    },
+    "selected_model_metrics": {
+        "mae": 9847.952700877126,
+        "rmse": 9893.668298397368,
+        "smape_percent": 20.1256816217962
+    },
+    "arima_metrics": {
+        "mae": 9847.952700877126,
+        "rmse": 9893.668298397368,
+        "smape_percent": 20.1256816217962
+    },
+    "arima_order": [
+        0,
+        1,
+        1
+    ],
+    "arima_fit_error": null,
+    "creation_timestamp": "2026-07-07T12:06:50.025783+00:00"
+}

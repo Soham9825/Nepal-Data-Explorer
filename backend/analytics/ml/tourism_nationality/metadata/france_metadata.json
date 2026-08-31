@@ -1,0 +1,38 @@
+{
+    "dataset_name": "tourist-arrivals-by-major-nationalities",
+    "nationality": "France",
+    "model_type": "ARIMA",
+    "model_version": "1.0.0",
+    "source_filename": "8.tourist-arrivals-by-major-nationalities-20142024.csv",
+    "date_frequency": "yearly",
+    "training_start": 2014,
+    "training_end": 2024,
+    "test_start": 2023,
+    "test_end": 2024,
+    "number_of_observations": 11,
+    "forecast_start": 2025,
+    "forecast_end": 2026,
+    "forecast_horizon": 2,
+    "baseline_metrics": {
+        "mae": 12815.477777777705,
+        "rmse": 12921.222107939899,
+        "smape_percent": 72.18629972730682
+    },
+    "selected_model_metrics": {
+        "mae": 11165.092164320864,
+        "rmse": 11226.735904649544,
+        "smape_percent": 37.618522279972275
+    },
+    "arima_metrics": {
+        "mae": 11165.092164320864,
+        "rmse": 11226.735904649544,
+        "smape_percent": 37.618522279972275
+    },
+    "arima_order": [
+        2,
+        1,
+        1
+    ],
+    "arima_fit_error": null,
+    "creation_timestamp": "2026-07-07T12:06:42.948059+00:00"
+}

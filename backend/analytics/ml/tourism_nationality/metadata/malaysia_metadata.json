@@ -1,0 +1,38 @@
+{
+    "dataset_name": "tourist-arrivals-by-major-nationalities",
+    "nationality": "Malaysia",
+    "model_type": "ARIMA",
+    "model_version": "1.0.0",
+    "source_filename": "8.tourist-arrivals-by-major-nationalities-20142024.csv",
+    "date_frequency": "yearly",
+    "training_start": 2017,
+    "training_end": 2024,
+    "test_start": 2023,
+    "test_end": 2024,
+    "number_of_observations": 8,
+    "forecast_start": 2025,
+    "forecast_end": 2026,
+    "forecast_horizon": 2,
+    "baseline_metrics": {
+        "mae": 19890.0,
+        "rmse": 19919.46256805138,
+        "smape_percent": 200.0
+    },
+    "selected_model_metrics": {
+        "mae": 10087.416134867915,
+        "rmse": 10161.912387571376,
+        "smape_percent": 67.75199366616692
+    },
+    "arima_metrics": {
+        "mae": 10087.416134867915,
+        "rmse": 10161.912387571376,
+        "smape_percent": 67.75199366616692
+    },
+    "arima_order": [
+        0,
+        1,
+        2
+    ],
+    "arima_fit_error": null,
+    "creation_timestamp": "2026-07-07T12:06:46.635939+00:00"
+}

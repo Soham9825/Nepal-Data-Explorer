@@ -274,13 +274,17 @@ def dashboard_overview(request):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def tourism_dashboard(request):
-	return Response(dashboard_overview(request).data["tourism"])
+	# dashboard_overview is a DRF view; avoid passing a DRF Request into it.
+	# Use the original wrapped function with the underlying Django HttpRequest.
+	resp = dashboard_overview.__wrapped__(request._request)
+	return Response(resp.data["tourism"])
 
 
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def economic_dashboard(request):
-	return Response(dashboard_overview(request).data["economic"])
+	resp = dashboard_overview.__wrapped__(request._request)
+	return Response(resp.data["economic"])
 
 
 @api_view(["GET"])

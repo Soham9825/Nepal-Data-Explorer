@@ -100,6 +100,17 @@ export default function NewsModal({ news, onClose }) {
             <span>Share this article</span>
           </div>
           <div className="flex gap-2">
+            {news.url && (
+              <a
+                href={news.url}
+                target="_blank"
+                rel="noreferrer"
+                className="px-4 py-2 text-sm font-medium bg-primary text-white rounded-sm hover:brightness-110 transition-all flex items-center gap-2"
+              >
+                <Icon name="open_in_new" size={16} color="#ffffff" />
+                Read original
+              </a>
+            )}
             <button
               onClick={onClose}
               className="px-4 py-2 text-sm font-medium text-onSurface-variant hover:bg-gray-200 rounded-sm transition-colors"
