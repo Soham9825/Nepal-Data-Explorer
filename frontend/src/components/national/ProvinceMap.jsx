@@ -86,6 +86,12 @@ export default function ProvinceMap({ provinces, populationData, selectedProvinc
                   <span className="font-bold">{selectedStats.pct}%</span>
                 </div>
               )}
+              {selectedStats?.density != null && (
+                <div className="flex justify-between">
+                  <span className="text-on-surface-variant">Density</span>
+                  <span className="font-bold">{selectedStats.density} p/km²</span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-on-surface-variant">Capital</span>
                 <span className="font-bold">{selectedShape.hq}</span>

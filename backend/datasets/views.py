@@ -64,3 +64,31 @@ def population_summary(request):
 			"population_density": str(nepal.population_density) if nepal.population_density is not None else None,
 		}
 	)
+
+
+def province_population_summary(request):
+	province_rows = (
+		PopulationBySex.objects.filter(area_code=40, district_code=0, province_code__gte=1, province_code__lte=7)
+		.exclude(area_name__iexact="Nepal")
+		.order_by("province_code")
+	)
+
+	nepal_total = PopulationBySex.objects.filter(area_name__iexact="Nepal").order_by("id").first()
+	nepal_total_value = nepal_total.total_population if nepal_total and nepal_total.total_population is not None else 0
+
+	provinces = []
+	for row in province_rows:
+		value = row.total_population if row.total_population is not None else 0
+		percentage = round((value / nepal_total_value) * 100, 2) if nepal_total_value else 0
+		density = row.population_density if row.population_density is not None else None
+		provinces.append(
+			{
+				"name": row.area_name,
+				"province_code": row.province_code,
+				"total_population": value,
+				"pct": percentage,
+				"population_density": float(density) if density is not None else None,
+			}
+		)
+
+	return JsonResponse({"provinces": provinces})
