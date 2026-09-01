@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import ActionCard from '../components/reports/ActionCard';
 import ReportsList from '../components/reports/ReportsList';
@@ -8,10 +8,22 @@ import { quickActions } from '../data/reportsData';
 
 export default function Reports() {
   const [activeReport, setActiveReport] = useState(null);
+  const [reports, setReports] = useState([]);
+
+  useEffect(() => {
+    const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    fetch(`${apiBaseUrl}/api/datasets/files/`)
+      .then((response) => {
+        if (!response.ok) throw new Error(`Reports API error: ${response.status}`);
+        return response.json();
+      })
+      .then((data) => setReports(data.reports))
+      .catch((error) => console.error('Unable to load reports:', error));
+  }, []);
 
   const handleDownload = (report) => {
-    // wire up real download logic here
-    console.log('downloading', report.title);
+    const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    window.open(`${apiBaseUrl}${report.download_url}`, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -23,12 +35,15 @@ export default function Reports() {
         </div>
 
         <div className="grid grid-cols-3 gap-4">
-          {quickActions.map((a) => (
-            <ActionCard key={a.title} {...a} />
+          {quickActions.map((action) => (
+            <ActionCard
+              key={action.title}
+              {...action}
+            />
           ))}
         </div>
 
-        <ReportsList onSelect={setActiveReport} onDownload={handleDownload} />
+        <ReportsList reports={reports} onSelect={setActiveReport} onDownload={handleDownload} />
         <CitationBlock />
       </div>
 

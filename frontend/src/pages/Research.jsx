@@ -1,13 +1,65 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import { SectionCard } from '../components/ui/Card';
 import { BtnOutline, BtnPrimary } from '../components/ui/Button';
 import { Icon } from '../components/ui/Icon';
-import { RESEARCH_SOURCES } from '../data/dummyData';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+const SOURCE_DEFINITIONS = [
+  {
+    org: 'Nepal Rastra Bank', short: 'NRB', color: '#b70011', frequency: 'Monthly / Annual',
+    desc: 'Financial, trade, salary, wholesale price, and macroeconomic datasets available in this project.',
+    url: 'https://www.nrb.org.np',
+    matches: ['foreigntrade24', 'salaryindex', 'wholesale2'],
+  },
+  {
+    org: 'Central Bureau of Statistics', short: 'CBS', color: '#0051d5', frequency: 'Annual / Quinquennial',
+    desc: 'Population, agriculture, and sectoral datasets available in this project.',
+    url: 'https://censusnepal.cbs.gov.np',
+    matches: ['NR_Indv01', 'agriculture', 'sectoralgrowth'],
+  },
+  {
+    org: 'Department of Tourism', short: 'DoT', color: '#7a5100', frequency: 'Monthly / Annual',
+    desc: 'Tourist arrivals, nationalities, purposes, trekking, and tourism datasets.',
+    url: 'https://tourism.gov.np',
+    matches: ['tourist-', 'trekker', 'tourism_', '12number', '17.'],
+  },
+  {
+    org: 'World Bank Open Data', short: 'WB', color: '#9a6800', frequency: 'Annual',
+    desc: 'Global economic series included in the project data collection.',
+    url: 'https://data.worldbank.org/country/nepal',
+    matches: ['annual_global_economics'],
+  },
+];
+
+function groupReports(reports) {
+  return SOURCE_DEFINITIONS.map((source) => ({
+    ...source,
+    datasets: reports.filter((report) => {
+      const identifier = report.id.toLowerCase();
+      return source.matches.some((match) => identifier.includes(match.toLowerCase()));
+    }),
+  })).filter((source) => source.datasets.length > 0);
+}
 
 export default function Research() {
   const [expanded, setExpanded] = useState(null);
   const [copied, setCopied] = useState(null);
+  const [sources, setSources] = useState([]);
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/api/datasets/files/`)
+      .then((response) => {
+        if (!response.ok) throw new Error(`Research data API error: ${response.status}`);
+        return response.json();
+      })
+      .then((data) => {
+        const sourceFiles = (data.reports || []).filter((report) => report.id.startsWith('datasets__data__'));
+        setSources(groupReports(sourceFiles));
+      })
+      .catch((error) => console.error('Unable to load research datasets:', error));
+  }, []);
 
   const copy = (url, i) => {
     navigator.clipboard?.writeText(url);
@@ -17,7 +69,7 @@ export default function Research() {
 
   const steps = [
     { step: '01', title: 'Choose a source', body: 'Select the official data source for your research area — NRB for finance, CBS for demographics, DoT for tourism.', icon: 'travel_explore' },
-    { step: '02', title: 'Download dataset', body: "Click 'Download CSV' or 'XLSX' for tabular data. Use 'PDF' for official bulletins with methodology notes.", icon: 'download' },
+    { step: '02', title: 'Download dataset', body: "Select a dataset below and download the original CSV file used by this project.", icon: 'download' },
     { step: '03', title: 'Cite correctly', body: 'Always cite the original source organization, report title, publication year and URL. Do not cite Nepal Data Explore as a primary source.', icon: 'format_quote' },
   ];
 
@@ -49,7 +101,7 @@ export default function Research() {
 
         <div className="flex flex-col gap-3">
           <div className="text-xs font-bold uppercase text-onSurface-variant">Official Data Sources</div>
-          {RESEARCH_SOURCES.map((src, i) => (
+          {sources.map((src, i) => (
             <div
               key={i}
               className="bg-surface border border-outline-variant p-5 shadow-sm transition-shadow duration-150 hover:shadow-md"
@@ -68,9 +120,9 @@ export default function Research() {
                   </div>
                   <p className="text-sm text-onSurface-variant leading-relaxed mb-3">{src.desc}</p>
                   <div className="flex flex-wrap gap-1.5">
-                    {src.datasets.slice(0, 3).map((d, j) => (
-                      <span key={j} className="text-xs font-semibold text-onSurface-variant bg-surface-highest px-2.5 py-0.5 border border-outline-variant">
-                        {d}
+                    {src.datasets.slice(0, 3).map((d) => (
+                      <span key={d.id} className="text-xs font-semibold text-onSurface-variant bg-surface-highest px-2.5 py-0.5 border border-outline-variant">
+                        {d.title}
                       </span>
                     ))}
                     {src.datasets.length > 3 && (
@@ -97,18 +149,15 @@ export default function Research() {
                 <div className="mt-4 pt-4 border-t border-outline-variant">
                   <div className="text-xs font-bold uppercase text-onSurface-variant mb-2.5">Available Datasets</div>
                   <div className="grid grid-cols-2 gap-2">
-                    {src.datasets.map((d, j) => (
-                      <div key={j} className="flex items-center justify-between px-3.5 py-2.5 bg-surface-lowest border border-outline-variant">
+                    {src.datasets.map((d) => (
+                      <div key={d.id} className="flex items-center justify-between px-3.5 py-2.5 bg-surface-lowest border border-outline-variant">
                         <div className="flex items-center gap-2">
                           <Icon name="table_chart" size={16} color={src.color} />
-                          <span className="text-sm font-semibold text-onSurface">{d}</span>
+                          <span className="text-sm font-semibold text-onSurface">{d.title}</span>
                         </div>
                         <div className="flex gap-1.5">
-                          <BtnOutline className="px-2 py-0.5 text-[10px] gap-0.5">
-                            <Icon name="download" size={11} /> CSV
-                          </BtnOutline>
-                          <BtnOutline className="px-2 py-0.5 text-[10px] gap-0.5">
-                            <Icon name="download" size={11} /> PDF
+                          <BtnOutline className="px-2 py-0.5 text-[10px] gap-0.5" onClick={() => window.open(`${API_BASE_URL}${d.download_url}`, '_blank', 'noopener,noreferrer')}>
+                            <Icon name="download" size={11} /> CSV · {d.size}
                           </BtnOutline>
                         </div>
                       </div>

@@ -1,9 +1,8 @@
 import React from 'react';
 import { SectionCard } from '../ui/Card';
 import ReportRow from './ReportRow';
-import { reports } from '../../data/reportsData';
 
-export default function ReportsList({ onSelect, onDownload }) {
+export default function ReportsList({ reports, onSelect, onDownload }) {
   return (
     <SectionCard title="All Available Reports & Datasets" subtitle="Click a row to preview · click Download to save" noPad>
       <div>

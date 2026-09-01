@@ -1,4 +1,8 @@
-from django.http import JsonResponse
+import csv
+from pathlib import Path
+
+from django.conf import settings
+from django.http import FileResponse, JsonResponse
 
 from .models import (
 	DashboardForecast,
@@ -10,6 +14,44 @@ from .models import (
 	TouristArrivalByYear,
 	TouristArrivalMonthly,
 )
+
+
+DATASET_ROOTS = (
+	Path(settings.BASE_DIR) / "datasets" / "data",
+	Path(settings.BASE_DIR) / "analytics" / "ml",
+)
+
+
+def _csv_files():
+	files = []
+	for root in DATASET_ROOTS:
+		if root.exists():
+			files.extend(path for path in root.rglob("*.csv") if path.is_file())
+	return sorted(files, key=lambda path: path.name.lower())
+
+
+def _file_id(path):
+	return str(path.relative_to(settings.BASE_DIR)).replace("/", "__")
+
+
+def _find_csv(file_id):
+	return next((path for path in _csv_files() if _file_id(path) == file_id), None)
+
+
+def _file_metadata(path):
+	with path.open("r", encoding="utf-8-sig", errors="replace", newline="") as source:
+		rows = list(csv.reader(source))
+
+	return {
+		"id": _file_id(path),
+		"title": path.stem.replace("_", " ").replace("-", " ").title(),
+		"type": "CSV",
+		"size": f"{path.stat().st_size / 1024:.0f} KB",
+		"date": "Available now",
+		"icon": "auto_awesome" if "forecast" in path.name.lower() else "table_chart",
+		"download_url": f"/api/datasets/files/download/?file={_file_id(path)}",
+		"preview": {"kind": "table", "columns": rows[0] if rows else [], "rows": rows[1:6]},
+	}
 
 
 def health_check(request):
@@ -27,6 +69,18 @@ def health_check(request):
 			},
 		}
 	)
+
+
+def csv_catalog(request):
+	return JsonResponse({"reports": [_file_metadata(path) for path in _csv_files()]})
+
+
+def download_csv(request):
+	path = _find_csv(request.GET.get("file", ""))
+	if path is None:
+		return JsonResponse({"detail": "CSV file not found."}, status=404)
+
+	return FileResponse(path.open("rb"), as_attachment=True, filename=path.name, content_type="text/csv")
 
 
 def dashboard_catalog(request):

@@ -1,31 +1,26 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import { SectionCard } from '../components/ui/Card';
 import { TabBtn } from '../components/ui/Tabs';
 import { BtnPrimary, BtnOutline } from '../components/ui/Button';
 import { Icon } from '../components/ui/Icon';
 import LineChart from '../components/charts/LineChart';
-import { GDP_DATA, FORECAST_DATA } from '../data/dummyData';
 
 const INDICATOR_LABELS = {
-  gdp: 'GDP Growth (%)',
-  inflation: 'Inflation (%)',
-  tourism: 'Tourist Arrivals (×100K)',
+  monthly: 'Monthly Tourist Arrivals',
+  nationality: 'Tourist Arrivals by Nationality',
 };
 
-const INDICATOR_COLORS = {
-  gdp: '#0051d5',
-  inflation: '#7a5100',
-  tourism: '#b70011',
-};
+const INDICATOR_COLOR = '#0051d5';
+const CHART_DOMAIN_START = Date.UTC(2015, 0, 1);
+const CHART_DOMAIN_END = Date.UTC(2026, 11, 31);
 
 // Forecast line always renders in this color, regardless of indicator,
 // so it's visually distinct from the historical line at a glance.
-const FORECAST_COLOR = '#1a7a3c';
-
-const HORIZON_TO_COUNT = { 6: 1, 12: 2, 24: 3 };
+const FORECAST_COLOR = '#72b982';
 
 function downloadCSV(rows, filename) {
+  if (!rows.length) return;
   const header = Object.keys(rows[0]).join(',');
   const body = rows.map((r) => Object.values(r).join(',')).join('\n');
   const csv = `${header}\n${body}`;
@@ -42,57 +37,69 @@ function downloadCSV(rows, filename) {
 }
 
 export default function Predictions() {
-  const [type, setType] = useState('gdp');
-  const [horizon, setHorizon] = useState(12);
-  const [loading, setLoading] = useState(false);
+  const [type, setType] = useState('monthly');
+  const [nationality, setNationality] = useState('India');
+  const [monthlyHistory, setMonthlyHistory] = useState([]);
+  const [monthlyForecast, setMonthlyForecast] = useState([]);
+  const [nationalityHistory, setNationalityHistory] = useState([]);
+  const [nationalityForecast, setNationalityForecast] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [done, setDone] = useState(false);
 
-  const handlePredict = () => {
-    setLoading(true);
-    setDone(false);
-    setTimeout(() => {
-      setLoading(false);
-      setDone(true);
-    }, 1800);
-  };
+  useEffect(() => {
+    const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    Promise.all([
+      fetch(`${apiBaseUrl}/api/analytics/forecasts/`).then((response) => response.json()),
+      fetch(`${apiBaseUrl}/api/analytics/tourism/`).then((response) => response.json()),
+    ])
+      .then(([forecastData, tourismData]) => {
+        setMonthlyForecast(forecastData.monthly || []);
+        setNationalityForecast(forecastData.nationality || []);
+        setMonthlyHistory((tourismData.monthly_trend || []).filter((item) => item.year >= 2015));
+        setNationalityHistory((tourismData.nationality_trend || []).filter((item) => item.year >= 2015 && item.nationality !== 'Total'));
+        setDone(true);
+      })
+      .catch((error) => console.error('Unable to load forecasts:', error))
+      .finally(() => setLoading(false));
+  }, []);
 
-  const forecastItems = FORECAST_DATA.slice(0, HORIZON_TO_COUNT[horizon]);
-
-  const historicalRows = GDP_DATA.map((d) => ({
-    year: d.year,
-    hist: type === 'gdp' ? d.value : type === 'inflation' ? d.inflation : d.tourism / 100,
-    forecast: null,
-  }));
-
-  const bridgeRow = historicalRows.length
-    ? {
-        year: historicalRows[historicalRows.length - 1].year,
-        hist: null,
-        forecast: historicalRows[historicalRows.length - 1].hist,
-      }
-    : null;
-
-  const forecastRows = forecastItems.map((d) => ({
-    year: d.year,
+  const selectedNationalityForecast = nationalityForecast
+    .filter((item) => item.topic === nationality)
+    .sort((a, b) => Date.UTC(a.target_year, a.target_month - 1, 1) - Date.UTC(b.target_year, b.target_month - 1, 1));
+  const selectedNationalityHistory = nationalityHistory
+    .filter((item) => item.nationality === nationality)
+    .sort((a, b) => a.year - b.year);
+  const forecastItems = type === 'monthly' ? monthlyForecast : selectedNationalityForecast;
+  const monthNumbers = { Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06', Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12' };
+  const toMonthTimestamp = (year, month) => Date.UTC(year, Number(monthNumbers[month.slice(0, 3)] || month) - 1, 1);
+  const historicalRows = type === 'monthly'
+    ? monthlyHistory.map((item) => ({ period: toMonthTimestamp(item.year, item.month), label: String(item.year), tooltipLabel: `${item.month} ${item.year}`, hist: item.arrivals, forecast: null }))
+    : selectedNationalityHistory.map((item) => ({ period: Date.UTC(item.year, 0, 1), label: String(item.year), tooltipLabel: String(item.year), hist: item.arrivals, forecast: null }));
+  const forecastRows = forecastItems.map((item) => ({
+    period: type === 'monthly' ? toMonthTimestamp(item.year, item.month) : Date.UTC(item.target_year, item.target_month - 1, 1),
+    label: type === 'monthly' ? String(item.year) : String(item.target_year),
+    tooltipLabel: type === 'monthly' ? `${item.month} ${item.year}` : `${item.target_year}-${String(item.target_month).padStart(2, '0')}`,
     hist: null,
-    forecast: type === 'gdp' ? d.gdp : type === 'inflation' ? d.inflation : d.tourism / 100,
+    forecast: item.predicted_value,
   }));
-
-  const allData = bridgeRow
-    ? [...historicalRows.slice(0, -1), bridgeRow, ...forecastRows]
-    : [...historicalRows, ...forecastRows];
-
-  const label = INDICATOR_LABELS[type];
-  const color = INDICATOR_COLORS[type];
+  const allData = [...historicalRows, ...forecastRows].sort((a, b) => a.period - b.period);
 
   const handleDownload = () => {
-    const exportRows = allData.map((d) => ({
-      year: d.year,
-      value: d.hist !== null ? d.hist : d.forecast,
-      type: d.hist !== null ? 'historical' : 'forecast',
+    const exportRows = forecastItems.map((item) => ({
+      period: type === 'monthly' ? item.date : `${item.target_year}-${item.target_month}`,
+      value: item.predicted_value,
+      lower_bound: item.lower_bound || '',
+      upper_bound: item.upper_bound || '',
+      type: 'forecast',
     }));
-    downloadCSV(exportRows, `${type}-forecast-${horizon}mo.csv`);
+    downloadCSV(exportRows, `${type}-tourism-forecast-2025-2026.csv`);
   };
+
+  const label = type === 'monthly' ? INDICATOR_LABELS.monthly : `${nationality} Arrivals`;
+  const color = INDICATOR_COLOR;
+  const availableNationalities = [...new Set(nationalityForecast.map((item) => item.topic))].sort();
+
+  const formatValue = (value) => Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 });
 
   return (
     <DashboardLayout pageTitle="AI Predictions">
@@ -106,19 +113,18 @@ export default function Predictions() {
 
         <SectionCard
           title="Configure Forecast"
-          subtitle="Choose what to predict and how far ahead, then generate the model output"
+          subtitle="Explore the two-year tourism forecasts produced by the trained models"
           className="rounded-sm"
         >
           <div className="flex flex-wrap gap-8 items-end mb-4">
             <div>
               <div className="text-xs font-bold uppercase text-onSurface-variant mb-2.5">
-                1. What to predict
+                Forecast dataset
               </div>
               <div className="flex border border-outline-variant rounded-sm divide-x divide-outline-variant">
                 {[
-                  ['gdp', 'GDP'],
-                  ['inflation', 'Inflation'],
-                  ['tourism', 'Tourism'],
+                  ['monthly', 'Monthly arrivals'],
+                  ['nationality', 'By nationality'],
                 ].map(([v, l]) => (
                   <TabBtn key={v} active={type === v} onClick={() => { setType(v); setDone(false); }}>
                     {l}
@@ -127,35 +133,30 @@ export default function Predictions() {
               </div>
             </div>
 
-            <div>
-              <div className="text-xs font-bold uppercase text-onSurface-variant mb-2.5">
-                2. How far ahead
-              </div>
-              <div className="flex border border-outline-variant rounded-sm divide-x divide-outline-variant">
-                {[
-                  [6, '6 Mo'],
-                  [12, '12 Mo'],
-                  [24, '24 Mo'],
-                ].map(([v, l]) => (
-                  <TabBtn key={v} active={horizon === v} onClick={() => { setHorizon(v); setDone(false); }}>
-                    {l}
-                  </TabBtn>
-                ))}
-              </div>
-            </div>
+            {type === 'nationality' && (
+              <label className="text-xs font-bold uppercase text-onSurface-variant">
+                Nationality
+                <select
+                  value={nationality}
+                  onChange={(event) => setNationality(event.target.value)}
+                  className="block mt-2 border border-outline-variant rounded-sm bg-surface px-3 py-2 text-sm normal-case font-normal text-onSurface"
+                >
+                  {availableNationalities.map((item) => <option key={item} value={item}>{item}</option>)}
+                </select>
+              </label>
+            )}
           </div>
 
           <div className="flex items-center gap-2 mb-3 px-3 py-2 bg-surface-lowest border border-outline-variant rounded-sm">
             <Icon name="info" size={16} color="#5c403c" />
             <p className="text-xs text-onSurface-variant">
-              Clicking <strong>Generate Forecast</strong> will run the model for{' '}
-              <strong>{label}</strong> over the next <strong>{horizon} months</strong> and plot
-              historical data alongside the AI-predicted trend below.
+              Showing the trained <strong>{label}</strong> model output for the full{' '}
+              <strong>24-month</strong> forecast horizon, with historical data for context.
             </p>
           </div>
 
           <div className="flex items-end gap-3">
-            <BtnPrimary onClick={handlePredict} className="gap-2 rounded-sm" disabled={loading}>
+            <BtnPrimary onClick={() => setDone(true)} className="gap-2 rounded-sm" disabled={loading || !forecastItems.length}>
               {loading ? (
                 <>
                   <Icon name="refresh" size={16} color="#fff" className="animate-spin" />
@@ -164,7 +165,7 @@ export default function Predictions() {
               ) : (
                 <>
                   <Icon name="auto_awesome" size={16} color="#fff" />
-                  Generate Forecast
+                  View Forecast
                 </>
               )}
             </BtnPrimary>
@@ -186,12 +187,17 @@ export default function Predictions() {
           <>
             <SectionCard
               title={`${label} — Historical + AI Forecast`}
-              subtitle="Solid line = historical · Dashed green line = AI forecast"
+              subtitle="Solid blue line = historical · Dashed light-green line = AI forecast"
               className="rounded-sm"
             >
               <LineChart
                 data={allData}
-                xKey="year"
+                xKey="period"
+                labelKey="label"
+                tooltipKey="tooltipLabel"
+                timeScale
+                xDomainStart={CHART_DOMAIN_START}
+                xDomainEnd={CHART_DOMAIN_END}
                 series={[
                   { key: 'hist', color, label: 'Historical' },
                   { key: 'forecast', color: FORECAST_COLOR, label: 'Forecast', dashed: true },
@@ -200,7 +206,7 @@ export default function Predictions() {
               />
             </SectionCard>
 
-            <div className={`grid grid-cols-1 sm:grid-cols-${forecastItems.length} gap-4`}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {forecastItems.map((d, i) => (
                 <div
                   key={i}
@@ -208,14 +214,14 @@ export default function Predictions() {
                   style={{ borderTop: `3px solid ${FORECAST_COLOR}` }}
                 >
                   <div className="text-xs font-bold uppercase text-onSurface-variant mb-1.5">
-                    {d.year} Forecast
+                    {type === 'monthly' ? `${d.month} ${d.year}` : `${d.target_year}-${String(d.target_month).padStart(2, '0')}`} Forecast
                   </div>
                   <div className="text-3xl font-bold text-onSurface">
-                    {type === 'gdp' ? `${d.gdp}%` : type === 'inflation' ? `${d.inflation}%` : `${d.tourism}K`}
+                    {formatValue(d.predicted_value)}
                   </div>
-                  {type === 'gdp' && (
+                  {d.lower_bound !== undefined && (
                     <div className="text-xs text-onSurface-variant mt-1">
-                      Range: {d.low}% – {d.high}%
+                      Range: {formatValue(d.lower_bound)} – {formatValue(d.upper_bound)}
                     </div>
                   )}
                   <div className="flex items-center gap-1 mt-2">
@@ -265,7 +271,7 @@ export default function Predictions() {
               Select parameters above and click Generate Forecast
             </div>
             <div className="text-sm text-onSurface-variant opacity-70">
-              Models trained on NRB, CBS, and World Bank data (2010–2023)
+              Historical data shown from 2015 with model forecasts through 2026
             </div>
           </div>
         )}
