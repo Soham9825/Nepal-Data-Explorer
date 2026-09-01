@@ -4,7 +4,7 @@ import { Icon } from '../ui/Icon';
 export default function ActionCard({ title, desc, icon, color }) {
   return (
     <div
-      className="bg-surface border border-outline-variant p-6 cursor-pointer transition-colors duration-150 card-shadow"
+      className="bg-surface border border-outline-variant p-6 transition-colors duration-150 card-shadow"
       style={{ borderTop: `3px solid ${color}` }}
       onMouseOver={(e) => (e.currentTarget.style.borderColor = color)}
       onMouseOut={(e) => (e.currentTarget.style.borderColor = '#e6bdb8')}

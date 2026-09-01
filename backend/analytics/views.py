@@ -1,3 +1,7 @@
+import csv
+from pathlib import Path
+
+from django.conf import settings
 from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
@@ -24,6 +28,12 @@ from datasets.models import (
 	TrekkerByRegion,
 	WholesalePriceIndex,
 )
+
+
+MONTH_ORDER = {month: index for index, month in enumerate(
+	["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+	start=1,
+)}
 
 
 def _decimal(value):
@@ -71,6 +81,54 @@ def _serialize_forecast(record):
 	}
 
 
+def _read_monthly_forecast():
+	forecast_path = next(
+		(
+			path
+			for path in (Path(settings.BASE_DIR) / "analytics" / "ml" / "tourism_monthly").rglob("*_forecast_*.csv")
+			if path.is_file()
+		),
+		None,
+	)
+	if forecast_path is None:
+		return []
+
+	with forecast_path.open("r", encoding="utf-8-sig", errors="replace", newline="") as source:
+		return [
+			{
+				"date": row.get("date"),
+				"year": int(row["year"]),
+				"month": row.get("month"),
+				"predicted_value": float(row["predicted_value"]),
+				"lower_bound": float(row["lower_bound"]),
+				"upper_bound": float(row["upper_bound"]),
+			}
+			for row in csv.DictReader(source)
+			if row.get("year") and row.get("predicted_value")
+		]
+
+
+def _read_nationality_forecast():
+	forecast_path = Path(settings.BASE_DIR) / "analytics" / "ml" / "tourism_nationality" / "forecasts" / "tourism_nationality_forecasts_2025_2026.csv"
+	if not forecast_path.exists():
+		return []
+
+	with forecast_path.open("r", encoding="utf-8-sig", errors="replace", newline="") as source:
+		return [
+			{
+				"topic": row.get("nationality"),
+				"target_year": int(row["year"]),
+				"target_month": int(row["month"]),
+				"predicted_value": float(row["predicted_value"]),
+				"lower_bound": float(row["lower_bound"]),
+				"upper_bound": float(row["upper_bound"]),
+				"model_name": row.get("model_type"),
+			}
+			for row in csv.DictReader(source)
+			if row.get("year") and row.get("month") and row.get("nationality") and row.get("predicted_value")
+		]
+
+
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def dashboard_overview(request):
@@ -100,7 +158,13 @@ def dashboard_overview(request):
 					else None,
 				},
 				"arrival_trend": [_serialize_tourist_arrival_by_year(item) for item in TouristArrivalByYear.objects.order_by("year")],
-				"monthly_trend": [_serialize_monthly_arrival(item) for item in TouristArrivalMonthly.objects.order_by("year", "month")],
+				"monthly_trend": [
+					_serialize_monthly_arrival(item)
+					for item in sorted(
+						TouristArrivalMonthly.objects.filter(year__gte=2015),
+						key=lambda item: (item.year, MONTH_ORDER.get(item.month[:3].title(), 99)),
+					)
+				],
 				"nationality_trend": [
 					{
 						"nationality": item.nationality,
@@ -108,7 +172,7 @@ def dashboard_overview(request):
 						"arrivals": item.arrivals,
 						"percent": _decimal(item.percent),
 					}
-					for item in TouristArrivalByNationality.objects.order_by("year", "-arrivals")
+					for item in TouristArrivalByNationality.objects.filter(year__gte=2015).exclude(nationality__iexact="Total").order_by("year", "-arrivals")
 				],
 				"sex_breakdown": [
 					{
@@ -367,7 +431,12 @@ def news_feed(request):
 @permission_classes([AllowAny])
 def forecasts(request):
 	items = DashboardForecast.objects.order_by("domain", "topic", "target_year", "target_month")
-	return Response([_serialize_forecast(item) for item in items])
+	return Response(
+		{
+			"monthly": _read_monthly_forecast(),
+			"nationality": _read_nationality_forecast(),
+		}
+	)
 
 
 @api_view(["GET"])

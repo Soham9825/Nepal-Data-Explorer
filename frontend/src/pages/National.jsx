@@ -65,6 +65,7 @@ export default function National() {
   const [selectedProvince, setSelectedProvince] = useState(null);
   const [selectedNews, setSelectedNews] = useState(null);
   const [populationTotal, setPopulationTotal] = useState(FALLBACK_NEPAL_POPULATION);
+  const [populationGrowth, setPopulationGrowth] = useState(0.92);
   const [gdpTrend, setGdpTrend] = useState(FALLBACK_GDP_TREND);
   const [provincePopulation, setProvincePopulation] = useState(FALLBACK_PROVINCE_POPULATION);
 
@@ -88,9 +89,13 @@ export default function National() {
         if (data && data.total_population != null) {
           setPopulationTotal(Number(data.total_population));
         }
+        if (data && data.growth_rate != null) {
+          setPopulationGrowth(Number(data.growth_rate));
+        }
       } catch (err) {
         console.error('Failed to load population summary:', err);
         setPopulationTotal(FALLBACK_NEPAL_POPULATION);
+        setPopulationGrowth(0.92);
       }
     };
 
@@ -207,11 +212,12 @@ export default function National() {
   const metrics = nationalMetrics.map((metric) => {
     if (metric.label === 'Total Population') {
       const totalPopulation = populationTotal ?? FALLBACK_NEPAL_POPULATION;
+      const growthLabel = `${populationGrowth >= 0 ? '+' : ''}${Number(populationGrowth || 0).toFixed(2)}%`;
       return {
         ...metric,
         value: `${(totalPopulation / 1000000).toFixed(2)}M`,
-        change: '+0.92%',
-        subtitle: 'From Nepal census dataset',
+        change: growthLabel,
+        subtitle: 'Growth rate from Nepal census dataset',
       };
     }
     return metric;
