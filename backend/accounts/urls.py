@@ -17,4 +17,8 @@ urlpatterns = [
     path('api/logout/', views.api_logout_api, name='api_logout_api'),
     path('api/signup/', views.api_signup, name='api_signup'),
     path('api/me/', views.api_me, name='api_me'),
+	path('api/password-reset/request/', views.api_password_reset_request, name='api_password_reset_request'),
+	path('api/password-reset/confirm/', views.api_password_reset_confirm, name='api_password_reset_confirm'),
+	path('oauth/<str:provider>/', views.oauth_start, name='oauth_start'),
+	path('oauth/<str:provider>/callback/', views.oauth_callback, name='oauth_callback'),
 ]
