@@ -2,6 +2,7 @@ import csv
 from pathlib import Path
 
 from django.conf import settings
+from django.core.cache import cache
 from django.db.models import Q
 from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
@@ -386,15 +387,82 @@ def dashboard_overview(request):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def tourism_dashboard(request):
-	# dashboard_overview is a DRF view; avoid passing a DRF Request into it.
-	# Use the original wrapped function with the underlying Django HttpRequest.
-	resp = dashboard_overview.__wrapped__(request._request)
-	return Response(resp.data["tourism"])
+	cached_tourism = cache.get("analytics-tourism-dashboard-v3")
+	if cached_tourism is not None:
+		return Response(cached_tourism)
+
+	latest_tourist_year = TouristArrivalByYear.objects.order_by("-year").first()
+	top_source_country = None
+	if latest_tourist_year:
+		top_source_country = (
+			TouristArrivalByNationality.objects.filter(year=latest_tourist_year.year)
+			.exclude(nationality__iexact="Total")
+			.order_by("-arrivals")
+			.first()
+		)
+	payload = {
+			"kpis": {
+				"total_tourists": latest_tourist_year.total_arrivals if latest_tourist_year else 0,
+				"growth_percent": _decimal(latest_tourist_year.percent_change) if latest_tourist_year else None,
+				"top_source_country": {
+					"nationality": top_source_country.nationality,
+					"arrivals": top_source_country.arrivals,
+					"percent": _decimal(top_source_country.percent),
+				}
+				if top_source_country else None,
+			},
+			"arrival_trend": [
+				_serialize_tourist_arrival_by_year(item)
+				for item in TouristArrivalByYear.objects.order_by("year")
+			],
+			"monthly_trend": [
+				_serialize_monthly_arrival(item)
+				for item in TouristArrivalMonthly.objects.filter(year__gte=2015).order_by("year", "id")
+			],
+			"nationality_trend": [
+				{
+					"nationality": item.nationality,
+					"year": item.year,
+					"arrivals": item.arrivals,
+					"percent": _decimal(item.percent),
+				}
+				for item in TouristArrivalByNationality.objects.filter(year__gte=2015)
+				.exclude(nationality__iexact="Total")
+				.order_by("year", "-arrivals")
+			],
+			"revenue": [
+				{
+					"fiscal_year": item.fiscal_year,
+					"metric": item.metric,
+					"value": _decimal(item.value),
+					"unit": item.unit,
+				}
+				for item in TourismRevenue.objects.filter(metric="US$_Million").order_by("fiscal_year")
+			],
+			"popular_destinations": [],
+	}
+	cache.set("analytics-tourism-dashboard-v3", payload, timeout=60)
+	return Response(payload)
 
 
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def economic_dashboard(request):
+	if request.query_params.get("summary") == "1":
+		return Response(
+			{
+				"macro_series": [
+					{
+						"context": item.context,
+						"period_label": item.period_label,
+						"value": _decimal(item.value),
+						"series_type": item.series_type,
+						"published_year": item.published_year,
+					}
+					for item in GlobalEconomicSeries.objects.order_by("context", "published_year", "period_label")
+				]
+			}
+		)
 	resp = dashboard_overview.__wrapped__(request._request)
 	return Response(resp.data["economic"])
 
@@ -501,6 +569,10 @@ def _comparison_filter_options(config):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def compare_catalog(request):
+	cached_catalog = cache.get("analytics-compare-catalog-v2")
+	if cached_catalog is not None:
+		return Response(cached_catalog)
+
 	items = []
 	for key, config in COMPARISON_DATASETS.items():
 		queryset = config["model"].objects.all()
@@ -532,12 +604,19 @@ def compare_catalog(request):
 				"value_label": config["value_label"],
 			}
 		)
-	return Response({"datasets": items})
+	payload = {"datasets": items}
+	cache.set("analytics-compare-catalog-v2", payload, timeout=60)
+	return Response(payload)
 
 
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def compare_data(request):
+	cache_key = f"analytics-compare-data-v2:{request.get_full_path()}"
+	cached_data = cache.get(cache_key)
+	if cached_data is not None:
+		return Response(cached_data)
+
 	dataset_id = request.query_params.get("dataset")
 	config = COMPARISON_DATASETS.get(dataset_id)
 	if config is None:
@@ -601,15 +680,15 @@ def compare_data(request):
 		for period, values in by_period.items()
 		if series_a in values and series_b in values
 	]
-	return Response(
-		{
+	payload = {
 			"dataset": dataset_id,
 			"series": {"a": series_a, "b": series_b},
 			"period_label": config["period_label"],
 			"value_label": config["value_label"],
 			"data": data,
-		}
-	)
+	}
+	cache.set(cache_key, payload, timeout=60)
+	return Response(payload)
 
 
 @api_view(["GET"])

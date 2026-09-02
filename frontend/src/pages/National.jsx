@@ -20,7 +20,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 const NEWS_API_URL = `${API_BASE_URL}/api/news/`;
 const POPULATION_API_URL = `${API_BASE_URL}/api/datasets/population-summary/`;
 const PROVINCE_POPULATION_API_URL = `${API_BASE_URL}/api/datasets/province-population-summary/`;
-const ECONOMIC_API_URL = `${API_BASE_URL}/api/analytics/economic/`;
+const ECONOMIC_API_URL = `${API_BASE_URL}/api/analytics/economic/?summary=1`;
 const FALLBACK_GDP_TREND = GDP_DATA.map((d) => ({ year: d.year, value: d.value }));
 const FALLBACK_NEPAL_POPULATION = 29164578;
 const PROV_COLORS = ['#b70011', '#0051d5', '#7a5100', '#316bf3', '#9a6800', '#5c403c', '#dc2626'];
