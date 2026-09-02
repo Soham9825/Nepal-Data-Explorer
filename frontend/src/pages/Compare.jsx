@@ -1,13 +1,13 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import { SectionCard } from '../components/ui/Card';
 import { BtnPrimary } from '../components/ui/Button';
 import { Icon } from '../components/ui/Icon';
-import AreaChart from '../components/charts/AreaChart';
-import { GDP_DATA } from '../data/dummyData';
+import LineChart from '../components/charts/LineChart';
 
 function pearsonCorrelation(xs, ys) {
   const n = xs.length;
+  if (n < 2) return null;
   const meanX = xs.reduce((a, b) => a + b, 0) / n;
   const meanY = ys.reduce((a, b) => a + b, 0) / n;
 
@@ -24,7 +24,7 @@ function pearsonCorrelation(xs, ys) {
   }
 
   const denom = Math.sqrt(denX * denY);
-  return denom === 0 ? 0 : num / denom;
+  return denom === 0 ? null : num / denom;
 }
 
 function correlationLabel(r) {
@@ -36,27 +36,68 @@ function correlationLabel(r) {
 }
 
 export default function Compare() {
-  const [a, setA] = useState('gdp');
-  const [b, setB] = useState('inflation');
+  const [catalog, setCatalog] = useState([]);
+  const [datasetId, setDatasetId] = useState('nationality');
+  const [a, setA] = useState('');
+  const [b, setB] = useState('');
+  const [filters, setFilters] = useState({});
+  const [comparison, setComparison] = useState(null);
   const [done, setDone] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const inds = {
-    gdp: { label: 'GDP Growth %', key: 'value', color: '#0051d5' },
-    inflation: { label: 'Inflation %', key: 'inflation', color: '#7a5100' },
-    exports: { label: 'Exports $B', key: 'exports', color: '#22C55E' },
-    imports: { label: 'Imports $B', key: 'imports', color: '#b70011' },
-    tourism: { label: 'Tourism K', key: 'tourism', color: '#316bf3' },
-  };
+  const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  const dataset = catalog.find((item) => item.id === datasetId) || null;
+  const seriesLabel = (value) => String(value).replaceAll('_', ' ');
+  const availableSeries = dataset?.series_by_filters?.statistic_type?.[filters.statistic_type]
+    || dataset?.series
+    || [];
 
   const correlation = useMemo(() => {
-    const xs = GDP_DATA.map((d) => Number(d[inds[a].key]));
-    const ys = GDP_DATA.map((d) => Number(d[inds[b].key]));
+    if (!comparison?.data?.length) return null;
+    const xs = comparison.data.map((d) => Number(d.a));
+    const ys = comparison.data.map((d) => Number(d.b));
     return pearsonCorrelation(xs, ys);
-  }, [a, b]);
+  }, [comparison]);
 
-  const direction = correlation >= 0 ? 'positive' : 'inverse';
-  const strength = correlationLabel(correlation);
-  const barPct = Math.round(((correlation + 1) / 2) * 100);
+  const hasCorrelation = correlation !== null && Number.isFinite(correlation);
+  const direction = hasCorrelation && correlation >= 0 ? 'positive' : 'inverse';
+  const strength = hasCorrelation ? correlationLabel(correlation) : 'unavailable';
+  const barPct = hasCorrelation ? Math.round(((correlation + 1) / 2) * 100) : 0;
+  const periodDescription = comparison?.data?.length
+    ? `${comparison.data[0].period} to ${comparison.data.at(-1).period}`
+    : 'the selected periods';
+
+  useEffect(() => {
+    fetch(`${apiBaseUrl}/api/analytics/compare/catalog/`)
+      .then((response) => {
+        if (!response.ok) throw new Error(`Catalog request failed: ${response.status}`);
+        return response.json();
+      })
+      .then((data) => {
+        const datasets = data.datasets || [];
+        setCatalog(datasets);
+        const initial = datasets.find((item) => item.id === 'nationality') || datasets[0];
+        if (initial) {
+          setDatasetId(initial.id);
+          setA(initial.series[0] || '');
+          setB(initial.series[1] || initial.series[0] || '');
+          setFilters(Object.fromEntries((initial.filters || []).map((filter) => [filter.field, filter.options[0] || ''])));
+        }
+      })
+      .catch((requestError) => setError(requestError.message))
+      .finally(() => setLoading(false));
+  }, [apiBaseUrl]);
+
+  const changeDataset = (value) => {
+    const next = catalog.find((item) => item.id === value);
+    setDatasetId(value);
+    setA(next?.series[0] || '');
+    setB(next?.series[1] || next?.series[0] || '');
+    setFilters(Object.fromEntries((next?.filters || []).map((filter) => [filter.field, filter.options[0] || ''])));
+    setDone(false);
+    setComparison(null);
+  };
 
   const Sel = ({ val, onChange }) => (
     <div className="relative">
@@ -65,13 +106,28 @@ export default function Compare() {
         onChange={(e) => onChange(e.target.value)}
         className="appearance-none px-3 py-2 pr-8 border border-outline-variant rounded-sm font-sans text-sm font-bold text-onSurface bg-surface cursor-pointer outline-none"
       >
-        {Object.entries(inds).map(([k, v]) => (
-          <option key={k} value={k}>{v.label}</option>
+        {availableSeries.map((value) => (
+          <option key={value} value={value}>{seriesLabel(value)}</option>
         ))}
       </select>
       <Icon name="expand_more" size={14} color="#5c403c" className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
     </div>
   );
+
+  const generateComparison = () => {
+    if (!dataset || !a || !b) return;
+    const params = new URLSearchParams({ dataset: dataset.id, a, b, ...filters });
+    setLoading(true);
+    setError('');
+    fetch(`${apiBaseUrl}/api/analytics/compare/data/?${params}`)
+      .then((response) => {
+        if (!response.ok) throw new Error(`Comparison request failed: ${response.status}`);
+        return response.json();
+      })
+      .then((data) => { setComparison(data); setDone(true); })
+      .catch((requestError) => setError(requestError.message))
+      .finally(() => setLoading(false));
+  };
 
   return (
     <DashboardLayout pageTitle="Compare Indicators">
@@ -81,18 +137,44 @@ export default function Compare() {
           <p className="text-onSurface-variant text-sm">Side-by-side comparison with correlation analysis</p>
         </div>
 
-        <SectionCard title="Select Indicators" subtitle="Choose two economic indicators to compare" className="rounded-sm">
+        <SectionCard title="Select data to compare" subtitle="Choose two series from the same real dataset" className="rounded-sm">
           <div className="flex items-center gap-5 flex-wrap">
             <div>
-              <div className="text-xs font-bold uppercase text-onSurface-variant mb-2">Indicator A</div>
+              <div className="text-xs font-bold uppercase text-onSurface-variant mb-2">Dataset</div>
+              <div className="relative">
+                <select value={datasetId} onChange={(event) => changeDataset(event.target.value)} className="appearance-none px-3 py-2 pr-8 border border-outline-variant rounded-sm font-sans text-sm font-bold text-onSurface bg-surface cursor-pointer outline-none">
+                  {catalog.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+                </select>
+                <Icon name="expand_more" size={14} color="#5c403c" className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+            </div>
+            <div>
+              <div className="text-xs font-bold uppercase text-onSurface-variant mb-2">Series A</div>
               <Sel val={a} onChange={(v) => { setA(v); setDone(false); }} />
             </div>
             <div className="text-lg text-onSurface-variant font-bold mt-5">vs</div>
             <div>
-              <div className="text-xs font-bold uppercase text-onSurface-variant mb-2">Indicator B</div>
+              <div className="text-xs font-bold uppercase text-onSurface-variant mb-2">Series B</div>
               <Sel val={b} onChange={(v) => { setB(v); setDone(false); }} />
             </div>
-            <BtnPrimary onClick={() => setDone(true)} className="mt-5 rounded-sm">
+            {(dataset?.filters || []).map((filter) => (
+              <div key={filter.field}>
+                <div className="text-xs font-bold uppercase text-onSurface-variant mb-2">{seriesLabel(filter.field)}</div>
+                <select value={filters[filter.field] || ''} onChange={(event) => {
+                  const nextFilters = { ...filters, [filter.field]: event.target.value };
+                  const nextSeries = dataset?.series_by_filters?.[filter.field]?.[event.target.value] || dataset?.series || [];
+                  setFilters(nextFilters);
+                  if (nextSeries.length > 1 && (!nextSeries.includes(a) || !nextSeries.includes(b))) {
+                    setA(nextSeries[0]);
+                    setB(nextSeries[1]);
+                  }
+                  setDone(false);
+                }} className="px-3 py-2 border border-outline-variant rounded-sm font-sans text-sm font-bold text-onSurface bg-surface cursor-pointer outline-none">
+                  {filter.options.map((option) => <option key={option} value={option}>{seriesLabel(option)}</option>)}
+                </select>
+              </div>
+            ))}
+            <BtnPrimary onClick={generateComparison} disabled={loading || !a || !b} className="mt-5 rounded-sm">
               <Icon name="compare_arrows" size={16} color="#fff" />
               Generate Comparison
             </BtnPrimary>
@@ -102,20 +184,20 @@ export default function Compare() {
         {done && (
           <>
             <div className="grid grid-cols-2 gap-6">
-              <SectionCard title={inds[a].label} subtitle="Annual data 2019–2023 · NRB / CBS Nepal" className="rounded-sm">
-                <AreaChart data={GDP_DATA} xKey="year" yKey={inds[a].key} color={inds[a].color} />
+              <SectionCard title={seriesLabel(a)} subtitle={`${dataset?.period_label} · ${dataset?.value_label}`} className="rounded-sm">
+                <LineChart data={comparison?.data || []} xKey="period" series={[{ key: 'a', color: '#0051d5', label: seriesLabel(a) }]} />
               </SectionCard>
-              <SectionCard title={inds[b].label} subtitle="Annual data 2019–2023 · NRB / CBS Nepal" className="rounded-sm">
-                <AreaChart data={GDP_DATA} xKey="year" yKey={inds[b].key} color={inds[b].color} />
+              <SectionCard title={seriesLabel(b)} subtitle={`${dataset?.period_label} · ${dataset?.value_label}`} className="rounded-sm">
+                <LineChart data={comparison?.data || []} xKey="period" series={[{ key: 'b', color: '#b70011', label: seriesLabel(b) }]} />
               </SectionCard>
             </div>
 
             <div className="grid grid-cols-[1fr_2fr] gap-6">
-              <SectionCard title="Correlation Score" subtitle="Pearson r — 2019 to 2023" className="rounded-sm">
+              <SectionCard title="Correlation Score" subtitle={`Pearson r · ${comparison?.data?.length || 0} shared periods`} className="rounded-sm">
                 <div className="text-center py-4">
-                  <div className="text-6xl font-extrabold text-onSurface">{correlation.toFixed(2)}</div>
+                  <div className="text-6xl font-extrabold text-onSurface">{hasCorrelation ? correlation.toFixed(2) : 'N/A'}</div>
                   <div className="text-sm text-onSurface-variant mb-4 capitalize">
-                    {strength} {direction} correlation
+                    {hasCorrelation ? `${strength} ${direction} correlation` : 'insufficient variation for correlation'}
                   </div>
                   <div className="h-2 bg-surface-highest rounded-full overflow-hidden mx-4">
                     <div
@@ -133,17 +215,23 @@ export default function Compare() {
                 <div className="flex items-start gap-3 p-1">
                   <Icon name="analytics" size={24} color="#0051d5" />
                   <p className="text-sm text-onSurface leading-relaxed">
-                    <strong>{inds[a].label}</strong> and <strong>{inds[b].label}</strong> show a {strength}{' '}
-                    {direction} correlation (r = {correlation.toFixed(2)}) over the 2019–2023 period.{' '}
-                    {Math.abs(correlation) >= 0.4
-                      ? `Movement in one series tends to ${direction === 'positive' ? 'align with' : 'move opposite to'} the other across most years in this range.`
-                      : `The relationship is weak enough that other factors likely explain most of the year-to-year variation between these two series.`}
+                    <strong>{seriesLabel(a)}</strong> and <strong>{seriesLabel(b)}</strong>{' '}
+                    {hasCorrelation
+                      ? `show a ${strength} ${direction} correlation (r = ${correlation.toFixed(2)}) over ${periodDescription}. `
+                      : `do not have enough shared variation to calculate a reliable correlation over ${periodDescription}. `}
+                    {hasCorrelation && Math.abs(correlation) >= 0.4
+                      ? `Movement in one series tends to ${direction === 'positive' ? 'align with' : 'move opposite to'} the other across most periods in this range.`
+                      : hasCorrelation
+                        ? `The relationship is weak enough that other factors likely explain most of the variation between these two series.`
+                        : ''}
                   </p>
                 </div>
               </SectionCard>
             </div>
           </>
         )}
+        {error && <p className="text-sm text-danger">{error}</p>}
+        {!loading && !done && catalog.length === 0 && <p className="text-sm text-onSurface-variant">No comparison datasets are available.</p>}
       </div>
     </DashboardLayout>
   );

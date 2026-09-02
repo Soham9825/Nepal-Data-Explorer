@@ -2,6 +2,7 @@ import csv
 from pathlib import Path
 
 from django.conf import settings
+from django.db.models import Q
 from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
@@ -28,6 +29,53 @@ from datasets.models import (
 	TrekkerByRegion,
 	WholesalePriceIndex,
 )
+
+
+COMPARISON_DATASETS = {
+	"nationality": {
+		"label": "Tourist arrivals by nationality", "model": TouristArrivalByNationality,
+		"series_field": "nationality", "period_field": "year", "value_field": "arrivals",
+		"period_label": "Year", "value_label": "Arrivals", "exclude": {"nationality__iexact": "Total"},
+	},
+	"trekking": {
+		"label": "Trekkers by region", "model": TrekkerByRegion,
+		"series_field": "region", "period_field": "year", "value_field": "trekkers",
+		"period_label": "Year", "value_label": "Trekkers",
+	},
+	"purpose": {
+		"label": "Tourist arrivals by purpose", "model": TouristArrivalByPurpose,
+		"series_field": "category", "period_field": "year", "value_field": "value",
+		"period_label": "Year", "value_label": "Arrivals", "exclude": {"category__iexact": "Total"},
+	},
+	"sex": {
+		"label": "Tourist arrivals by sex", "model": TouristArrivalBySex,
+		"series_field": "gender", "period_field": "year", "value_field": "value",
+		"period_label": "Year", "value_label": "Arrivals",
+	},
+	"age": {
+		"label": "Tourist arrivals by age group", "model": TouristArrivalByAgeGroup,
+		"series_field": "age_group", "period_field": "year", "value_field": "value",
+		"period_label": "Year", "value_label": "Arrivals",
+	},
+	"tourism-statistics": {
+		"label": "Tourism statistics", "model": TourismStatistic,
+		"series_field": "metric", "period_field": "year", "value_field": "value",
+		"period_label": "Year", "value_label": "Value", "filter_fields": ("statistic_type",),
+		"filter_aliases": {"statistic_type": {"percentage": "Percent", "percent": "Percent", "number": "Number"}},
+	},
+	"global-economy": {
+		"label": "Global economic series", "model": GlobalEconomicSeries,
+		"series_field": "context", "period_field": "period_label", "value_field": "value",
+		"period_label": "Observation period", "value_label": "Value", "filter_fields": ("series_type",),
+		"revision_field": "published_year",
+	},
+	"agriculture-prices": {
+		"label": "Agricultural producer price index", "model": AgricultureProducerPriceIndex,
+		"series_field": "product_name", "period_fields": ("base_year",), "value_field": "price_index",
+		"period_label": "Base year", "value_label": "Price index", "aggregate_period": True,
+		"case_insensitive_series": True,
+	},
+}
 
 
 MONTH_ORDER = {month: index for index, month in enumerate(
@@ -439,6 +487,131 @@ def forecasts(request):
 	)
 
 
+def _comparison_filter_options(config):
+	model = config["model"]
+	return [
+		{
+			"field": field,
+			"options": list(model.objects.values_list(field, flat=True).distinct().order_by(field)),
+		}
+		for field in config.get("filter_fields", ())
+	]
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def compare_catalog(request):
+	items = []
+	for key, config in COMPARISON_DATASETS.items():
+		queryset = config["model"].objects.all()
+		if config.get("exclude"):
+			queryset = queryset.exclude(**config["exclude"])
+		series = list(queryset.values_list(config["series_field"], flat=True).distinct().order_by(config["series_field"]))
+		if config.get("case_insensitive_series"):
+			seen = set()
+			series = [value for value in series if not (value.casefold() in seen or seen.add(value.casefold()))]
+		series_by_filters = {}
+		for filter_config in config.get("filter_fields", ()):
+			series_by_filters[filter_config] = {}
+			filter_options = next(
+				(filter["options"] for filter in _comparison_filter_options(config) if filter["field"] == filter_config),
+				[],
+			)
+			for option in filter_options:
+				filtered = queryset.filter(**{filter_config: option})
+				option_series = list(filtered.values_list(config["series_field"], flat=True).distinct().order_by(config["series_field"]))
+				series_by_filters[filter_config][option] = [value for value in option_series if value]
+		items.append(
+			{
+				"id": key,
+				"label": config["label"],
+				"series": [value for value in series if value],
+				"filters": _comparison_filter_options(config),
+				"series_by_filters": series_by_filters,
+				"period_label": config["period_label"],
+				"value_label": config["value_label"],
+			}
+		)
+	return Response({"datasets": items})
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def compare_data(request):
+	dataset_id = request.query_params.get("dataset")
+	config = COMPARISON_DATASETS.get(dataset_id)
+	if config is None:
+		return Response({"detail": "Unknown comparison dataset."}, status=400)
+
+	series_a = request.query_params.get("a")
+	series_b = request.query_params.get("b")
+	if not series_a or not series_b:
+		return Response({"detail": "Two series are required."}, status=400)
+
+	queryset = config["model"].objects.all()
+	if config.get("exclude"):
+		queryset = queryset.exclude(**config["exclude"])
+	for field in config.get("filter_fields", ()):
+		value = request.query_params.get(field)
+		if value:
+			alias = config.get("filter_aliases", {}).get(field, {})
+			queryset = queryset.filter(**{field: alias.get(value.lower(), value)})
+
+	series_field = config["series_field"]
+	period_fields = config.get("period_fields") or (config["period_field"],)
+	value_field = config["value_field"]
+	revision_field = config.get("revision_field")
+	selected_fields = (series_field, *period_fields, value_field)
+	if config.get("aggregate_period"):
+		selected_fields += ("quarter",)
+	if revision_field:
+		selected_fields += (revision_field,)
+	series_query = Q()
+	for series in (series_a, series_b):
+		series_query |= Q(**{f"{series_field}__iexact": series}) if config.get("case_insensitive_series") else Q(**{f"{series_field}": series})
+	rows = queryset.filter(series_query).values(
+		*selected_fields
+	).order_by(*period_fields, *(revision_field,) if revision_field else ())
+	by_period = {}
+	for row in rows:
+		value = row[value_field]
+		if value is None:
+			continue
+		period = " / ".join(str(row[field]).strip() for field in period_fields)
+		row_series = row[series_field]
+		series_key = next(
+			(series for series in (series_a, series_b) if series.casefold() == row_series.casefold()),
+			row_series,
+		)
+		series_values = by_period.setdefault(period, {}).setdefault(series_key, [])
+		series_values.append((row.get("quarter"), _decimal(value)))
+
+	if config.get("aggregate_period"):
+		for period_values in by_period.values():
+			for series, values in period_values.items():
+				annual = [value for quarter, value in values if quarter == "ANN"]
+				period_values[series] = annual[0] if annual else sum(value for _, value in values) / len(values)
+	else:
+		for period_values in by_period.values():
+			for series, values in period_values.items():
+				period_values[series] = values[-1][1]
+
+	data = [
+		{ "period": period, "a": values[series_a], "b": values[series_b] }
+		for period, values in by_period.items()
+		if series_a in values and series_b in values
+	]
+	return Response(
+		{
+			"dataset": dataset_id,
+			"series": {"a": series_a, "b": series_b},
+			"period_label": config["period_label"],
+			"value_label": config["value_label"],
+			"data": data,
+		}
+	)
+
+
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def catalog(request):
@@ -451,6 +624,8 @@ def catalog(request):
 				"/api/analytics/provinces/<province>/",
 				"/api/analytics/news/",
 				"/api/analytics/forecasts/",
+				"/api/analytics/compare/catalog/",
+				"/api/analytics/compare/data/?dataset=<id>&a=<series>&b=<series>",
 			],
 			"models": [
 				"TouristArrivalByYear",

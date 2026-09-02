@@ -11,5 +11,7 @@ urlpatterns = [
 	path("economic/", views.economic_dashboard, name="economic-dashboard"),
 	path("news/", views.news_feed, name="news-feed"),
 	path("forecasts/", views.forecasts, name="forecasts"),
+	path("compare/catalog/", views.compare_catalog, name="compare-catalog"),
+	path("compare/data/", views.compare_data, name="compare-data"),
 	path("provinces/<str:province_name>/", views.province_dashboard, name="province-dashboard"),
 ]
