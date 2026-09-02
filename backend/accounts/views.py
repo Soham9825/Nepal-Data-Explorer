@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth import login as auth_login, logout as auth_logout, authenticate
+from django.contrib.auth.hashers import make_password
 from .models import CustomUser, VerifiedEmail
 from django.core.mail import send_mail
 from functools import wraps
@@ -13,6 +14,15 @@ from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import ensure_csrf_cookie, csrf_protect
 from django.middleware.csrf import get_token
 import json
+import hashlib
+import secrets
+from datetime import timedelta
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
+from django.conf import settings
+from django.contrib.auth.password_validation import validate_password
+from django.utils import timezone
+from .models import PasswordResetToken
 
 
 
@@ -48,7 +58,7 @@ def signup(request):
         request.session['pending_signup'] = {
             'username': username,
             'email': email,
-            'password': password
+            'password_hash': make_password(password)
         }
 
         code = f'{random.randint(100000, 999999)}'
@@ -131,8 +141,9 @@ def verifyemail(request):
             user = CustomUser.objects.create_user(
                 username=signup_data['username'],
                 email=signup_data['email'],
-                password=signup_data['password']
+                password=None
             )
+            user.password = signup_data['password_hash']
             user.is_verified = True
             user.save()
 
@@ -287,6 +298,154 @@ def api_signup(request):
     user.save()
     auth_login(request, user)
     return JsonResponse({'username': user.username, 'email': user.email})
+
+
+def _json_body(request):
+    try:
+        return json.loads(request.body)
+    except (TypeError, ValueError):
+        return None
+
+
+@require_POST
+@csrf_protect
+def api_password_reset_request(request):
+    data = _json_body(request)
+    email = (data or {}).get('email', '').strip().lower()
+    if not email:
+        return JsonResponse({'detail': 'Email is required.'}, status=400)
+
+    user = CustomUser.objects.filter(email__iexact=email, is_active=True).first()
+    if user:
+        raw_token = secrets.token_urlsafe(32)
+        PasswordResetToken.objects.filter(user=user, used_at__isnull=True).update(used_at=timezone.now())
+        PasswordResetToken.objects.create(
+            user=user,
+            token_hash=PasswordResetToken.hash_token(raw_token),
+            expires_at=timezone.now() + timedelta(minutes=30),
+        )
+        reset_url = f"{settings.FRONTEND_URL.rstrip('/')}/reset-password?token={raw_token}"
+        send_mail(
+            'Reset your Nepal Data Explorer password',
+            f'Use this link within 30 minutes: {reset_url}',
+            settings.DEFAULT_FROM_EMAIL,
+            [user.email],
+            fail_silently=True,
+        )
+    return JsonResponse({'detail': 'If that email exists, a password reset link has been sent.'})
+
+
+@require_POST
+@csrf_protect
+def api_password_reset_confirm(request):
+    data = _json_body(request)
+    token = (data or {}).get('token', '')
+    password = (data or {}).get('password', '')
+    if not token or not password:
+        return JsonResponse({'detail': 'Token and password are required.'}, status=400)
+    reset = PasswordResetToken.objects.select_related('user').filter(token_hash=PasswordResetToken.hash_token(token)).first()
+    if not reset or not reset.is_valid():
+        return JsonResponse({'detail': 'Invalid or expired reset token.'}, status=400)
+    try:
+        validate_password(password, reset.user)
+    except ValidationError as error:
+        return JsonResponse({'detail': error.messages}, status=400)
+    reset.user.set_password(password)
+    reset.user.save(update_fields=['password'])
+    reset.used_at = timezone.now()
+    reset.save(update_fields=['used_at'])
+    return JsonResponse({'detail': 'Password reset successfully.'})
+
+
+OAUTH_PROVIDERS = {
+    'google': {
+        'client_id': 'GOOGLE_CLIENT_ID', 'client_secret': 'GOOGLE_CLIENT_SECRET', 'redirect_uri': 'GOOGLE_REDIRECT_URI',
+        'authorize_url': 'https://accounts.google.com/o/oauth2/v2/auth', 'token_url': 'https://oauth2.googleapis.com/token',
+        'scope': 'openid email profile',
+    },
+    'github': {
+        'client_id': 'GITHUB_CLIENT_ID', 'client_secret': 'GITHUB_CLIENT_SECRET', 'redirect_uri': 'GITHUB_REDIRECT_URI',
+        'authorize_url': 'https://github.com/login/oauth/authorize', 'token_url': 'https://github.com/login/oauth/access_token',
+        'scope': 'read:user user:email',
+    },
+}
+
+
+def _oauth_redirect(provider, error=None):
+    suffix = f'?oauth_error={urlencode({"error": error})[6:]}' if error else '?oauth=success'
+    return redirect(f'{settings.FRONTEND_URL.rstrip("/")}/login{suffix}')
+
+
+def oauth_start(request, provider):
+    config = OAUTH_PROVIDERS.get(provider)
+    client_id = getattr(settings, config['client_id'], '') if config else ''
+    if not config or not client_id:
+        return _oauth_redirect(provider, 'provider_not_configured')
+    state = secrets.token_urlsafe(32)
+    request.session[f'oauth_state_{provider}'] = state
+    request.session.set_expiry(600)
+    params = {
+        'client_id': client_id, 'redirect_uri': getattr(settings, config['redirect_uri']),
+        'response_type': 'code', 'scope': config['scope'], 'state': state,
+    }
+    if provider == 'google':
+        params['access_type'] = 'online'
+    return redirect(f"{config['authorize_url']}?{urlencode(params)}")
+
+
+def _oauth_request(url, data, headers=None):
+    request = Request(url, data=urlencode(data).encode(), headers=headers or {'Accept': 'application/json'}, method='POST')
+    with urlopen(request, timeout=10) as response:
+        return json.loads(response.read().decode())
+
+
+def _oauth_user(provider, access_token):
+    if provider == 'google':
+        request = Request('https://openidconnect.googleapis.com/v1/userinfo', headers={'Authorization': f'Bearer {access_token}'})
+        with urlopen(request, timeout=10) as response:
+            profile = json.loads(response.read().decode())
+        return profile.get('email'), profile.get('name') or profile.get('email', '').split('@')[0]
+
+    request = Request('https://api.github.com/user', headers={'Authorization': f'Bearer {access_token}', 'Accept': 'application/vnd.github+json'})
+    with urlopen(request, timeout=10) as response:
+        profile = json.loads(response.read().decode())
+    email = profile.get('email')
+    if not email:
+        with urlopen(Request('https://api.github.com/user/emails', headers={'Authorization': f'Bearer {access_token}', 'Accept': 'application/vnd.github+json'}), timeout=10) as response:
+            emails = json.loads(response.read().decode())
+        email = next((item['email'] for item in emails if item.get('primary') and item.get('verified')), None)
+    return email, profile.get('name') or profile.get('login')
+
+
+def oauth_callback(request, provider):
+    config = OAUTH_PROVIDERS.get(provider)
+    if not config or request.GET.get('error'):
+        return _oauth_redirect(provider, request.GET.get('error', 'provider_error'))
+    expected_state = request.session.pop(f'oauth_state_{provider}', None)
+    if not expected_state or not secrets.compare_digest(expected_state, request.GET.get('state', '')):
+        return _oauth_redirect(provider, 'invalid_state')
+    try:
+        token = _oauth_request(
+            config['token_url'],
+            {'client_id': getattr(settings, config['client_id']), 'client_secret': getattr(settings, config['client_secret']), 'code': request.GET.get('code', ''), 'redirect_uri': getattr(settings, config['redirect_uri'])},
+            {'Accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded'},
+        )
+        email, display_name = _oauth_user(provider, token.get('access_token', ''))
+        if not email:
+            return _oauth_redirect(provider, 'verified_email_required')
+        user = CustomUser.objects.filter(email__iexact=email).first()
+        if not user:
+            base = re.sub(r'[^A-Za-z0-9_]', '_', (display_name or email.split('@')[0]))[:20] or provider
+            username = base
+            while CustomUser.objects.filter(username=username).exists():
+                username = f'{base[:15]}_{secrets.token_hex(3)}'
+            user = CustomUser.objects.create_user(username=username, email=email, password=secrets.token_urlsafe(32))
+        user.is_verified = True
+        user.save(update_fields=['is_verified'])
+        auth_login(request, user)
+        return _oauth_redirect(provider)
+    except Exception:
+        return _oauth_redirect(provider, 'oauth_request_failed')
 
 
 
