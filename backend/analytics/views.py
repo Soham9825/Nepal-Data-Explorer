@@ -463,6 +463,29 @@ def economic_dashboard(request):
 				]
 			}
 		)
+	if request.query_params.get("compact") == "1":
+		global_growth = {}
+		for item in GlobalEconomicSeries.objects.filter(context="World Output", series_type="real").order_by("period_label", "-published_year"):
+			global_growth.setdefault(
+				item.period_label,
+				{"year": item.period_label, "value": _decimal(item.value), "published_year": item.published_year},
+			)
+		return Response(
+			{
+				"global_growth": list(global_growth.values()),
+				"trade": [
+					{"year": item.fiscal_year, "group": item.group, "value": _decimal(item.value)}
+					for item in ForeignTradeStatistic.objects.filter(
+						Q(group="Export", subgroup="TOTAL EXPORTS")
+						| Q(group="Import", subgroup="TOTAL IMPORTS")
+					).order_by("fiscal_year", "group")
+				],
+				"sectoral_growth": [
+					{"year": item.fiscal_year, "sector": item.sector, "value": _decimal(item.value)}
+					for item in SectoralGrowth.objects.exclude(sector="Overall").order_by("fiscal_year", "sector")
+				],
+			}
+		)
 	resp = dashboard_overview.__wrapped__(request._request)
 	return Response(resp.data["economic"])
 
