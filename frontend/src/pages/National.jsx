@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import MetricCard from '../components/cards/MetricCard';
 import NewsCard from '../components/cards/NewsCard';
@@ -10,28 +10,20 @@ import ErrorMessage from '../components/common/ErrorMessage';
 import { Icon } from '../components/ui/Icon';
 import ProvinceMap from '../components/national/ProvinceMap';
 import NewsModal from '../components/national/NewsModal';
-import {
-  nationalMetrics,
-  GDP_DATA,
-  PROVINCES,
-} from '../data/dummyData';
+import { PROVINCE_PATHS } from '../data/provincePaths';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 const NEWS_API_URL = `${API_BASE_URL}/api/news/`;
 const POPULATION_API_URL = `${API_BASE_URL}/api/datasets/population-summary/`;
 const PROVINCE_POPULATION_API_URL = `${API_BASE_URL}/api/datasets/province-population-summary/`;
 const ECONOMIC_API_URL = `${API_BASE_URL}/api/analytics/economic/?summary=1`;
-const FALLBACK_GDP_TREND = GDP_DATA.map((d) => ({ year: d.year, value: d.value }));
 const FALLBACK_NEPAL_POPULATION = 29164578;
 const PROV_COLORS = ['#b70011', '#0051d5', '#7a5100', '#316bf3', '#9a6800', '#5c403c', '#dc2626'];
-const FALLBACK_PROVINCE_POPULATION = [
-  { name: 'Province-1', population: '4,961,412', pct: 17.0, color: PROV_COLORS[0] },
-  { name: 'Madhesh', population: '6,114,600', pct: 21.0, color: PROV_COLORS[1] },
-  { name: 'Bagmati', population: '6,116,866', pct: 21.0, color: PROV_COLORS[2] },
-  { name: 'Gandaki', population: '2,466,427', pct: 8.5, color: PROV_COLORS[3] },
-  { name: 'Lumbini', population: '5,122,078', pct: 17.5, color: PROV_COLORS[4] },
-  { name: 'Karnali', population: '1,688,412', pct: 5.8, color: PROV_COLORS[5] },
-  { name: 'Sudur Paschim', population: '2,694,783', pct: 9.2, color: PROV_COLORS[6] },
+const NATIONAL_METRIC_CONFIG = [
+  { id: 1, label: 'Total Population', trend: 'up', icon: 'groups', color: '#0051d5' },
+  { id: 2, label: 'GDP Growth Rate', trend: 'down', icon: 'trending_up', color: '#0051d5' },
+  { id: 3, label: 'Literacy Rate', value: 'N/A', change: 'Not mapped', trend: 'up', subtitle: 'No literacy dataset connected yet', icon: 'auto_stories', color: '#7a5100' },
+  { id: 4, label: 'National Health Index', value: 'N/A', change: 'Not mapped', trend: 'up', subtitle: 'No health index dataset connected yet', icon: 'health_metrics', color: '#0051d5' },
 ];
 
 const formatPublishedDate = (value) => {
@@ -66,8 +58,8 @@ export default function National() {
   const [selectedNews, setSelectedNews] = useState(null);
   const [populationTotal, setPopulationTotal] = useState(FALLBACK_NEPAL_POPULATION);
   const [populationGrowth, setPopulationGrowth] = useState(0.92);
-  const [gdpTrend, setGdpTrend] = useState(FALLBACK_GDP_TREND);
-  const [provincePopulation, setProvincePopulation] = useState(FALLBACK_PROVINCE_POPULATION);
+  const [gdpTrend, setGdpTrend] = useState([]);
+  const [provincePopulation, setProvincePopulation] = useState([]);
 
   useEffect(() => {
     const fetchPopulation = async () => {
@@ -119,6 +111,7 @@ export default function National() {
 
         if (provinces.length > 0) {
           const mapped = provinces.map((province, index) => ({
+            id: Number(province.province_code),
             name: province.name,
             population: Number(province.total_population || 0).toLocaleString(),
             pct: Number(province.pct || 0),
@@ -129,7 +122,7 @@ export default function National() {
         }
       } catch (err) {
         console.error('Failed to load province population summary:', err);
-        setProvincePopulation(FALLBACK_PROVINCE_POPULATION);
+        setProvincePopulation([]);
       }
     };
 
@@ -151,24 +144,37 @@ export default function National() {
         const data = await response.json();
         const macroSeries = Array.isArray(data?.macro_series) ? data.macro_series : [];
 
-        const parsedTrend = macroSeries
+        const latestByYear = macroSeries
+          .filter((item) => item.context === 'World Output' && item.series_type === 'real')
           .filter((item) => Number.isFinite(Number(item.value)))
           .map((item) => {
             const yearMatch = String(item.period_label || item.published_year || '').match(/(19|20)\d{2}/);
             return {
               year: yearMatch ? yearMatch[0] : String(item.published_year || 'N/A'),
               value: Number(item.value),
+              publishedYear: Number(item.published_year) || 0,
             };
           })
           .filter((item) => item.year !== 'N/A')
-          .slice(-5);
+          .reduce((series, item) => {
+            const existing = series.get(item.year);
+            if (!existing || item.publishedYear > existing.publishedYear) {
+              series.set(item.year, item);
+            }
+            return series;
+          }, new Map());
+
+        const parsedTrend = [...latestByYear.values()]
+          .sort((first, second) => Number(first.year) - Number(second.year))
+          .slice(-5)
+          .map(({ year, value }) => ({ year, value }));
 
         if (parsedTrend.length > 0) {
           setGdpTrend(parsedTrend);
         }
       } catch (err) {
         console.error('Failed to load economic GDP data:', err);
-        setGdpTrend(FALLBACK_GDP_TREND);
+        setGdpTrend([]);
       }
     };
 
@@ -205,11 +211,12 @@ export default function National() {
   }, []);
 
   const handleProvinceClick = (provinceId) => {
-    const province = PROVINCES.find((p) => p.id === provinceId);
+    const province = provincePopulation.find((p) => p.id === provinceId)
+      || PROVINCE_PATHS.find((p) => p.id === provinceId);
     setSelectedProvince(province);
   };
 
-  const metrics = nationalMetrics.map((metric) => {
+  const metrics = NATIONAL_METRIC_CONFIG.map((metric) => {
     if (metric.label === 'Total Population') {
       const totalPopulation = populationTotal ?? FALLBACK_NEPAL_POPULATION;
       const growthLabel = `${populationGrowth >= 0 ? '+' : ''}${Number(populationGrowth || 0).toFixed(2)}%`;
@@ -220,13 +227,36 @@ export default function National() {
         subtitle: 'Growth rate from Nepal census dataset',
       };
     }
+    if (metric.label === 'GDP Growth Rate') {
+      const latestGdp = gdpTrend.at(-1);
+      return {
+        ...metric,
+        value: latestGdp ? `${Number(latestGdp.value).toFixed(1)}%` : 'N/A',
+        change: latestGdp?.year || 'Unavailable',
+        subtitle: 'World Output real growth from economic API',
+      };
+    }
     return metric;
   });
+
+  const csvData = useMemo(() => [
+    ...gdpTrend.map((record) => ({ Dataset: 'GDP trend', Year: record.year, Value: record.value, Unit: '%' })),
+    ...provincePopulation.map((record) => ({
+      Dataset: 'Population distribution',
+      Province: record.name,
+      Population: String(record.population).replace(/,/g, ''),
+      Percentage: record.pct,
+      Unit: 'people',
+    })),
+  ], [gdpTrend, provincePopulation]);
 
   if (loading) {
     return (
       <DashboardLayout pageTitle="National Dashboard">
-        <Loader fullScreen />
+        <div className="flex min-h-[calc(100vh-10rem)] flex-col items-center justify-center gap-4 rounded-sm border border-outline-variant bg-surface">
+          <Loader size="lg" />
+          <p className="text-sm font-semibold text-onSurface-variant">Loading national data...</p>
+        </div>
       </DashboardLayout>
     );
   }
@@ -305,7 +335,6 @@ export default function National() {
 
             <button className="w-full py-4 bg-surface-container-lowest border-t border-outline-variant text-[12px] font-bold text-primary hover:bg-surface-container-high transition-colors font-sans flex items-center justify-center gap-2">
               <Icon name="arrow_forward" size={16} color="#b70011" />
-              View All Feed
             </button>
           </div>
         </section>
@@ -356,7 +385,7 @@ export default function National() {
           </div>
         </section>
 
-        <DataFooter />
+        <DataFooter csvData={csvData} csvFilename="national-dataset.csv" />
       </div>
 
       <NewsModal news={selectedNews} onClose={() => setSelectedNews(null)} />

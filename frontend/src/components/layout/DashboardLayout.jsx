@@ -1,36 +1,78 @@
 // ============================================================
 // src/layout/DashboardLayout.jsx
 // ============================================================
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
+import { auth } from '../../services/auth';
 
-const CURRENT_USER = {
-  name: 'Sunflower',
+const DEFAULT_USER = {
+  name: 'User',
   role: 'Analyst · NPC',
-  // avatarUrl: '/path/to/photo.jpg', // add when you have real avatars
 };
 
 export default function DashboardLayout({ children, pageTitle }) {
-  const handleLogout = () => {
-    // TODO: wire up real logout logic, e.g.:
-    // localStorage.removeItem('authToken');
-    // window.location.href = '/login';
-    console.log('Logging out...');
+  const navigate = useNavigate();
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => (
+    window.localStorage.getItem('nepal-data-sidebar-collapsed') === 'true'
+  ));
+  const [currentUser, setCurrentUser] = useState(() => {
+    const cachedUser = auth.getCachedUser();
+    return cachedUser
+      ? {
+        name: cachedUser.username || cachedUser.email || DEFAULT_USER.name,
+        role: cachedUser.role || DEFAULT_USER.role,
+        avatarUrl: cachedUser.avatarUrl,
+      }
+      : DEFAULT_USER;
+  });
+
+  useEffect(() => {
+    window.localStorage.setItem('nepal-data-sidebar-collapsed', String(sidebarCollapsed));
+  }, [sidebarCollapsed]);
+
+  useEffect(() => {
+    let mounted = true;
+    auth.getCurrentUser()
+      .then((user) => {
+        if (!mounted || !user) return;
+        setCurrentUser({
+          name: user.username || user.email || DEFAULT_USER.name,
+          role: user.role || DEFAULT_USER.role,
+          avatarUrl: user.avatarUrl,
+        });
+      })
+      .catch((error) => {
+        console.warn('Could not load current user', error);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      if (!await auth.logout()) throw new Error('Logout failed');
+      navigate('/login', { replace: true });
+    } catch (error) {
+      console.error('Could not log out', error);
+      window.alert('Could not log out. Please try again.');
+    }
   };
 
   return (
     <div className="h-screen bg-background">
       {/* Fixed Sidebar */}
-      <aside className="fixed left-0 top-0 w-64 h-screen z-40">
-        <Sidebar user={CURRENT_USER} onLogout={handleLogout} />
+      <aside className={`fixed left-0 top-0 ${sidebarCollapsed ? "w-20" : "w-64"} h-screen z-40 transition-[width] duration-200`}>
+        <Sidebar user={currentUser} onLogout={handleLogout} collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed((value) => !value)} />
       </aside>
 
       {/* Main Area */}
-      <div className="ml-64 flex h-screen flex-col">
+      <div className={`${sidebarCollapsed ? "ml-20" : "ml-64"} flex h-screen flex-col transition-[margin] duration-200`}>
         {/* Fixed Top Navigation */}
-        <header className="fixed left-64 right-0 top-0 h-16 bg-surface border-b border-outline-variant z-30">
-          <TopBar pageTitle={pageTitle} user={CURRENT_USER} />
+        <header className={`fixed ${sidebarCollapsed ? "left-20" : "left-64"} right-0 top-0 h-16 bg-surface border-b border-outline-variant z-30 transition-[left] duration-200`}>
+          <TopBar pageTitle={pageTitle} user={currentUser} />
         </header>
 
         {/* Scrollable Content */}

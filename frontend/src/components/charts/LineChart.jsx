@@ -10,13 +10,15 @@ export default function LineChart({
   xDomainEnd,
   series = [{ key: "value", color: "#b70011", label: "Value" }],
   height = 300,
+  unit = "",
+  xPadding = 70,
 }) {
   const [activeIndex, setActiveIndex] = useState(null);
 
   const VB_WIDTH = 1000;
-  const VB_HEIGHT = 400;
-  const PADDING_X = 60;
-  const PADDING_Y = 40;
+  const VB_HEIGHT = 500;
+  const PADDING_X = 70;
+  const PADDING_Y = 52;
 
   const chart = useMemo(() => {
     if (!data.length) return null;
@@ -45,7 +47,7 @@ export default function LineChart({
       const position = timeScale
         ? (period - firstPeriod) / periodRange
         : index / Math.max(data.length - 1, 1);
-      return PADDING_X + position * (VB_WIDTH - PADDING_X * 2);
+      return xPadding + position * (VB_WIDTH - xPadding * 2);
     };
 
     const seriesData = series.map((s) => {
@@ -74,7 +76,7 @@ export default function LineChart({
     });
 
     return { min, max, seriesData, xForValue };
-  }, [data, series, xKey, timeScale, xDomainStart, xDomainEnd]);
+  }, [data, series, xKey, timeScale, xDomainStart, xDomainEnd, xPadding]);
 
   if (!data.length || !chart || chart.seriesData.every((s) => s.points.length === 0)) {
     return (
@@ -100,14 +102,14 @@ export default function LineChart({
 
   return (
     <div
-      className="w-full bg-white p-5"
-      style={{ border: "1px solid #e2e2e2", fontFamily: "'Hanken Grotesk', sans-serif" }}
+      className="flex h-full w-full min-h-0 flex-col bg-white p-5"
+      style={{ border: "1px solid #e2e2e2", fontFamily: "'Hanken Grotesk', sans-serif", boxSizing: "border-box" }}
     >
       <svg
         viewBox={`0 0 ${VB_WIDTH} ${VB_HEIGHT}`}
         preserveAspectRatio="xMidYMid meet"
-        className="w-full"
-        style={{ height, display: "block" }}
+        className="min-h-0 w-full flex-1"
+        style={{ height: "auto", display: "block", overflow: "visible" }}
       >
         <defs>
           {chart.seriesData.map((s) => (
@@ -122,7 +124,12 @@ export default function LineChart({
         {[0, 0.25, 0.5, 0.75, 1].map((t) => {
           const y = PADDING_Y + t * (VB_HEIGHT - PADDING_Y * 2);
           return (
-            <line key={t} x1={PADDING_X} y1={y} x2={VB_WIDTH - PADDING_X} y2={y} stroke="#ececec" strokeWidth="1" />
+            <g key={t}>
+              <line x1={xPadding} y1={y} x2={VB_WIDTH - xPadding} y2={y} stroke={t === 1 ? "#CBD5E1" : "#E8EDF3"} strokeWidth={t === 1 ? "1.5" : "1"} />
+              <text x={PADDING_X - 12} y={y + 4} fontSize="11" fill="#273142" fontWeight="600" textAnchor="end">
+                {(chart.max - t * (chart.max - chart.min)).toFixed(1)}{unit}
+              </text>
+            </g>
           );
         })}
 
@@ -155,9 +162,9 @@ export default function LineChart({
               style={{ cursor: "pointer" }}
             >
               <rect
-                x={x - (VB_WIDTH / data.length) / 2}
+                x={x - ((VB_WIDTH - xPadding * 2) / Math.max(data.length - 1, 1)) / 2}
                 y={PADDING_Y}
-                width={VB_WIDTH / data.length}
+                width={(VB_WIDTH - xPadding * 2) / Math.max(data.length - 1, 1)}
                 height={VB_HEIGHT - PADDING_Y * 2}
                 fill="transparent"
               />
@@ -176,12 +183,12 @@ export default function LineChart({
 
               {activeIndex === idx && (
                 <>
-                  <line x1={x} y1={PADDING_Y} x2={x} y2={VB_HEIGHT - PADDING_Y} stroke="#999" strokeDasharray="4 4" strokeOpacity="0.5" />
+                  <line x1={x} y1={PADDING_Y} x2={x} y2={VB_HEIGHT - PADDING_Y} stroke="#475569" strokeDasharray="4 4" strokeOpacity="0.8" />
                   {pointsAtIdx.map((p, i) => {
                     const valueLabel = String(p.value.toLocaleString());
                     const dateLabel = String(data[idx][tooltipKey]);
-                    const boxWidth = Math.max(100, dateLabel.length * 8 + 20, valueLabel.length * 9 + 20);
-                    const boxHeight = 46;
+                    const boxWidth = Math.max(150, dateLabel.length * 9 + 28, valueLabel.length * 10 + 28);
+                    const boxHeight = 62;
                     let boxX = p.x - boxWidth / 2;
                     boxX = Math.max(PADDING_X - 10, Math.min(boxX, VB_WIDTH - PADDING_X - boxWidth + 10));
                     const boxY = p.y - boxHeight - 10 - i * (boxHeight + 6);
@@ -189,10 +196,10 @@ export default function LineChart({
                     return (
                       <g key={p.seriesKey}>
                         <rect x={boxX} y={boxY} width={boxWidth} height={boxHeight} fill="#1a1a1a" />
-                        <text x={boxX + boxWidth / 2} y={boxY + 18} fontSize="11" fill="#d5d5d5" textAnchor="middle">
+                        <text x={boxX + boxWidth / 2} y={boxY + 23} fontSize="14" fontWeight="600" fill="#e5e7eb" textAnchor="middle">
                           {dateLabel}
                         </text>
-                        <text x={boxX + boxWidth / 2} y={boxY + 36} fontSize="15" fontWeight="600" fill="white" textAnchor="middle">
+                        <text x={boxX + boxWidth / 2} y={boxY + 48} fontSize="19" fontWeight="700" fill="white" textAnchor="middle">
                           {valueLabel}
                         </text>
                       </g>
@@ -206,7 +213,7 @@ export default function LineChart({
       </svg>
 
       {/* X Labels */}
-      <div className="relative mt-4 h-5 text-xs" style={{ color: "#6b6b6b" }}>
+      <div className="relative mt-3 h-6 flex-shrink-0 text-xs" style={{ color: "#273142", fontWeight: 600, marginLeft: `${(xPadding / VB_WIDTH) * 100}%`, marginRight: `${(xPadding / VB_WIDTH) * 100}%` }}>
         {data.map((item, index) => {
           const period = String(item[xKey]);
           const year = timeScale ? new Date(item[xKey]).getUTCFullYear() : Number(period.slice(0, 4));
@@ -214,7 +221,9 @@ export default function LineChart({
           const isMilestone = timeScale
             ? new Date(item[xKey]).getUTCMonth() === 0 && (year - firstYear) % 2 === 0
             : period.endsWith("-01") && (year - firstYear) % 2 === 0;
-          if (!isMilestone && index !== data.length - 1) return null;
+          const labelStep = Math.max(1, Math.ceil((data.length - 1) / 8));
+          const showLabel = timeScale ? isMilestone : index % labelStep === 0;
+          if (!showLabel && index !== data.length - 1) return null;
           const left = `${(chart.xForValue(item[xKey], index) / VB_WIDTH) * 100}%`;
           return (
             <span
@@ -229,7 +238,7 @@ export default function LineChart({
       </div>
 
       {/* Legend */}
-      <div className="mt-3 flex gap-4 text-sm" style={{ color: "#4a4a4a" }}>
+      <div className="mt-2 flex flex-shrink-0 gap-4 text-sm" style={{ color: "#4a4a4a" }}>
         {series.map((s) => (
           <span key={s.key} className="flex items-center gap-1.5">
             <span style={{ display: "inline-block", width: 14, height: 2, backgroundColor: s.color, opacity: s.dashed ? 0.6 : 1 }} />

@@ -70,10 +70,29 @@
 // }
 
 
-import React from 'react';
 import { Icon } from '../ui/Icon';
 
-export default function DataFooter() {
+function escapeCsvValue(value) {
+  const text = value == null ? '' : String(value);
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+export default function DataFooter({ csvData = [], csvFilename = 'dataset.csv' }) {
+  const exportCsv = () => {
+    if (!csvData.length) return;
+    const columns = [...new Set(csvData.flatMap((row) => Object.keys(row)))];
+    const content = [
+      columns.map(escapeCsvValue).join(','),
+      ...csvData.map((row) => columns.map((column) => escapeCsvValue(row[column])).join(',')),
+    ].join('\r\n');
+    const url = URL.createObjectURL(new Blob([`\uFEFF${content}`], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = csvFilename;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="bg-surface border border-outline-variant rounded-sm px-10 py-8 flex flex-col md:flex-row items-center justify-between card-shadow">
       <div className="mb-6 md:mb-0 text-center md:text-left">
@@ -83,7 +102,7 @@ export default function DataFooter() {
         </p>
       </div>
       <div className="flex flex-wrap gap-4 justify-center">
-        <button className="ui-button px-6 py-3 border border-outline-variant rounded-sm flex items-center space-x-2 text-on-surface hover:bg-surface-container-high transition-colors font-bold uppercase text-[12px] active:scale-95 font-sans">
+        <button onClick={exportCsv} disabled={!csvData.length} className="ui-button px-6 py-3 border border-outline-variant rounded-sm flex items-center space-x-2 text-on-surface hover:bg-surface-container-high transition-colors font-bold uppercase text-[12px] active:scale-95 font-sans disabled:opacity-50 disabled:cursor-not-allowed">
           <Icon name="description" size={20} color="#0051d5" />
           <span>Export CSV</span>
         </button>
