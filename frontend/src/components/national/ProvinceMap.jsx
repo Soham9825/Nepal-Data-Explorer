@@ -2,22 +2,34 @@ import React from 'react';
 import { Icon } from '../ui/Icon';
 import { PROVINCE_PATHS, NEPAL_MAP_VIEWBOX } from '../../data/provincePaths';
 
-// provincePopulation (from dummyData.js) is merged in by name to get
-// population / pct stats onto the real geographic shapes below.
+// Population data is merged in by name to add statistics to the real
+// geographic shapes below.
 export default function ProvinceMap({ provinces, populationData, selectedProvince, onProvinceClick }) {
   const selectedId = selectedProvince?.id ?? null;
 
-  // Build a lookup: province name -> stats from provincePopulation
+  const normalizeProvinceName = (name) => String(name || '')
+    .toLowerCase()
+    .replace(/province|state/g, '')
+    .replace(/[^a-z0-9]/g, '');
+  const provinceAliases = {
+    sudurpashchim: ['sudurpaschim'],
+    koshi: ['1', 'province1', 'provinceone'],
+  };
   const statsByName = React.useMemo(() => {
     const map = {};
     (populationData || []).forEach((p) => {
-      map[p.name] = p;
+      map[normalizeProvinceName(p.name)] = p;
     });
     return map;
   }, [populationData]);
 
   const selectedShape = PROVINCE_PATHS.find((p) => p.id === selectedId);
-  const selectedStats = selectedShape ? statsByName[selectedShape.name] : null;
+  const selectedStats = selectedShape ? (
+    statsByName[normalizeProvinceName(selectedShape.name)] ||
+    (provinceAliases[normalizeProvinceName(selectedShape.name)] || [])
+      .map((alias) => statsByName[alias])
+      .find(Boolean)
+  ) : null;
 
   return (
     <div className="lg:col-span-2 bg-surface border border-outline-variant rounded-sm overflow-hidden flex flex-col relative card-shadow hover:border-primary transition-colors duration-200">
@@ -35,16 +47,6 @@ export default function ProvinceMap({ provinces, populationData, selectedProvinc
               Selected: {selectedShape.name} Province
             </p>
           )}
-        </div>
-        <div className="flex space-x-2">
-          <button className="bg-surface border border-outline-variant px-4 py-1.5 rounded-sm text-[12px] text-on-surface hover:bg-surface-container-highest font-bold font-sans flex items-center gap-1.5">
-            <Icon name="filter_list" size={16} color="#5c403c" />
-            Filter
-          </button>
-          <button className="bg-primary-container text-on-primary px-4 py-1.5 rounded-sm text-[12px] font-bold shadow-sm hover:brightness-110 transition-all font-sans flex items-center gap-1.5">
-            <Icon name="fullscreen" size={16} color="#ffffff" />
-            Fullscreen
-          </button>
         </div>
       </div>
 
@@ -86,12 +88,10 @@ export default function ProvinceMap({ provinces, populationData, selectedProvinc
                   <span className="font-bold">{selectedStats.pct}%</span>
                 </div>
               )}
-              {selectedStats?.density != null && (
-                <div className="flex justify-between">
-                  <span className="text-on-surface-variant">Density</span>
-                  <span className="font-bold">{selectedStats.density} p/km²</span>
-                </div>
-              )}
+              <div className="flex justify-between">
+                <span className="text-on-surface-variant">Density</span>
+                <span className="font-bold">{selectedStats?.density != null ? `${selectedStats.density} p/km²` : '—'}</span>
+              </div>
               <div className="flex justify-between">
                 <span className="text-on-surface-variant">Capital</span>
                 <span className="font-bold">{selectedShape.hq}</span>

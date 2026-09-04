@@ -1,10 +1,20 @@
-#frontend
-frontend/node_modules/
-frontend/dist
+# Dependencies
+node_modules/
 
-#Environment files
+# Build output
+dist/
+
+# Environment files
 .env
 .env.local
 
-#logs
+# Logs
 *.log
+
+# Python caches and test artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# macOS files
+.DS_Store

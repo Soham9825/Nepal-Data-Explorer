@@ -29,4 +29,3 @@ class AnalyticsApiTests(TestCase):
 		payload = response.json()
 		self.assertIn("foreign_trade", payload)
 		self.assertIn("salary_index", payload)
-

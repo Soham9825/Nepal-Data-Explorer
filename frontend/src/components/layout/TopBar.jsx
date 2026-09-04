@@ -1,11 +1,10 @@
 // ============================================================
 // src/layout/TopBar.jsx
 // ============================================================
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import UserCard from "../common/UserCard";
 
 export default function TopBar({ pageTitle, user }) {
-  const [searchQuery, setSearchQuery] = useState("");
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
@@ -43,27 +42,6 @@ export default function TopBar({ pageTitle, user }) {
 
       {/* Right */}
       <div className="flex items-center gap-5">
-        {/* Search */}
-        <div className="relative hidden md:block">
-          <input
-            type="text"
-            placeholder="Search indicators, provinces..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 pr-4 py-2 border border-outline-variant rounded-sm text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary w-72 transition-all"
-          />
-          <span className="material-symbols-outlined text-[20px] text-onSurface-variant absolute left-2.5 top-1/2 -translate-y-1/2">
-            search
-          </span>
-        </div>
-
-        {/* Mobile Search */}
-        <button className="ui-button md:hidden p-2 rounded-sm hover:bg-surface-container-lowest transition-colors">
-          <span className="material-symbols-outlined text-[22px] text-onSurface-variant">
-            search
-          </span>
-        </button>
-
         {/* Live Date & Time */}
         <div className="hidden lg:flex flex-col items-end leading-tight min-w-[140px]">
           <span className="text-sm font-semibold text-onSurface">
