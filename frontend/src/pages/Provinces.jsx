@@ -2,12 +2,12 @@ import React from 'react';
 import { Icon } from '../components/ui/Icon';
 import { PROVINCE_PATHS, NEPAL_MAP_VIEWBOX } from '../data/provincePaths';
 
-// provincePopulation (from dummyData.js) is merged in by name to get
-// population / pct stats onto the real geographic shapes below.
+// Population data is merged in by name to add statistics to the real
+// geographic shapes below.
 export default function ProvinceMap({ provinces, populationData, selectedProvince, onProvinceClick }) {
   const selectedId = selectedProvince?.id ?? null;
 
-  // Build a lookup: province name -> stats from provincePopulation
+  // Build a lookup: province name -> population statistics
   const statsByName = React.useMemo(() => {
     const map = {};
     (populationData || []).forEach((p) => {
@@ -36,7 +36,7 @@ export default function ProvinceMap({ provinces, populationData, selectedProvinc
             </p>
           )}
         </div>
-        <div className="flex space-x-2">
+        {/* <div className="flex space-x-2">
           <button className="bg-surface border border-outline-variant px-4 py-1.5 rounded-sm text-[12px] text-on-surface hover:bg-surface-container-highest font-bold font-sans flex items-center gap-1.5">
             <Icon name="filter_list" size={16} color="#5c403c" />
             Filter
@@ -45,7 +45,7 @@ export default function ProvinceMap({ provinces, populationData, selectedProvinc
             <Icon name="fullscreen" size={16} color="#ffffff" />
             Fullscreen
           </button>
-        </div>
+        </div> */}
       </div>
 
       <div className="flex-1 min-h-[500px] bg-surface-container-highest relative overflow-hidden">

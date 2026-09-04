@@ -5,6 +5,7 @@ import { TabBtn } from '../components/ui/Tabs';
 import { BtnPrimary, BtnOutline } from '../components/ui/Button';
 import { Icon } from '../components/ui/Icon';
 import LineChart from '../components/charts/LineChart';
+import { formatCountryName } from '../utils/countryFlags';
 
 const INDICATOR_LABELS = {
   monthly: 'Monthly Tourist Arrivals',
@@ -39,6 +40,7 @@ function downloadCSV(rows, filename) {
 export default function Predictions() {
   const [type, setType] = useState('monthly');
   const [nationality, setNationality] = useState('India');
+  const [monthlyYear, setMonthlyYear] = useState('');
   const [monthlyHistory, setMonthlyHistory] = useState([]);
   const [monthlyForecast, setMonthlyForecast] = useState([]);
   const [nationalityHistory, setNationalityHistory] = useState([]);
@@ -69,11 +71,18 @@ export default function Predictions() {
   const selectedNationalityHistory = nationalityHistory
     .filter((item) => item.nationality === nationality)
     .sort((a, b) => a.year - b.year);
-  const forecastItems = type === 'monthly' ? monthlyForecast : selectedNationalityForecast;
+  const monthlyYears = [...new Set([
+    ...monthlyHistory.map((item) => String(item.year)),
+    ...monthlyForecast.map((item) => String(item.year)),
+  ])].sort();
+  const selectedMonthlyYear = monthlyYears.includes(monthlyYear) ? monthlyYear : monthlyYears.at(-1) || '';
+  const selectedMonthlyHistory = monthlyHistory.filter((item) => String(item.year) === selectedMonthlyYear);
+  const selectedMonthlyForecast = monthlyForecast.filter((item) => String(item.year) === selectedMonthlyYear);
+  const forecastItems = type === 'monthly' ? selectedMonthlyForecast : selectedNationalityForecast;
   const monthNumbers = { Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06', Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12' };
   const toMonthTimestamp = (year, month) => Date.UTC(year, Number(monthNumbers[month.slice(0, 3)] || month) - 1, 1);
   const historicalRows = type === 'monthly'
-    ? monthlyHistory.map((item) => ({ period: toMonthTimestamp(item.year, item.month), label: String(item.year), tooltipLabel: `${item.month} ${item.year}`, hist: item.arrivals, forecast: null }))
+    ? selectedMonthlyHistory.map((item) => ({ period: toMonthTimestamp(item.year, item.month), label: String(item.year), tooltipLabel: `${item.month} ${item.year}`, hist: item.arrivals, forecast: null }))
     : selectedNationalityHistory.map((item) => ({ period: Date.UTC(item.year, 0, 1), label: String(item.year), tooltipLabel: String(item.year), hist: item.arrivals, forecast: null }));
   const forecastRows = forecastItems.map((item) => ({
     period: type === 'monthly' ? toMonthTimestamp(item.year, item.month) : Date.UTC(item.target_year, item.target_month - 1, 1),
@@ -83,6 +92,12 @@ export default function Predictions() {
     forecast: item.predicted_value,
   }));
   const allData = [...historicalRows, ...forecastRows].sort((a, b) => a.period - b.period);
+  const chartStart = type === 'monthly' && selectedMonthlyYear
+    ? Date.UTC(Number(selectedMonthlyYear), 0, 1)
+    : CHART_DOMAIN_START;
+  const chartEnd = type === 'monthly' && selectedMonthlyYear
+    ? Date.UTC(Number(selectedMonthlyYear), 11, 31)
+    : CHART_DOMAIN_END;
 
   const handleDownload = () => {
     const exportRows = forecastItems.map((item) => ({
@@ -121,7 +136,7 @@ export default function Predictions() {
               <div className="text-xs font-bold uppercase text-onSurface-variant mb-2.5">
                 Forecast dataset
               </div>
-              <div className="flex border border-outline-variant rounded-sm divide-x divide-outline-variant">
+              <div className="flex gap-2 rounded-sm border border-outline-variant p-1">
                 {[
                   ['monthly', 'Monthly arrivals'],
                   ['nationality', 'By nationality'],
@@ -141,7 +156,19 @@ export default function Predictions() {
                   onChange={(event) => setNationality(event.target.value)}
                   className="block mt-2 border border-outline-variant rounded-sm bg-surface px-3 py-2 text-sm normal-case font-normal text-onSurface"
                 >
-                  {availableNationalities.map((item) => <option key={item} value={item}>{item}</option>)}
+                  {availableNationalities.map((item) => <option key={item} value={item}>{formatCountryName(item)}</option>)}
+                </select>
+              </label>
+            )}
+            {type === 'monthly' && (
+              <label className="text-xs font-bold uppercase text-onSurface-variant">
+                Year
+                <select
+                  value={selectedMonthlyYear}
+                  onChange={(event) => setMonthlyYear(event.target.value)}
+                  className="block mt-2 border border-outline-variant rounded-sm bg-surface px-3 py-2 text-sm normal-case font-normal text-onSurface"
+                >
+                  {monthlyYears.map((item) => <option key={item} value={item}>{item}</option>)}
                 </select>
               </label>
             )}
@@ -196,8 +223,8 @@ export default function Predictions() {
                 labelKey="label"
                 tooltipKey="tooltipLabel"
                 timeScale
-                xDomainStart={CHART_DOMAIN_START}
-                xDomainEnd={CHART_DOMAIN_END}
+                xDomainStart={chartStart}
+                xDomainEnd={chartEnd}
                 series={[
                   { key: 'hist', color, label: 'Historical' },
                   { key: 'forecast', color: FORECAST_COLOR, label: 'Forecast', dashed: true },
