@@ -4,6 +4,7 @@ import { SectionCard } from '../components/ui/Card';
 import { BtnPrimary } from '../components/ui/Button';
 import { Icon } from '../components/ui/Icon';
 import LineChart from '../components/charts/LineChart';
+import Loader from '../components/common/Loader';
 
 function pearsonCorrelation(xs, ys) {
   const n = xs.length;
@@ -43,6 +44,7 @@ export default function Compare() {
   const [filters, setFilters] = useState({});
   const [comparison, setComparison] = useState(null);
   const [done, setDone] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -181,8 +183,31 @@ export default function Compare() {
           </div>
         </SectionCard>
 
+        {loading && (
+          <SectionCard title="Loading comparison data" className="rounded-sm">
+            <div className="flex min-h-[220px] items-center justify-center">
+              <Loader size="lg" />
+            </div>
+          </SectionCard>
+        )}
+
         {done && (
-          <>
+          <div className={isFullscreen ? 'fixed inset-0 z-50 overflow-y-auto bg-background p-6 lg:p-10' : 'space-y-6'}>
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-bold text-onSurface">Comparison Visualization</h3>
+                <p className="text-sm text-onSurface-variant">{seriesLabel(a)} vs {seriesLabel(b)}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsFullscreen((value) => !value)}
+                className="flex items-center gap-2 rounded-sm border border-outline-variant bg-white px-4 py-2 text-sm font-semibold text-onSurface transition-colors hover:bg-surface-container-highest"
+                aria-label={isFullscreen ? 'Exit fullscreen' : 'View comparison fullscreen'}
+              >
+                <Icon name={isFullscreen ? 'fullscreen_exit' : 'fullscreen'} size={18} color="#0051d5" />
+                {isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+              </button>
+            </div>
             <div className="grid grid-cols-2 gap-6">
               <SectionCard title={seriesLabel(a)} subtitle={`${dataset?.period_label} · ${dataset?.value_label}`} className="rounded-sm">
                 <LineChart data={comparison?.data || []} xKey="period" series={[{ key: 'a', color: '#0051d5', label: seriesLabel(a) }]} />
@@ -228,7 +253,7 @@ export default function Compare() {
                 </div>
               </SectionCard>
             </div>
-          </>
+          </div>
         )}
         {error && <p className="text-sm text-danger">{error}</p>}
         {!loading && !done && catalog.length === 0 && <p className="text-sm text-onSurface-variant">No comparison datasets are available.</p>}
