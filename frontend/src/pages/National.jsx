@@ -356,7 +356,10 @@ export default function National() {
 
             <div className="h-[300px]">
               <BarChart
-                data={gdpTrend}
+                data={gdpTrend.map((record) => ({
+                  ...record,
+                  color: Number(record.value) < 0 ? '#b70011' : '#0051d5',
+                }))}
                 xKey="year"
                 valueKey="value"
                 color="#0051d5"

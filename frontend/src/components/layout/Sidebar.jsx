@@ -14,14 +14,15 @@ const navItems = [
   { id: "predictions", label: "AI Predictions", icon: "auto_awesome", path: "/predictions" },
   { id: "reports", label: "Reports", icon: "description", path: "/reports" },
   { id: "research", label: "Research Data", icon: "dataset", path: "/research" },
-];
 
+  // CSV Visualization
+  { id: "csv-explorer", label: "CSV Explorer", icon: "upload_file", path: "/csv-explorer" },
+];
 const bottomNav = [
   { id: "support", label: "Support", icon: "help_outline", path: "/support" },
 ];
 
 const DEFAULT_USER = {
-  name: "Sunflower",
   role: "Analyst · NPC",
 };
 
