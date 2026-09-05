@@ -79,3 +79,15 @@ class PasswordResetToken(models.Model):
         return hashlib.sha256(token.encode()).hexdigest()
 
 
+class PasswordResetOTP(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="password_reset_otps")
+    code_hash = models.CharField(max_length=128)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    attempts = models.PositiveSmallIntegerField(default=0)
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    def is_valid(self):
+        return self.used_at is None and self.attempts < 5 and timezone.now() < self.expires_at
+
+
