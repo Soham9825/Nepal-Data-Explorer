@@ -1,4 +1,4 @@
-// API Service - Ready for when backend is available
+import { auth } from './auth';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/analytics';
 
@@ -14,6 +14,7 @@ export const tourismAPI = {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
+          ...auth.authenticatedHeaders(),
         },
         // include cookies for session authentication
         credentials: 'include',
@@ -41,6 +42,7 @@ export const tourismAPI = {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
+          ...auth.authenticatedHeaders(),
         },
         credentials: 'include',
       });
@@ -62,6 +64,7 @@ export const tourismAPI = {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          ...auth.authenticatedHeaders(),
         },
         credentials: 'include',
       });
@@ -91,6 +94,7 @@ export const tourismAPI = {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          ...auth.authenticatedHeaders(),
         },
         credentials: 'include',
       });

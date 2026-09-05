@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { auth } from "../services/auth";
@@ -29,6 +29,51 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const oauthResult = params.get("oauth");
+    const oauthError = params.get("oauth_error");
+
+    if (oauthError) {
+      window.history.replaceState({}, document.title, "/login");
+      const message = oauthError === "database_unavailable"
+        ? "Google sign-in reached the server, but the database is unavailable. Please start PostgreSQL or restore the Neon connection."
+        : oauthError === "provider_token_failed"
+          ? "Google did not return an access token. Check the OAuth client configuration."
+          : oauthError === "token_invalid_grant"
+            ? "Google rejected the sign-in code. Check that the redirect URI exactly matches Google Cloud Console, then try again."
+            : oauthError === "token_invalid_client"
+              ? "Google rejected the OAuth client credentials. Check GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET."
+              : oauthError === "provider_unreachable"
+                ? "The backend could not reach Google. Check your internet connection or firewall."
+                : oauthError === "provider_not_configured"
+                  ? "GitHub sign-in is not configured yet. Add GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET to the backend environment."
+          : `Google sign-in failed: ${oauthError}`;
+      alert(message);
+      return;
+    }
+
+    if (oauthResult !== "success") return;
+
+    const oauthAccess = params.get("access");
+    const oauthRefresh = params.get("refresh");
+    if (!oauthAccess || !oauthRefresh) {
+      alert("Google sign-in did not return an authentication token.");
+      window.history.replaceState({}, document.title, "/login");
+      return;
+    }
+    auth.storeTokens({ access: oauthAccess, refresh: oauthRefresh });
+    setLoading(true);
+    window.history.replaceState({}, document.title, "/login");
+    auth.getCurrentUser()
+      .then((user) => {
+        if (!user) throw new Error("The Google session could not be verified.");
+        navigate("/national", { replace: true });
+      })
+      .catch((err) => alert(err.message || "Google sign-in failed"))
+      .finally(() => setLoading(false));
+  }, [navigate]);
 
   const handleLogin = (e) => {
     e.preventDefault();
@@ -143,6 +188,10 @@ export default function Login() {
               "Sign in"
             )}
           </button>
+
+          <Link to="/forgot-password" className="mt-4 block text-center text-xs font-medium hover:underline" style={{ color: "var(--crimson)" }}>
+            Forgot password?
+          </Link>
 
           <div className="mt-8 flex items-center gap-3 text-xs" style={{ color: "var(--stone)" }}>
             <span className="h-px flex-1" style={{ background: "rgba(23,21,18,0.1)" }} />

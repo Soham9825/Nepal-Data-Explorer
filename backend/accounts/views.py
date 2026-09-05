@@ -1,8 +1,10 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth import login as auth_login, logout as auth_logout, authenticate
-from django.contrib.auth.hashers import make_password
-from .models import CustomUser, VerifiedEmail
+from django.contrib.auth.hashers import check_password, make_password
+from .models import CustomUser, PasswordResetOTP, VerifiedEmail
 from django.core.mail import send_mail
+from smtplib import SMTPException
+from socket import error as SocketError
 from functools import wraps
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
@@ -18,11 +20,28 @@ import hashlib
 import secrets
 from datetime import timedelta
 from urllib.parse import urlencode
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
+from django.db.utils import OperationalError
 from django.utils import timezone
 from .models import PasswordResetToken
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
+import logging
+
+
+logger = logging.getLogger(__name__)
+
+
+class OAuthProviderError(Exception):
+    def __init__(self, code):
+        self.code = code
+        super().__init__(code)
 
 
 
@@ -206,6 +225,11 @@ def api_get_csrf(request):
     return JsonResponse({'csrfToken': token})
 
 
+def _jwt_for_user(user):
+    refresh = RefreshToken.for_user(user)
+    return {'access': str(refresh.access_token), 'refresh': str(refresh)}
+
+
 @require_POST
 @csrf_protect
 def api_login(request):
@@ -233,31 +257,21 @@ def api_login(request):
             user = None
 
     if user:
-        auth_login(request, user)
-        if remember_me:
-            request.session.set_expiry(60 * 60 * 24 * 30)
-        else:
-            request.session.set_expiry(0)
-        return JsonResponse({'username': user.username, 'email': user.email})
+        return JsonResponse({'username': user.username, 'email': user.email, **_jwt_for_user(user)})
     else:
         return JsonResponse({'detail': 'Invalid credentials'}, status=401)
 
 
-@require_POST
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def api_logout_api(request):
-    auth_logout(request)
-    return JsonResponse({'detail': 'logged out'})
+    return Response({'detail': 'logged out'})
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def api_me(request):
-    try:
-        user = request.user
-    except Exception:
-        user = None
-
-    if user is not None and getattr(user, 'is_authenticated', False):
-        return JsonResponse({'username': user.username, 'email': user.email})
-    return JsonResponse({'detail': 'Not authenticated'}, status=401)
+    return Response({'username': request.user.username, 'email': request.user.email})
 
 
 @require_POST
@@ -296,8 +310,7 @@ def api_signup(request):
     user = CustomUser.objects.create_user(username=username, email=email, password=password)
     user.is_verified = True
     user.save()
-    auth_login(request, user)
-    return JsonResponse({'username': user.username, 'email': user.email})
+    return JsonResponse({'username': user.username, 'email': user.email, **_jwt_for_user(user)})
 
 
 def _json_body(request):
@@ -317,43 +330,71 @@ def api_password_reset_request(request):
 
     user = CustomUser.objects.filter(email__iexact=email, is_active=True).first()
     if user:
-        raw_token = secrets.token_urlsafe(32)
-        PasswordResetToken.objects.filter(user=user, used_at__isnull=True).update(used_at=timezone.now())
-        PasswordResetToken.objects.create(
+        otp = f'{secrets.randbelow(1000000):06d}'
+        PasswordResetOTP.objects.filter(user=user, used_at__isnull=True).update(used_at=timezone.now())
+        PasswordResetOTP.objects.create(
             user=user,
-            token_hash=PasswordResetToken.hash_token(raw_token),
-            expires_at=timezone.now() + timedelta(minutes=30),
+            code_hash=make_password(otp),
+            expires_at=timezone.now() + timedelta(minutes=10),
         )
-        reset_url = f"{settings.FRONTEND_URL.rstrip('/')}/reset-password?token={raw_token}"
-        send_mail(
-            'Reset your Nepal Data Explorer password',
-            f'Use this link within 30 minutes: {reset_url}',
-            settings.DEFAULT_FROM_EMAIL,
-            [user.email],
-            fail_silently=True,
-        )
-    return JsonResponse({'detail': 'If that email exists, a password reset link has been sent.'})
+        try:
+            send_mail(
+                'Your Nepal Data Explorer password reset code',
+                f'Your password reset code is {otp}. It expires in 10 minutes.',
+                settings.DEFAULT_FROM_EMAIL,
+                [user.email],
+                fail_silently=False,
+            )
+        except (SMTPException, OSError, SocketError):
+            logger.exception('Could not send password reset email')
+            return JsonResponse({'detail': 'Email delivery is not configured. Check the Gmail app password.'}, status=503)
+    return JsonResponse({'detail': 'If that email exists, a password reset code has been sent.'})
+
+
+@require_POST
+@csrf_protect
+def api_password_reset_verify(request):
+    data = _json_body(request)
+    email = (data or {}).get('email', '').strip().lower()
+    otp = (data or {}).get('otp', '').strip()
+    if not email or not otp or len(otp) != 6 or not otp.isdigit():
+        return JsonResponse({'detail': 'Email and a 6-digit code are required.'}, status=400)
+    user = CustomUser.objects.filter(email__iexact=email, is_active=True).first()
+    reset = PasswordResetOTP.objects.filter(user=user, used_at__isnull=True).order_by('-created_at').first() if user else None
+    if not reset or not reset.is_valid() or not check_password(otp, reset.code_hash):
+        if reset and reset.is_valid():
+            reset.attempts += 1
+            reset.save(update_fields=['attempts'])
+        return JsonResponse({'detail': 'Invalid or expired reset code.'}, status=400)
+    reset.used_at = timezone.now()
+    reset.save(update_fields=['used_at'])
+    token = AccessToken.for_user(user)
+    token['purpose'] = 'password_reset'
+    token.set_exp(lifetime=timedelta(minutes=10))
+    return JsonResponse({'reset_token': str(token)})
 
 
 @require_POST
 @csrf_protect
 def api_password_reset_confirm(request):
     data = _json_body(request)
-    token = (data or {}).get('token', '')
+    token = (data or {}).get('reset_token', '')
     password = (data or {}).get('password', '')
     if not token or not password:
-        return JsonResponse({'detail': 'Token and password are required.'}, status=400)
-    reset = PasswordResetToken.objects.select_related('user').filter(token_hash=PasswordResetToken.hash_token(token)).first()
-    if not reset or not reset.is_valid():
+        return JsonResponse({'detail': 'Reset token and password are required.'}, status=400)
+    try:
+        validated = JWTAuthentication().get_validated_token(token)
+        if validated.get('purpose') != 'password_reset':
+            raise ValueError
+        user = CustomUser.objects.get(pk=validated['user_id'], is_active=True)
+    except Exception:
         return JsonResponse({'detail': 'Invalid or expired reset token.'}, status=400)
     try:
-        validate_password(password, reset.user)
+        validate_password(password, user)
     except ValidationError as error:
         return JsonResponse({'detail': error.messages}, status=400)
-    reset.user.set_password(password)
-    reset.user.save(update_fields=['password'])
-    reset.used_at = timezone.now()
-    reset.save(update_fields=['used_at'])
+    user.set_password(password)
+    user.save(update_fields=['password'])
     return JsonResponse({'detail': 'Password reset successfully.'})
 
 
@@ -395,8 +436,20 @@ def oauth_start(request, provider):
 
 def _oauth_request(url, data, headers=None):
     request = Request(url, data=urlencode(data).encode(), headers=headers or {'Accept': 'application/json'}, method='POST')
-    with urlopen(request, timeout=10) as response:
-        return json.loads(response.read().decode())
+    try:
+        with urlopen(request, timeout=10) as response:
+            return json.loads(response.read().decode())
+    except HTTPError as error:
+        body = error.read().decode(errors='replace')
+        try:
+            provider_error = json.loads(body).get('error', 'provider_rejected_request')
+        except (TypeError, ValueError):
+            provider_error = 'provider_rejected_request'
+        logger.error('OAuth provider rejected token exchange: status=%s error=%s', error.code, provider_error)
+        raise OAuthProviderError(f'token_{provider_error}') from error
+    except (TimeoutError, URLError) as error:
+        logger.exception('OAuth provider token endpoint is unreachable')
+        raise OAuthProviderError('provider_unreachable') from error
 
 
 def _oauth_user(provider, access_token):
@@ -427,10 +480,20 @@ def oauth_callback(request, provider):
     try:
         token = _oauth_request(
             config['token_url'],
-            {'client_id': getattr(settings, config['client_id']), 'client_secret': getattr(settings, config['client_secret']), 'code': request.GET.get('code', ''), 'redirect_uri': getattr(settings, config['redirect_uri'])},
+            {
+                'client_id': getattr(settings, config['client_id']),
+                'client_secret': getattr(settings, config['client_secret']),
+                'code': request.GET.get('code', ''),
+                'redirect_uri': getattr(settings, config['redirect_uri']),
+                'grant_type': 'authorization_code',
+            },
             {'Accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded'},
         )
-        email, display_name = _oauth_user(provider, token.get('access_token', ''))
+        access_token = token.get('access_token')
+        if not access_token:
+            logger.error('OAuth token exchange returned no access token for %s', provider)
+            return _oauth_redirect(provider, 'provider_token_failed')
+        email, display_name = _oauth_user(provider, access_token)
         if not email:
             return _oauth_redirect(provider, 'verified_email_required')
         user = CustomUser.objects.filter(email__iexact=email).first()
@@ -443,8 +506,17 @@ def oauth_callback(request, provider):
         user.is_verified = True
         user.save(update_fields=['is_verified'])
         auth_login(request, user)
-        return _oauth_redirect(provider)
+        tokens = _jwt_for_user(user)
+        return redirect(
+            f"{settings.FRONTEND_URL.rstrip('/')}/login?{urlencode({'oauth': 'success', **tokens})}"
+        )
+    except OAuthProviderError as error:
+        return _oauth_redirect(provider, error.code)
+    except OperationalError:
+        logger.exception('Database unavailable during %s OAuth callback', provider)
+        return _oauth_redirect(provider, 'database_unavailable')
     except Exception:
+        logger.exception('OAuth callback failed for %s', provider)
         return _oauth_redirect(provider, 'oauth_request_failed')
 
 
