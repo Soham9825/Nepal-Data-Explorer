@@ -49,9 +49,15 @@ export default function Economic() {
     const visibleYears = new Set(years.slice(-Number(range)));
     return periodItems.filter((item) => visibleYears.has(item.year));
   };
-  const filteredGrowth = recentItems(growth);
+  const filteredGrowth = recentItems(growth)
+    .map((item) => ({ ...item, value: Number(item.value) }))
+    .filter((item) => Number.isFinite(item.value))
+    .sort((a, b) => String(a.year).localeCompare(String(b.year), undefined, { numeric: true }));
   const filteredTrade = recentItems(trade);
-  const latestGrowth = growth.at(-1);
+  const latestGrowth = [...growth]
+    .filter((item) => Number.isFinite(Number(item.value)))
+    .sort((a, b) => String(a.year).localeCompare(String(b.year), undefined, { numeric: true }))
+    .at(-1);
   const latestTradeYear = trade.at(-1)?.year;
   const latestTrade = trade.filter((item) => item.year === latestTradeYear);
   const exportsValue = latestTrade.find((item) => item.group === "Export")?.value;
@@ -128,8 +134,8 @@ export default function Economic() {
         )}
       </div>
       <SectionCard title={chartTitle} subtitle={chartSubtitle} className="overflow-hidden rounded-sm" contentClassName="p-0">
-        <div className={`${indicator === "sectors" ? "h-[620px]" : "h-[520px]"} min-h-[400px] min-w-0 overflow-hidden`}>
-          {indicator === "sectors" ? <RadialFanChart data={sectorFanData} title="Sectoral Growth" unit="%" /> : indicator === "growth" ? <LineChart data={chartData} xKey="year" series={[{ key: "value", color: COLORS.primary, label: "Growth (%)" }]} height="100%" unit="%" xPadding={28} /> : <BarChart data={chartData} xKey="year" series={[{ key: "exports", color: COLORS.success, label: "Exports" }, { key: "imports", color: COLORS.danger, label: "Imports" }]} height="100%" bordered={false} />}
+        <div className={`${indicator === "sectors" ? "h-[620px]" : "h-[520px]"} min-h-[400px] min-w-0 w-full overflow-hidden`}>
+          {indicator === "sectors" ? <RadialFanChart data={sectorFanData} title="Sectoral Growth" unit="%" /> : indicator === "growth" ? <LineChart data={chartData} xKey="year" labelKey="year" tooltipKey="year" series={[{ key: "value", color: COLORS.primary, label: "Real growth (%)" }]} height="100%" unit="%" xPadding={48} showZeroLine /> : <BarChart data={chartData} xKey="year" series={[{ key: "exports", color: COLORS.success, label: "Exports" }, { key: "imports", color: COLORS.danger, label: "Imports" }]} height="100%" bordered={false} />}
         </div>
       </SectionCard>
       {error && <p className="text-sm text-danger">{error}</p>}{!loading && !error && !data && <p className="text-sm text-onSurface-variant">No economic data is available.</p>}
