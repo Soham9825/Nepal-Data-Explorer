@@ -13,8 +13,9 @@ import {
 import { SectionCard } from '../ui/Card';
 import { Icon } from '../ui/Icon';
 import { CHART_COLORS, groupByDimension } from './chartData';
+import CSVTooltip from './CSVTooltip';
 
-export default function CSVBarChart({ fileName, headers, chartData, xColumn, xOptions, yColumn, dimensionColumn, onXColumnChange, onYColumnChange }) {
+export default function CSVBarChart({ fileName, headers, chartData, xColumn, xOptions, yColumn, dimensionColumn, dimensionOptions = [], onXColumnChange, onYColumnChange, onDimensionColumnChange }) {
   if (!fileName) return null;
   const numericHeaders = headers.filter((header) => !xOptions.includes(header) && chartData.some(
     (row) => typeof row[header] === 'number' && !Number.isNaN(row[header]),
@@ -34,7 +35,7 @@ export default function CSVBarChart({ fileName, headers, chartData, xColumn, xOp
   }
 
   return (
-    <SectionCard title="Bar Chart" subtitle={`${yColumn} by ${xColumn}`}>
+    <SectionCard title="Bar Chart" subtitle={`${yColumn} by ${xColumn}`} className="overflow-visible">
       <div className="mb-6 flex flex-wrap gap-5">
         <div>
           <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-onSurface-variant">X-Axis</label>
@@ -42,6 +43,15 @@ export default function CSVBarChart({ fileName, headers, chartData, xColumn, xOp
             {xOptions.map((header) => <option key={header} value={header}>{header}</option>)}
           </select>
         </div>
+        {dimensionOptions.length > 0 && (
+          <div>
+            <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-onSurface-variant">Series</label>
+            <select value={dimensionColumn} onChange={(event) => onDimensionColumnChange(event.target.value)} className="min-w-48 rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm text-onSurface outline-none focus:border-primary">
+              <option value="">None</option>
+              {dimensionOptions.filter((header) => header !== xColumn).map((header) => <option key={header} value={header}>{header}</option>)}
+            </select>
+          </div>
+        )}
         <div>
           <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-onSurface-variant">Y-Axis</label>
           <select
@@ -53,13 +63,21 @@ export default function CSVBarChart({ fileName, headers, chartData, xColumn, xOp
           </select>
         </div>
       </div>
-      <div className="h-96 w-full">
+      <div className="h-96 w-full overflow-visible">
         <ResponsiveContainer width="100%" height="100%">
           <RechartsBarChart data={grouped?.groupedRows || chartData} margin={{ top: 10, right: 20, left: 10, bottom: 10 }}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey={xColumn} tick={{ fontSize: 12 }} />
             <YAxis tick={{ fontSize: 12 }} />
-            <Tooltip />
+            <Tooltip
+              content={<CSVTooltip />}
+              position={{ y: 12 }}
+              isAnimationActive={false}
+              animationDuration={0}
+              offset={16}
+              allowEscapeViewBox={{ x: true, y: true }}
+              wrapperStyle={{ zIndex: 9999, pointerEvents: 'none' }}
+            />
             {grouped && <Legend />}
             {grouped ? grouped.dimensions.map((dimension, index) => (
               <Bar
