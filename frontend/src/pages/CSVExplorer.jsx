@@ -3,75 +3,57 @@ import Papa from 'papaparse';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import CSVUploadCard from '../components/csv/CSVUploadCard';
 import CSVPreviewTable from '../components/csv/CSVPreviewTable';
-import CSVBarChart from '../components/csv/CSVBarChart';
-import CSVLineChart from '../components/csv/CSVLineChart';
-import CSVHistogram from '../components/csv/CSVHistogram';
+import CSVChartEngine from '../components/csv/CSVChartEngine';
 import { SectionCard } from '../components/ui/Card';
 import { Icon } from '../components/ui/Icon';
-import { getDimensionColumn } from '../components/csv/chartData';
+import {
+  profileDataset, recommendVisualization,
+} from '../components/csv/chartData';
+
+const EMPTY_DATASET = {
+  fileName: '', headers: [], rows: [], profile: null, recommendation: null,
+};
+
+function formatNumber(value) {
+  return Number.isFinite(value) ? value.toLocaleString() : '—';
+}
 
 export default function CSVExplorer() {
   const inputRef = useRef(null);
-  const [dataset, setDataset] = useState({
-    fileName: '',
-    headers: [],
-    rows: [],
-    chartData: [],
-    xColumn: '',
-    xOptions: [],
-    yColumn: '',
-    dimensionColumn: '',
-    chartType: 'bar',
-  });
+  const [dataset, setDataset] = useState(EMPTY_DATASET);
   const [error, setError] = useState('');
 
   const parseFile = (file) => {
     if (!file) return;
     setError('');
-
     if (!file.name.toLowerCase().endsWith('.csv')) {
       setError('Please upload a valid CSV file.');
       return;
     }
-
     Papa.parse(file, {
       header: true,
-      skipEmptyLines: true,
-      dynamicTyping: true,
+      skipEmptyLines: 'greedy',
+      dynamicTyping: false,
       complete: ({ data, meta, errors }) => {
-        if (errors.length > 0) {
+        if (errors.length > 0 && !data.length) {
           setError('This CSV could not be read. Please check its formatting and try again.');
           return;
         }
-
-        const headers = meta.fields || [];
-        if (headers.length === 0 || data.length === 0) {
+        const headers = (meta.fields || []).map((header) => String(header).trim()).filter(Boolean);
+        const rows = data.filter((row) => row && Object.values(row).some((value) => String(value ?? '').trim() !== ''));
+        if (!headers.length || !rows.length) {
           setError('The selected CSV does not contain any data to preview.');
           return;
         }
-
-        const xOptions = ['year', 'province', 'country', 'county']
-          .map((candidate) => getDimensionColumn(headers, [candidate]))
-          .filter(Boolean);
-        const xColumn = xOptions[0] || headers[0] || '';
-        const dimensionColumn = getDimensionColumn(headers, ['province']);
-        const numericColumn = headers.find((header) => !xOptions.includes(header) && data.some(
-          (row) => typeof row[header] === 'number' && !Number.isNaN(row[header]),
-        ));
-
+        const profile = profileDataset(headers, rows);
         setDataset({
           fileName: file.name,
           headers,
-          rows: data,
-          chartData: data,
-          xColumn,
-          xOptions,
-          yColumn: numericColumn || '',
-          dimensionColumn: dimensionColumn !== xColumn && xColumn === getDimensionColumn(headers, ['year'])
-            ? dimensionColumn
-            : '',
-          chartType: 'bar',
+          rows,
+          profile,
+          recommendation: recommendVisualization(profile),
         });
+        if (errors.length) setError('Some malformed rows were skipped while reading this CSV.');
       },
       error: () => setError('Unable to read this file. Please choose a valid CSV file.'),
     });
@@ -83,49 +65,20 @@ export default function CSVExplorer() {
   };
 
   const clearPreview = () => {
-    setDataset({
-      fileName: '',
-      headers: [],
-      rows: [],
-      chartData: [],
-      xColumn: '',
-      xOptions: [],
-      yColumn: '',
-      dimensionColumn: '',
-      chartType: 'bar',
-    });
+    setDataset(EMPTY_DATASET);
     setError('');
   };
 
-  const updateDataset = (key) => (value) => {
-    setDataset((current) => ({ ...current, [key]: value }));
-  };
-
-  const handleXColumnChange = (value) => {
-    setDataset((current) => ({
-      ...current,
-      xColumn: value,
-      dimensionColumn: getDimensionColumn(current.headers, ['year']) === value
-        ? getDimensionColumn(current.headers, ['province'])
-        : '',
-      yColumn: current.yColumn === value
-        ?         current.headers.find((header) => !current.xOptions.includes(header) && current.chartData.some(
-          (row) => typeof row[header] === 'number' && !Number.isNaN(row[header]),
-        )) || ''
-        : current.yColumn,
-    }));
-  };
-
+  const { profile } = dataset;
   return (
     <DashboardLayout pageTitle="CSV Explorer">
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-onSurface font-hanken">CSV Explorer</h1>
-          <p className="mt-1 max-w-2xl text-sm text-onSurface-variant font-hanken">
-            Upload a CSV file to inspect its structure and visualize your data by year, province, or county.
+          <p className="mt-1 max-w-3xl text-sm text-onSurface-variant font-hanken">
+            Upload any CSV to profile its columns, inspect metadata, and build a chart with generic filter, grouping, aggregation, sorting, and limit controls.
           </p>
         </div>
-
         <CSVUploadCard
           inputRef={inputRef}
           fileName={dataset.fileName}
@@ -139,67 +92,52 @@ export default function CSVExplorer() {
           rows={dataset.rows}
           onReplace={() => inputRef.current?.click()}
         />
-        {dataset.fileName && (
-          <SectionCard title="Visualization" subtitle="Choose how you want to visualize your data.">
-            <div className="flex flex-wrap gap-3">
-              {[
-                { value: 'bar', label: 'Bar chart', icon: 'bar_chart' },
-                { value: 'line', label: 'Line chart', icon: 'show_chart' },
-                { value: 'histogram', label: 'Histogram', icon: 'bar_chart' },
-              ].map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  aria-pressed={dataset.chartType === option.value}
-                  onClick={() => updateDataset('chartType')(option.value)}
-                  className={`flex items-center gap-2 rounded-sm border px-4 py-2.5 text-sm font-bold transition-colors ${
-                    dataset.chartType === option.value
-                      ? 'border-primary bg-primary text-white'
-                      : 'border-outline-variant bg-surface text-onSurface hover:bg-surface-high'
-                  }`}
-                >
-                  <Icon name={option.icon} size={18} />
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          </SectionCard>
-        )}
-        {dataset.chartType === 'bar' ? (
-          <CSVBarChart
-            fileName={dataset.fileName}
-            headers={dataset.headers}
-            chartData={dataset.chartData}
-            xColumn={dataset.xColumn}
-            xOptions={dataset.xOptions}
-            onXColumnChange={handleXColumnChange}
-            dimensionColumn={dataset.dimensionColumn}
-            yColumn={dataset.yColumn}
-            onYColumnChange={updateDataset('yColumn')}
-          />
-        ) : dataset.chartType === 'line' ? (
-          <CSVLineChart
-            fileName={dataset.fileName}
-            headers={dataset.headers}
-            chartData={dataset.chartData}
-            xColumn={dataset.xColumn}
-            xOptions={dataset.xOptions}
-            onXColumnChange={handleXColumnChange}
-            dimensionColumn={dataset.dimensionColumn}
-            yColumn={dataset.yColumn}
-            onYColumnChange={updateDataset('yColumn')}
-          />
-        ) : (
-          <CSVHistogram
-            fileName={dataset.fileName}
-            headers={dataset.headers}
-            chartData={dataset.chartData}
-            xColumn={dataset.xColumn}
-            xOptions={dataset.xOptions}
-            dimensionColumn={dataset.dimensionColumn}
-            yColumn={dataset.yColumn}
-            onYColumnChange={updateDataset('yColumn')}
-          />
+        {profile && (
+          <>
+            <SectionCard title="Dataset profile" subtitle="Automatically inferred from the uploaded values.">
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                {[
+                  ['Rows', formatNumber(profile.rowCount)],
+                  ['Columns', formatNumber(profile.columnCount)],
+                  ['Missing cells', formatNumber(profile.missingCells)],
+                  ['Numeric fields', formatNumber(profile.numericColumns.length)],
+                ].map(([label, value]) => (
+                  <div key={label} className="border border-outline-variant bg-surface-lowest p-4">
+                    <p className="text-xs font-bold uppercase tracking-wide text-onSurface-variant">{label}</p>
+                    <p className="mt-1 text-xl font-bold text-onSurface">{value}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 overflow-auto border border-outline-variant">
+                <table className="w-full min-w-[42rem] border-collapse text-left text-xs">
+                  <thead className="bg-surface-high"><tr><th className="px-3 py-2">Column</th><th className="px-3 py-2">Detected type</th><th className="px-3 py-2">Unique</th><th className="px-3 py-2">Missing</th><th className="px-3 py-2">Range / sample</th></tr></thead>
+                  <tbody>{profile.columns.map((column) => (
+                    <tr key={column.name} className="even:bg-surface-lowest">
+                      <td className="border-t border-outline-variant px-3 py-2 font-semibold">{column.name}</td>
+                      <td className="border-t border-outline-variant px-3 py-2 capitalize">{column.type}</td>
+                      <td className="border-t border-outline-variant px-3 py-2">{column.unique}</td>
+                      <td className="border-t border-outline-variant px-3 py-2">{column.missing}</td>
+                      <td className="border-t border-outline-variant px-3 py-2">{column.type === 'numeric' ? `${column.min} – ${column.max} (mean ${column.mean?.toFixed(2)})` : column.sample.join(', ') || '—'}</td>
+                    </tr>
+                  ))}</tbody>
+                </table>
+              </div>
+            </SectionCard>
+            <SectionCard title="Suggested starting point" subtitle={dataset.recommendation.reason}>
+              <div className="flex items-center gap-3 text-sm text-onSurface">
+                <Icon name={dataset.recommendation.chartType === 'table' ? 'table_view' : 'auto_graph'} size={24} color="#0051d5" />
+                <span>Recommended view: <strong className="capitalize">{dataset.recommendation.chartType}</strong>. All controls remain available below.</span>
+              </div>
+            </SectionCard>
+            <CSVChartEngine
+              key={dataset.fileName}
+              fileName={dataset.fileName}
+              headers={dataset.headers}
+              rows={dataset.rows}
+              profile={profile}
+              recommendation={dataset.recommendation}
+            />
+          </>
         )}
       </div>
     </DashboardLayout>
