@@ -12,6 +12,7 @@ export default function LineChart({
   height = 300,
   unit = "",
   xPadding = 70,
+  showZeroLine = false,
 }) {
   const [activeIndex, setActiveIndex] = useState(null);
 
@@ -107,7 +108,7 @@ export default function LineChart({
     >
       <svg
         viewBox={`0 0 ${VB_WIDTH} ${VB_HEIGHT}`}
-        preserveAspectRatio="xMidYMid meet"
+        preserveAspectRatio="none"
         className="min-h-0 w-full flex-1"
         style={{ height: "auto", display: "block", overflow: "visible" }}
       >
@@ -132,6 +133,18 @@ export default function LineChart({
             </g>
           );
         })}
+
+        {showZeroLine && chart.min <= 0 && chart.max >= 0 && (
+          <line
+            x1={xPadding}
+            y1={VB_HEIGHT - PADDING_Y - ((0 - chart.min) / (chart.max - chart.min || 1)) * (VB_HEIGHT - PADDING_Y * 2)}
+            x2={VB_WIDTH - xPadding}
+            y2={VB_HEIGHT - PADDING_Y - ((0 - chart.min) / (chart.max - chart.min || 1)) * (VB_HEIGHT - PADDING_Y * 2)}
+            stroke="#64748B"
+            strokeWidth="1.5"
+            strokeDasharray="5 4"
+          />
+        )}
 
         {/* Areas + Lines per series */}
         {chart.seriesData.map((s) => (

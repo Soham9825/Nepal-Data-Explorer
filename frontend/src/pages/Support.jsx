@@ -14,8 +14,8 @@ export default function Support() {
   ];
 
   const contacts = [
-    { icon: 'email', label: 'Email Support', value: 'support@nepaldata.gov.np', color: '#0051d5' },
-    { icon: 'phone', label: 'Helpline', value: '+977-1-4200000', color: '#7a5100' },
+    { icon: 'email', label: 'Email Support', value: 'nepaldataexplorer@gmail.com', color: '#0051d5' },
+    { icon: 'phone', label: 'Helpline', value: '+977-9805446836', color: '#7a5100' },
     { icon: 'chat', label: 'Live Chat', value: 'Available 9 AM – 5 PM NST', color: '#b70011' },
   ];
 

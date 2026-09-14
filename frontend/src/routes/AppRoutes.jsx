@@ -18,6 +18,7 @@ import ResetPassword from "../pages/ResetPassword";
 import Support from "../pages/Support";
 import NotFound from "../pages/NotFound";
 
+import CSVExplorer from "../pages/CSVExplorer";
 export default function AppRoutes() {
   return (
     <BrowserRouter>
@@ -117,6 +118,15 @@ export default function AppRoutes() {
               <Support />
             </ProtectedRoute>
           }
+        />
+
+       <Route
+        path="/csv-explorer"
+        element={
+          <ProtectedRoute>
+            <CSVExplorer />
+          </ProtectedRoute>
+        }
         />
 
         {/* Public route */}
