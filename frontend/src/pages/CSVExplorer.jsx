@@ -1,62 +1,124 @@
 import React, { useRef, useState } from 'react';
-import Papa from 'papaparse';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import CSVUploadCard from '../components/csv/CSVUploadCard';
-import CSVPreviewTable from '../components/csv/CSVPreviewTable';
+import CSVValidateStep from '../components/csv/CSVValidateStep';
 import CSVChartEngine from '../components/csv/CSVChartEngine';
 import { SectionCard } from '../components/ui/Card';
+import { BtnPrimary } from '../components/ui/Button';
 import { Icon } from '../components/ui/Icon';
+import { validateCSV } from '../components/csv/CSVUploadCard';
 import {
   profileDataset, recommendVisualization,
 } from '../components/csv/chartData';
 
 const EMPTY_DATASET = {
-  fileName: '', headers: [], rows: [], profile: null, recommendation: null,
+  fileName: '',
+  headers: [],
+  rows: [],
+  totalRowCount: 0,
+  isSampled: false,
+  loading: false,
+  profile: null,
+  warning: null,
+  error: null,
 };
 
-function formatNumber(value) {
-  return Number.isFinite(value) ? value.toLocaleString() : '—';
+const STEPS = [
+  { icon: 'cloud_upload', label: 'Upload' },
+  { icon: 'fact_check', label: 'Review & validate' },
+  { icon: 'auto_graph', label: 'Visualize' },
+];
+
+function Stepper({ current }) {
+  return (
+    <ol className="flex items-center gap-2 overflow-x-auto">
+      {STEPS.map((step, index) => {
+        const done = index < current;
+        const active = index === current;
+        return (
+          <li key={step.label} className={`flex items-center gap-2 ${index < STEPS.length - 1 ? 'flex-1' : 'flex-none'}`}>
+            <span
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
+                active ? 'bg-primary text-white' : done ? 'bg-primary/15 text-primary' : 'bg-surface-high text-onSurface-variant'
+              }`}
+            >
+              {done ? <Icon name="check" size={16} /> : index + 1}
+            </span>
+            <span className={`whitespace-nowrap text-sm font-semibold ${active ? 'text-onSurface' : done ? 'text-primary' : 'text-onSurface-variant'}`}>
+              {step.label}
+            </span>
+            {index < STEPS.length - 1 && <span className="mx-2 h-px flex-1 bg-outline-variant" />}
+          </li>
+        );
+      })}
+    </ol>
+  );
 }
 
 export default function CSVExplorer() {
   const inputRef = useRef(null);
+  const [step, setStep] = useState('upload');
   const [dataset, setDataset] = useState(EMPTY_DATASET);
-  const [error, setError] = useState('');
+  const [typeOverrides, setTypeOverrides] = useState({});
+  const [applied, setApplied] = useState(null);
 
-  const parseFile = (file) => {
+  const resetToUpload = () => {
+    setStep('upload');
+    setDataset(EMPTY_DATASET);
+    setTypeOverrides({});
+    setApplied(null);
+  };
+
+  const parseFile = async (file) => {
     if (!file) return;
-    setError('');
-    if (!file.name.toLowerCase().endsWith('.csv')) {
-      setError('Please upload a valid CSV file.');
-      return;
-    }
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: 'greedy',
-      dynamicTyping: false,
-      complete: ({ data, meta, errors }) => {
-        if (errors.length > 0 && !data.length) {
-          setError('This CSV could not be read. Please check its formatting and try again.');
-          return;
-        }
-        const headers = (meta.fields || []).map((header) => String(header).trim()).filter(Boolean);
-        const rows = data.filter((row) => row && Object.values(row).some((value) => String(value ?? '').trim() !== ''));
-        if (!headers.length || !rows.length) {
-          setError('The selected CSV does not contain any data to preview.');
-          return;
-        }
-        const profile = profileDataset(headers, rows);
+
+    setDataset({ ...EMPTY_DATASET, fileName: file.name, loading: true });
+    setTypeOverrides({});
+    setApplied(null);
+
+    try {
+      const result = await validateCSV(file);
+
+      if (!result.valid) {
         setDataset({
+          ...EMPTY_DATASET,
           fileName: file.name,
-          headers,
-          rows,
-          profile,
-          recommendation: recommendVisualization(profile),
+          error: result.message,
         });
-        if (errors.length) setError('Some malformed rows were skipped while reading this CSV.');
-      },
-      error: () => setError('Unable to read this file. Please choose a valid CSV file.'),
-    });
+        return;
+      }
+
+      const headers = (result.meta.fields || []).map((header) => String(header).trim()).filter(Boolean);
+      const rows = result.data.filter((row) => row && Object.values(row).some((value) => String(value ?? '').trim() !== ''));
+
+      if (!headers.length || !rows.length) {
+        setDataset({
+          ...EMPTY_DATASET,
+          fileName: file.name,
+          error: 'The CSV contains column headers but no data rows.',
+        });
+        return;
+      }
+
+      const profile = profileDataset(headers, rows);
+      setDataset({
+        fileName: file.name,
+        headers,
+        rows,
+        totalRowCount: rows.length,
+        isSampled: false,
+        loading: false,
+        profile,
+        warning: result.warning,
+      });
+      setStep('validate');
+    } catch (err) {
+      setDataset({
+        ...EMPTY_DATASET,
+        fileName: file.name,
+        error: 'Unable to read this file. Please choose a valid CSV file.',
+      });
+    }
   };
 
   const handleFileChange = (event) => {
@@ -64,79 +126,87 @@ export default function CSVExplorer() {
     event.target.value = '';
   };
 
-  const clearPreview = () => {
-    setDataset(EMPTY_DATASET);
-    setError('');
+  const handleOverride = (name, type) => {
+    setTypeOverrides((current) => {
+      const next = { ...current };
+      if (type) next[name] = type;
+      else delete next[name];
+      return next;
+    });
   };
 
-  const { profile } = dataset;
+  const buildChart = () => {
+    if (!dataset.profile) return;
+    const profile = profileDataset(dataset.headers, dataset.rows, typeOverrides);
+    const recommendation = recommendVisualization(profile);
+    setApplied({ profile, recommendation, key: `${dataset.fileName}:${JSON.stringify(typeOverrides)}` });
+    setStep('visualize');
+  };
+
+  const { loading } = dataset;
   return (
     <DashboardLayout pageTitle="CSV Explorer">
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-onSurface font-hanken">CSV Explorer</h1>
           <p className="mt-1 max-w-3xl text-sm text-onSurface-variant font-hanken">
-            Upload any CSV to profile its columns, inspect metadata, and build a chart with generic filter, grouping, aggregation, sorting, and limit controls.
+            Import any CSV file, review how its columns are interpreted, then build a chart from your own data.
           </p>
         </div>
-        <CSVUploadCard
-          inputRef={inputRef}
-          fileName={dataset.fileName}
-          error={error}
-          onClear={clearPreview}
-          onChange={handleFileChange}
-        />
-        <CSVPreviewTable
-          fileName={dataset.fileName}
-          headers={dataset.headers}
-          rows={dataset.rows}
-          onReplace={() => inputRef.current?.click()}
-        />
-        {profile && (
+        <Stepper current={step === 'upload' ? 0 : step === 'validate' ? 1 : 2} />
+
+        {step === 'upload' && (
+          <CSVUploadCard
+            inputRef={inputRef}
+            fileName={dataset.fileName}
+            error={dataset.error}
+            warning={dataset.warning}
+            loading={loading}
+            onChange={handleFileChange}
+            onClear={resetToUpload}
+          />
+        )}
+
+        {step === 'validate' && dataset.profile && (
+          <CSVValidateStep
+            fileName={dataset.fileName}
+            headers={dataset.headers}
+            rows={dataset.rows}
+            totalRowCount={dataset.totalRowCount}
+            isSampled={dataset.isSampled}
+            warning={dataset.warning}
+            columns={dataset.profile.columns}
+            overrides={typeOverrides}
+            onOverride={handleOverride}
+            onBack={resetToUpload}
+            onNext={buildChart}
+          />
+        )}
+
+        {step === 'visualize' && applied && (
           <>
-            <SectionCard title="Dataset profile" subtitle="Automatically inferred from the uploaded values.">
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                {[
-                  ['Rows', formatNumber(profile.rowCount)],
-                  ['Columns', formatNumber(profile.columnCount)],
-                  ['Missing cells', formatNumber(profile.missingCells)],
-                  ['Numeric fields', formatNumber(profile.numericColumns.length)],
-                ].map(([label, value]) => (
-                  <div key={label} className="border border-outline-variant bg-surface-lowest p-4">
-                    <p className="text-xs font-bold uppercase tracking-wide text-onSurface-variant">{label}</p>
-                    <p className="mt-1 text-xl font-bold text-onSurface">{value}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-4 overflow-auto border border-outline-variant">
-                <table className="w-full min-w-[42rem] border-collapse text-left text-xs">
-                  <thead className="bg-surface-high"><tr><th className="px-3 py-2">Column</th><th className="px-3 py-2">Detected type</th><th className="px-3 py-2">Unique</th><th className="px-3 py-2">Missing</th><th className="px-3 py-2">Range / sample</th></tr></thead>
-                  <tbody>{profile.columns.map((column) => (
-                    <tr key={column.name} className="even:bg-surface-lowest">
-                      <td className="border-t border-outline-variant px-3 py-2 font-semibold">{column.name}</td>
-                      <td className="border-t border-outline-variant px-3 py-2 capitalize">{column.type}</td>
-                      <td className="border-t border-outline-variant px-3 py-2">{column.unique}</td>
-                      <td className="border-t border-outline-variant px-3 py-2">{column.missing}</td>
-                      <td className="border-t border-outline-variant px-3 py-2">{column.type === 'numeric' ? `${column.min} – ${column.max} (mean ${column.mean?.toFixed(2)})` : column.sample.join(', ') || '—'}</td>
-                    </tr>
-                  ))}</tbody>
-                </table>
-              </div>
-            </SectionCard>
-            <SectionCard title="Suggested starting point" subtitle={dataset.recommendation.reason}>
+            <SectionCard title="Suggested starting point" subtitle={applied.recommendation.reason}>
               <div className="flex items-center gap-3 text-sm text-onSurface">
-                <Icon name={dataset.recommendation.chartType === 'table' ? 'table_view' : 'auto_graph'} size={24} color="#0051d5" />
-                <span>Recommended view: <strong className="capitalize">{dataset.recommendation.chartType}</strong>. All controls remain available below.</span>
+                <Icon name={applied.recommendation.chartType === 'table' ? 'table_view' : 'auto_graph'} size={24} color="#0051d5" />
+                <span>
+                  Recommended view: <strong className="capitalize">{applied.recommendation.chartType}</strong>. All controls remain available below.
+                </span>
               </div>
             </SectionCard>
             <CSVChartEngine
-              key={dataset.fileName}
+              key={applied.key}
               fileName={dataset.fileName}
               headers={dataset.headers}
               rows={dataset.rows}
-              profile={profile}
-              recommendation={dataset.recommendation}
+              profile={applied.profile}
+              recommendation={applied.recommendation}
             />
+            <div className="flex justify-end">
+              <BtnPrimary onClick={() => setStep('validate')}>
+                <Icon name="arrow_back" size={16} />
+                Back to review
+              </BtnPrimary>
+            </div>
           </>
         )}
       </div>
