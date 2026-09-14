@@ -1,5 +1,7 @@
 # Dependencies
 node_modules/
+.vscode/
+.idea/
 
 # Build output
 dist/
@@ -7,6 +9,11 @@ dist/
 # Environment files
 .env
 .env.local
+.env.example.keep
+
+# Databases (never commit local data)
+*.sqlite3
+backend/db.sqlite3
 
 # Logs
 *.log
@@ -15,6 +22,7 @@ dist/
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.venv/
 
 # macOS files
 .DS_Store
