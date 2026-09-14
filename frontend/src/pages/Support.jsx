@@ -41,6 +41,9 @@ export default function Support() {
       throw new Error('We could not connect to support right now. Please try again.');
     }
     const result = await response.json();
+    if (response.status === 401 || response.status === 403) {
+      throw new Error('Your session has expired. Please sign in again before sending a message.');
+    }
     if (!response.ok) throw new Error(result.message || result.detail || 'We could not send your message. Please try again.');
     return result;
   };
@@ -51,6 +54,9 @@ export default function Support() {
     setFeedback(null);
     try {
       const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      if (!auth.getAccessToken()) {
+        throw new Error('Please sign in again before sending a message.');
+      }
       const csrfResponse = await fetch(`${apiBaseUrl}/accounts/api/csrf/`, { credentials: 'include' });
       const csrf = await readJsonResponse(csrfResponse);
       const response = await fetch(`${apiBaseUrl}/accounts/api/support/`, {

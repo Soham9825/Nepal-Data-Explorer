@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import login as auth_login, logout as auth_logout, authenticate
 from django.contrib.auth.hashers import check_password, make_password
 from .models import CustomUser, PasswordResetOTP, VerifiedEmail
-from django.core.mail import send_mail
+from django.core.mail import EmailMessage, send_mail
 from smtplib import SMTPException
 from socket import error as SocketError
 from functools import wraps
@@ -419,15 +419,14 @@ def api_support_message(request):
         return JsonResponse(moderation.as_dict(), status=400)
 
     try:
-        send_mail(
+        EmailMessage(
             subject=f'Support message: {subject}',
-            message=f'From: {name} <{email}>\n\n{message}',
+            body=f'From: {name} <{email}>\n\n{message}',
             from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[settings.DEFAULT_FROM_EMAIL],
+            to=[settings.DEFAULT_FROM_EMAIL],
             reply_to=[email],
-            fail_silently=False,
-        )
-    except (SMTPException, OSError, SocketError):
+        ).send(fail_silently=False)
+    except Exception:
         logger.exception('Could not send support message')
         return JsonResponse({'detail': 'Could not send your message right now.'}, status=503)
     return JsonResponse(moderation.as_dict())
