@@ -5,7 +5,7 @@ import { Icon } from '../ui/Icon';
 
 const PREVIEW_PAGE_SIZE = 10;
 
-export default function CSVPreviewTable({ fileName, headers, rows, onReplace }) {
+export default function CSVPreviewTable({ fileName, headers, rows, totalRowCount, isSampled, onReplace }) {
   const [page, setPage] = useState(1);
   useEffect(() => setPage(1), [fileName, rows]);
   const pageCount = Math.max(1, Math.ceil(rows.length / PREVIEW_PAGE_SIZE));
@@ -13,11 +13,12 @@ export default function CSVPreviewTable({ fileName, headers, rows, onReplace }) 
     () => rows.slice((page - 1) * PREVIEW_PAGE_SIZE, page * PREVIEW_PAGE_SIZE),
     [rows, page],
   );
+  const rowCount = totalRowCount ?? rows.length;
   return (
     <SectionCard
       title="Data preview"
       subtitle={fileName
-        ? `${headers.length} columns · ${rows.length} rows · Page ${page} of ${pageCount}`
+        ? `${headers.length} columns · ${rowCount.toLocaleString()} rows${isSampled ? ` · showing the first ${rows.length.toLocaleString()} for exploration` : ''} · Page ${page} of ${pageCount}`
         : 'Your uploaded data will appear here.'}
       action={fileName && <BtnPrimary onClick={onReplace}>Replace file</BtnPrimary>}
     >

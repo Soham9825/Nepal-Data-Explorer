@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { downloadCSV } from '../utils/download';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import { SectionCard } from '../components/ui/Card';
 import { BtnPrimary } from '../components/ui/Button';
@@ -45,6 +46,8 @@ export default function Compare() {
   const [comparison, setComparison] = useState(null);
   const [done, setDone] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [overlay, setOverlay] = useState(false); // Normalized overlay (both series scaled to start = 100).
+  const chartAreaRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -69,6 +72,20 @@ export default function Compare() {
   const periodDescription = comparison?.data?.length
     ? `${comparison.data[0].period} to ${comparison.data.at(-1).period}`
     : 'the selected periods';
+
+  // Index both series to a common base (start = 100) so trends are comparable
+  // even when the two series have very different magnitudes.
+  const normalizedData = useMemo(() => {
+    const rows = comparison?.data || [];
+    if (!rows.length) return [];
+    const baseA = Number(rows.find((d) => Number(d.a))?.a) || 1;
+    const baseB = Number(rows.find((d) => Number(d.b))?.b) || 1;
+    return rows.map((d) => ({
+      period: d.period,
+      a: (Number(d.a) / baseA) * 100,
+      b: (Number(d.b) / baseB) * 100,
+    }));
+  }, [comparison]);
 
   useEffect(() => {
     fetch(`${apiBaseUrl}/api/analytics/compare/catalog/`)
@@ -192,30 +209,69 @@ export default function Compare() {
         )}
 
         {done && (
-          <div className={isFullscreen ? 'fixed inset-0 z-50 overflow-y-auto bg-background p-6 lg:p-10' : 'space-y-6'}>
+          <div ref={chartAreaRef} className={isFullscreen ? 'fixed inset-0 z-50 overflow-y-auto bg-background p-6 lg:p-10' : 'space-y-6'}>
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <h3 className="text-xl font-bold text-onSurface">Comparison Visualization</h3>
                 <p className="text-sm text-onSurface-variant">{seriesLabel(a)} vs {seriesLabel(b)}</p>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsFullscreen((value) => !value)}
-                className="flex items-center gap-2 rounded-sm border border-outline-variant bg-white px-4 py-2 text-sm font-semibold text-onSurface transition-colors hover:bg-surface-container-highest"
-                aria-label={isFullscreen ? 'Exit fullscreen' : 'View comparison fullscreen'}
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => downloadCSV(comparison?.data || [], `compare-${a}-${b}.csv`)}
+                  className="flex items-center gap-2 rounded-sm border border-outline-variant bg-white px-4 py-2 text-sm font-semibold text-onSurface transition-colors hover:bg-surface-container-highest"
+                  title="Download comparison data as CSV"
+                >
+                  <Icon name="download" size={18} color="#007a4d" />
+                  CSV
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOverlay((value) => !value)}
+                  className="flex items-center gap-2 rounded-sm border border-outline-variant bg-white px-4 py-2 text-sm font-semibold text-onSurface transition-colors hover:bg-surface-container-highest"
+                  aria-pressed={overlay}
+                  title="Overlay both series on one chart, scaled to start = 100"
+                >
+                  <Icon name="show_chart" size={18} color="#0051d5" />
+                  {overlay ? 'Separate charts' : 'Overlay (start = 100)'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsFullscreen((value) => !value)}
+                  className="flex items-center gap-2 rounded-sm border border-outline-variant bg-white px-4 py-2 text-sm font-semibold text-onSurface transition-colors hover:bg-surface-container-highest"
+                  aria-label={isFullscreen ? 'Exit fullscreen' : 'View comparison fullscreen'}
+                >
+                  <Icon name={isFullscreen ? 'fullscreen_exit' : 'fullscreen'} size={18} color="#0051d5" />
+                  {isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+                </button>
+              </div>
+            </div>
+            {overlay ? (
+              <SectionCard
+                title={`${seriesLabel(a)} vs ${seriesLabel(b)} — normalized overlay`}
+                subtitle="Both series scaled to start = 100 so trends are directly comparable"
+                className="rounded-sm"
               >
-                <Icon name={isFullscreen ? 'fullscreen_exit' : 'fullscreen'} size={18} color="#0051d5" />
-                {isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
-              </button>
-            </div>
-            <div className="grid grid-cols-2 gap-6">
-              <SectionCard title={seriesLabel(a)} subtitle={`${dataset?.period_label} · ${dataset?.value_label}`} className="rounded-sm">
-                <LineChart data={comparison?.data || []} xKey="period" series={[{ key: 'a', color: '#0051d5', label: seriesLabel(a) }]} />
+                <LineChart
+                  data={normalizedData}
+                  xKey="period"
+                  series={[
+                    { key: 'a', color: '#0051d5', label: seriesLabel(a) },
+                    { key: 'b', color: '#b70011', label: seriesLabel(b) },
+                  ]}
+                  height={384}
+                />
               </SectionCard>
-              <SectionCard title={seriesLabel(b)} subtitle={`${dataset?.period_label} · ${dataset?.value_label}`} className="rounded-sm">
-                <LineChart data={comparison?.data || []} xKey="period" series={[{ key: 'b', color: '#b70011', label: seriesLabel(b) }]} />
-              </SectionCard>
-            </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-6">
+                <SectionCard title={seriesLabel(a)} subtitle={`${dataset?.period_label} · ${dataset?.value_label}`} className="rounded-sm">
+                  <LineChart data={comparison?.data || []} xKey="period" series={[{ key: 'a', color: '#0051d5', label: seriesLabel(a) }]} height={384} />
+                </SectionCard>
+                <SectionCard title={seriesLabel(b)} subtitle={`${dataset?.period_label} · ${dataset?.value_label}`} className="rounded-sm">
+                  <LineChart data={comparison?.data || []} xKey="period" series={[{ key: 'b', color: '#b70011', label: seriesLabel(b) }]} height={384} />
+                </SectionCard>
+              </div>
+            )}
 
             <div className="grid grid-cols-[1fr_2fr] gap-6">
               <SectionCard title="Correlation Score" subtitle={`Pearson r · ${comparison?.data?.length || 0} shared periods`} className="rounded-sm">
