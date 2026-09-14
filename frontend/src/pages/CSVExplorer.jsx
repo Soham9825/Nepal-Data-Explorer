@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import DashboardLayout from '../components/layout/DashboardLayout';
-import CSVUploadCard from '../components/csv/CSVUploadCard';
+import CSVUploadCard, { validateCSVOnServer } from '../components/csv/CSVUploadCard';
 import CSVValidateStep from '../components/csv/CSVValidateStep';
 import CSVChartEngine from '../components/csv/CSVChartEngine';
 import { SectionCard } from '../components/ui/Card';
@@ -77,6 +77,7 @@ export default function CSVExplorer() {
     setApplied(null);
 
     try {
+      const serverValidation = await validateCSVOnServer(file);
       const result = await validateCSV(file);
 
       if (!result.valid) {
@@ -109,7 +110,7 @@ export default function CSVExplorer() {
         isSampled: false,
         loading: false,
         profile,
-        warning: result.warning,
+          warning: [...(result.warning ? [result.warning] : []), ...(serverValidation.warnings || [])].join(' ') || null,
       });
       setStep('validate');
     } catch (err) {

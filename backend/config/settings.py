@@ -196,6 +196,15 @@ EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default=EMAIL_HOST_USER)
+TOXICITY_MODEL_PATH = BASE_DIR / 'analytics' / 'ml' / 'toxicity_model'
+TOXICITY_BLOCK_THRESHOLD = config('TOXICITY_BLOCK_THRESHOLD', default=0.85, cast=float)
+TOXICITY_WARNING_THRESHOLD = config('TOXICITY_WARNING_THRESHOLD', default=0.50, cast=float)
+TOXICITY_LABELS = {'toxic', 'toxicity', 'label_1'}
+CSV_UPLOAD_MAX_BYTES = 100 * 1024 * 1024
+CSV_UPLOAD_MAX_ROWS = 250000
+CSV_UPLOAD_MAX_COLUMNS = 5000
+PROFANITY_WORDS = {'randi', 'muji', 'machikne', 'khatey', 'besya', 'bitch', 'bastard', 'fuck', 'fucker', 'motherfucker', 'asshole', 'idiot', 'moron'}
+PROFANITY_PHRASES = {'randi ko ban', 'machikne ko ban'}
 FRONTEND_URL = config('FRONTEND_URL')
 GOOGLE_CLIENT_ID = config('GOOGLE_CLIENT_ID', default='')
 GOOGLE_CLIENT_SECRET = config('GOOGLE_CLIENT_SECRET', default='')
