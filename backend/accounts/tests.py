@@ -27,9 +27,9 @@ class ModerationTests(TestCase):
 	def test_similar_normal_words_are_not_profane(self):
 		self.assertFalse(find_profanity('The brand image and candidate ranking are useful.'))
 
-	@patch('accounts.views.send_mail')
+	@patch('accounts.views.EmailMessage')
 	@patch('accounts.views.moderate_message')
-	def test_support_uses_authenticated_email(self, mock_moderate, mock_send_mail):
+	def test_support_uses_authenticated_email(self, mock_moderate, mock_email):
 		mock_moderate.return_value.as_dict.return_value = {
 			'allowed': True, 'status': 'allowed', 'message': 'Message accepted.',
 		}
@@ -38,7 +38,8 @@ class ModerationTests(TestCase):
 			'name': 'A User', 'email': 'attacker@example.com', 'subject': 'Question', 'message': 'Hello there',
 		}, content_type='application/json')
 		self.assertEqual(response.status_code, 200)
-		self.assertEqual(mock_send_mail.call_args.kwargs['reply_to'], [self.user.email])
+		self.assertEqual(mock_email.call_args.kwargs['reply_to'], [self.user.email])
+		mock_email.return_value.send.assert_called_once_with(fail_silently=False)
 
 	@patch('accounts.views.send_mail')
 	@patch('accounts.views.moderate_message')
@@ -54,9 +55,9 @@ class ModerationTests(TestCase):
 		mock_send_mail.assert_not_called()
 
 	@override_settings(DEFAULT_FROM_EMAIL='nepaldataexplorer@gmail.com')
-	@patch('accounts.views.send_mail')
+	@patch('accounts.views.EmailMessage')
 	@patch('accounts.views.moderate_message')
-	def test_support_sends_after_moderation_with_reply_to_user(self, mock_moderate, mock_send_mail):
+	def test_support_sends_after_moderation_with_reply_to_user(self, mock_moderate, mock_email):
 		mock_moderate.return_value.as_dict.return_value = {
 			'allowed': True, 'status': 'allowed', 'message': 'Message accepted.',
 		}
@@ -65,6 +66,8 @@ class ModerationTests(TestCase):
 			'name': 'A User', 'email': 'attacker@example.com', 'subject': 'Question', 'message': 'Hello there',
 		}, content_type='application/json')
 		self.assertEqual(response.status_code, 200)
-		mock_send_mail.assert_called_once()
-		self.assertEqual(mock_send_mail.call_args.kwargs['recipient_list'], ['nepaldataexplorer@gmail.com'])
-		self.assertEqual(mock_send_mail.call_args.kwargs['reply_to'], [self.user.email])
+		mock_email.assert_called_once()
+		self.assertEqual(mock_email.call_args.kwargs['to'], ['nepaldataexplorer@gmail.com'])
+		self.assertIn('Hello there', mock_email.call_args.kwargs['body'])
+		self.assertEqual(mock_email.call_args.kwargs['reply_to'], [self.user.email])
+		mock_email.return_value.send.assert_called_once_with(fail_silently=False)
