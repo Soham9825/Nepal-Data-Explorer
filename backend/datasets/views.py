@@ -1,8 +1,13 @@
 import csv
 from pathlib import Path
 
-from django.conf import settings
 from django.http import FileResponse, JsonResponse
+from rest_framework.decorators import api_view, parser_classes, permission_classes
+from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.permissions import IsAuthenticated
+from django.conf import settings
+
+from .csv_validation import CSVValidationError, validate_csv
 
 from .models import (
 	DashboardForecast,
@@ -81,6 +86,25 @@ def download_csv(request):
 		return JsonResponse({"detail": "CSV file not found."}, status=404)
 
 	return FileResponse(path.open("rb"), as_attachment=True, filename=path.name, content_type="text/csv")
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])
+def validate_uploaded_csv(request):
+	upload = request.FILES.get("file")
+	if upload is None:
+		return JsonResponse({"detail": "A CSV file is required."}, status=400)
+	try:
+		result = validate_csv(
+			upload,
+			max_bytes=getattr(settings, "CSV_UPLOAD_MAX_BYTES", 100 * 1024 * 1024),
+			max_rows=getattr(settings, "CSV_UPLOAD_MAX_ROWS", 250000),
+			max_columns=getattr(settings, "CSV_UPLOAD_MAX_COLUMNS", 5000),
+		)
+	except CSVValidationError as error:
+		return JsonResponse({"valid": False, "detail": error.message}, status=400)
+	return JsonResponse(result)
 
 
 def dashboard_catalog(request):

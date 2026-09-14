@@ -33,6 +33,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 import logging
+from analytics.ml.moderation import moderate_message
 
 
 logger = logging.getLogger(__name__)
@@ -396,6 +397,40 @@ def api_password_reset_confirm(request):
     user.set_password(password)
     user.save(update_fields=['password'])
     return JsonResponse({'detail': 'Password reset successfully.'})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def api_support_message(request):
+    data = request.data
+    name = (data or {}).get('name', '').strip()
+    email = request.user.email.strip()
+    subject = (data or {}).get('subject', '').strip()
+    message = (data or {}).get('message', '').strip()
+    if not name or not subject or not message:
+        return JsonResponse({'detail': 'Name, subject, and message are required.'}, status=400)
+    try:
+        validate_email(email)
+    except ValidationError:
+        return JsonResponse({'detail': 'A valid email address is required.'}, status=400)
+
+    moderation = moderate_message(message)
+    if not moderation.allowed:
+        return JsonResponse(moderation.as_dict(), status=400)
+
+    try:
+        send_mail(
+            subject=f'Support message: {subject}',
+            message=f'From: {name} <{email}>\n\n{message}',
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[settings.DEFAULT_FROM_EMAIL],
+            reply_to=[email],
+            fail_silently=False,
+        )
+    except (SMTPException, OSError, SocketError):
+        logger.exception('Could not send support message')
+        return JsonResponse({'detail': 'Could not send your message right now.'}, status=503)
+    return JsonResponse(moderation.as_dict())
 
 
 OAUTH_PROVIDERS = {

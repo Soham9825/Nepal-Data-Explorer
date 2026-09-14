@@ -1,20 +1,67 @@
-# Dependencies
-node_modules/
-
-# Build output
-dist/
-
-# Environment files
-.env
-.env.local
-
-# Logs
-*.log
-
-# Python caches and test artifacts
+# Python environments and caches
+venv/
+.venv/
+env/
 __pycache__/
 *.py[cod]
 .pytest_cache/
 
-# macOS files
+# Django local data and environment secrets
+db.sqlite3
+.env
+.env.*
+!.env.example
+
+# Node dependencies and build output
+node_modules/
+dist/
+build/
+.vite/
+
+# Machine learning weights, local model directories, and generated forecasts
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.onnx
+/backend/analytics/ml/toxicity_model/
+!/backend/analytics/ml/toxicity_model/
+!/backend/analytics/ml/toxicity_model/config.json
+!/backend/analytics/ml/toxicity_model/tokenizer.json
+!/backend/analytics/ml/toxicity_model/tokenizer_config.json
+/backend/analytics/ml/**/models/
+/backend/analytics/ml/**/artifacts/
+/backend/analytics/ml/**/forecasts/
+/backend/analytics/ml/**/*forecast*.csv
+
+# IDE and operating-system files
+.vscode/
+.idea/
 .DS_Store
+
+# Logs, coverage, and local configuration
+*.log
+.coverage
+htmlcov/
+*.local
+*.secret
+*.secrets
+secrets.*
+credentials.*
+*credentials*
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+*.der
+*apikey*
+*api_key*
+*token*
+
+# Required lightweight toxicity model metadata
+!/backend/analytics/ml/toxicity_model/
+!/backend/analytics/ml/toxicity_model/config.json
+!/backend/analytics/ml/toxicity_model/tokenizer.json
+!/backend/analytics/ml/toxicity_model/tokenizer_config.json
