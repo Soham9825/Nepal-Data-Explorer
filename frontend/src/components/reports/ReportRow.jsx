@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { Tag } from '../ui/Tag';
 import { Icon } from '../ui/Icon';
 import { BtnOutline } from '../ui/Button';

@@ -1,8 +1,14 @@
-import React from 'react';
+import { useState } from 'react';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import { SectionCard } from '../components/ui/Card';
 import { BtnPrimary } from '../components/ui/Button';
 import { Icon } from '../components/ui/Icon';
+
+const SUPPORT_EMAIL = 'nepaldataexplorer@gmail.com';
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const inputClass =
+  "w-full px-4 py-3 border border-outline-variant font-sans text-sm text-onSurface bg-surface-lowest outline-none rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-hanken";
 
 export default function Support() {
   const faqs = [
@@ -14,10 +20,42 @@ export default function Support() {
   ];
 
   const contacts = [
-    { icon: 'email', label: 'Email Support', value: 'nepaldataexplorer@gmail.com', color: '#0051d5' },
+    { icon: 'email', label: 'Email Support', value: SUPPORT_EMAIL, color: '#0051d5' },
     { icon: 'phone', label: 'Helpline', value: '+977-9805446836', color: '#7a5100' },
     { icon: 'chat', label: 'Live Chat', value: 'Available 9 AM – 5 PM NST', color: '#b70011' },
   ];
+
+  const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' });
+  const [status, setStatus] = useState(null);
+
+  const handleChange = (e) => setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const { name, email, subject, message } = form;
+
+    if (!name.trim() || !email.trim() || !subject.trim() || !message.trim()) {
+      setStatus({ type: 'error', text: 'Please fill in all fields before sending.' });
+      return;
+    }
+    if (!EMAIL_RE.test(email.trim())) {
+      setStatus({ type: 'error', text: 'Please enter a valid email address.' });
+      return;
+    }
+
+    const body = `Name: ${name}\nEmail: ${email}\n\n${message}`;
+    const mailto = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+    navigator.clipboard?.writeText(`${subject}\n\n${body}`).catch(() => {});
+    const anchor = document.createElement('a');
+    anchor.href = mailto;
+    anchor.click();
+
+    setStatus({
+      type: 'success',
+      text: `Opening your email app to send to ${SUPPORT_EMAIL}. Your message was also copied to the clipboard as a backup.`,
+    });
+  };
 
   return (
     <DashboardLayout pageTitle="Support & Help">
@@ -75,38 +113,61 @@ export default function Support() {
         {/* Contact Form - Full Width */}
         <SectionCard 
           title="Send a Message" 
-          subtitle="We typically respond within 1 business day"
+          subtitle={`We typically respond within 1 business day — messages go to ${SUPPORT_EMAIL}`}
           className="w-full"
         >
-          <div className="w-full">
-            <div className="flex flex-col gap-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input 
-                  placeholder="Full Name" 
-                  className="w-full px-4 py-3 border border-outline-variant font-sans text-sm text-onSurface bg-surface-lowest outline-none rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-hanken"
-                />
-                <input 
-                  placeholder="Email Address" 
-                  className="w-full px-4 py-3 border border-outline-variant font-sans text-sm text-onSurface bg-surface-lowest outline-none rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-hanken"
-                />
-              </div>
-              <input 
-                placeholder="Subject" 
-                className="w-full px-4 py-3 border border-outline-variant font-sans text-sm text-onSurface bg-surface-lowest outline-none rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-hanken"
+          <form className="w-full flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <input
+                name="name"
+                value={form.name}
+                onChange={handleChange}
+                placeholder="Full Name"
+                className={inputClass}
               />
-              <textarea 
-                placeholder="Describe your issue or question..." 
-                rows={5} 
-                className="w-full px-4 py-3 border border-outline-variant font-sans text-sm text-onSurface bg-surface-lowest outline-none rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-y font-hanken"
+              <input
+                type="email"
+                name="email"
+                value={form.email}
+                onChange={handleChange}
+                placeholder="Email Address"
+                className={inputClass}
               />
-              <div>
-                <BtnPrimary className="px-6 py-3">
-                  <Icon name="send" size={18} color="#fff" /> 
-                  Send Message
-                </BtnPrimary>
-              </div>
             </div>
-          </div>
+            <input
+              name="subject"
+              value={form.subject}
+              onChange={handleChange}
+              placeholder="Subject"
+              className={inputClass}
+            />
+            <textarea 
+              name="message"
+              value={form.message}
+              onChange={handleChange}
+              placeholder="Describe your issue or question..." 
+              rows={5} 
+              className={`${inputClass} resize-y`}
+            />
+            {status && (
+              <div
+                role="status"
+                className={`text-sm font-hanken px-4 py-3 border-l-4 ${
+                  status.type === 'success'
+                    ? 'border-[#0f7a3d] bg-[#0f7a3d]/5 text-[#0f7a3d]'
+                    : 'border-[#b70011] bg-[#b70011]/5 text-[#b70011]'
+                }`}
+              >
+                {status.text}
+              </div>
+            )}
+            <div>
+              <BtnPrimary className="px-6 py-3">
+                <Icon name="send" size={18} color="#fff" /> 
+                Send Message
+              </BtnPrimary>
+            </div>
+          </form>
         </SectionCard>
       </div>
     </DashboardLayout>

@@ -70,7 +70,7 @@ export function parseDateValue(value) {
   const text = String(value).trim();
 
   // FY patterns: "FY2024", "FY 2024/25", "2024/25", "2024-25"
-  const fyMatch = text.match(/^(?:fy\s?)?(\d{2,4})\s*[/\-]\s*(\d{2,4})$/i);
+  const fyMatch = text.match(/^(?:fy\s?)?(\d{2,4})\s*[/-]\s*(\d{2,4})$/i);
   if (fyMatch) {
     const startYear = fyMatch[1].length === 2 ? 2000 + Number(fyMatch[1]) : Number(fyMatch[1]);
     return new Date(startYear, 3, 1); // April 1 of start year (Indian FY)
@@ -104,7 +104,7 @@ export function parseDateValue(value) {
   if (monthIdx >= 0) return new Date(2000, monthIdx, 1);
 
   // Month + Year: "Jan 2024", "January 2024", "Jan-2024"
-  const monthYearMatch = text.match(/^([a-z]{3,9})\s*[\-/]?\s*(\d{4})$/i);
+  const monthYearMatch = text.match(/^([a-z]{3,9})\s*[/-]?\s*(\d{4})$/i);
   if (monthYearMatch) {
     const mi = MONTH_NAMES.indexOf(monthYearMatch[1].toLowerCase());
     const mi2 = MONTH_ABBR.indexOf(monthYearMatch[1].toLowerCase().slice(0, 3));
@@ -113,7 +113,7 @@ export function parseDateValue(value) {
   }
 
   // ISO-like: "2024-01-15", "2024/01/15"
-  if (/^\d{4}[/\-]\d{1,2}[/\-]\d{1,2}$/.test(text)) {
+  if (/^\d{4}[/-]\d{1,2}[/-]\d{1,2}$/.test(text)) {
     const parsed = new Date(text);
     return Number.isNaN(parsed.getTime()) ? null : parsed;
   }

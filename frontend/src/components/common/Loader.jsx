@@ -1,4 +1,3 @@
-import React from 'react';
 
 export default function Loader({ size = 'md', fullScreen = false }) {
   const sizeClasses = {

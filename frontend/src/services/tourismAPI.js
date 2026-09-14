@@ -1,6 +1,7 @@
 import { auth } from './auth';
+import { API_BASE_URL } from '../config';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/analytics';
+const ANALYTICS_API = `${API_BASE_URL}/api/analytics`;
 
 export const tourismAPI = {
   /**
@@ -9,7 +10,7 @@ export const tourismAPI = {
    */
   getDashboardData: async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/tourism/`, {
+      const response = await fetch(`${ANALYTICS_API}/tourism/`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -37,7 +38,7 @@ export const tourismAPI = {
    */
   getOverview: async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/dashboard/`, {
+      const response = await fetch(`${ANALYTICS_API}/dashboard/`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -60,7 +61,7 @@ export const tourismAPI = {
    */
   getDataByYear: async (year) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/tourism/year/${year}/`, {
+      const response = await fetch(`${ANALYTICS_API}/tourism/year/${year}/`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -87,8 +88,8 @@ export const tourismAPI = {
     try {
       const queryParams = new URLSearchParams(filters).toString();
       const url = queryParams 
-        ? `${API_BASE_URL}/tourism/?${queryParams}`
-        : `${API_BASE_URL}/tourism/`;
+        ? `${ANALYTICS_API}/tourism/?${queryParams}`
+        : `${ANALYTICS_API}/tourism/`;
       
       const response = await fetch(url, {
         method: 'GET',

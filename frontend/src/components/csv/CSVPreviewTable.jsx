@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { SectionCard } from '../ui/Card';
 import { BtnPrimary } from '../ui/Button';
 import { Icon } from '../ui/Icon';

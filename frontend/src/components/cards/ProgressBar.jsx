@@ -1,7 +1,6 @@
 // ============================================================
 // src/components/cards/ProgressBar.jsx
 // ============================================================
-import React from 'react';
 
 export default function ProgressBar({ name, population, pct, color }) {
   return (

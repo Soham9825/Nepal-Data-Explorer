@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import Papa from 'papaparse';
 import { SectionCard } from '../ui/Card';
 import { BtnOutline } from '../ui/Button';
@@ -6,7 +6,6 @@ import { Icon } from '../ui/Icon';
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024;
 const MAX_COLUMNS = 5000;
-const VALID_CSV_EXTENSIONS = ['.csv', '.tsv'];
 const BINARY_SIGNATURES = [
   [0x89, 0x50, 0x4E, 0x47], // PNG
   [0xFF, 0xD8, 0xFF],       // JPEG

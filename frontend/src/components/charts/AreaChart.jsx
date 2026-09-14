@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from 'react';
 
 export default function AreaChart({
   data = [],
@@ -270,16 +270,12 @@ export default function AreaChart({
 
       {/* X LABEL */}
       <div className="flex justify-between px-12 text-xs text-gray-500">
-
         {data.map((d,i)=>(
           <span key={i}>
             {d[xKey]}
           </span>
         ))}
-
       </div>
-
-
     </div>
   );
 }

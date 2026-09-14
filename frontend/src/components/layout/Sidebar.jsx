@@ -2,7 +2,6 @@
 // src/layout/Sidebar.jsx
 // ============================================================
 
-import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import UserCard from "../common/UserCard";
 
@@ -68,7 +67,9 @@ export default function Sidebar({ user = DEFAULT_USER, onLogout, collapsed, onTo
         {!collapsed && <p className="px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-onSurface-variant opacity-60">Menu</p>}
 
         {navItems.map((item) => {
+          const isNational = item.id === "national";
           const isActive =
+            (isNational && (currentPath === "/" || currentPath === "/national")) ||
             currentPath === item.path ||
             (item.path !== "/" && currentPath.startsWith(item.path));
 
@@ -77,7 +78,13 @@ export default function Sidebar({ user = DEFAULT_USER, onLogout, collapsed, onTo
               key={item.id}
               to={item.path}
               title={collapsed ? item.label : undefined}
-              className={`flex items-center rounded-lg py-3 text-sm font-medium transition-all duration-200 ${collapsed ? "justify-center px-2" : "gap-3 px-4"} ${
+              className={`flex items-center py-3 text-sm font-medium transition-all duration-200 ${collapsed ? "justify-center px-2" : "gap-3 px-4"} ${
+                collapsed
+                  ? "rounded-none"
+                  : isActive
+                    ? "rounded-none"
+                    : "rounded-lg"
+              } ${
                 isActive
                   ? "bg-primary text-white"
                   : "text-onSurface-variant hover:bg-surface-container-lowest hover:text-onSurface"
@@ -88,7 +95,7 @@ export default function Sidebar({ user = DEFAULT_USER, onLogout, collapsed, onTo
               </span>
               {!collapsed && <span className="truncate">{item.label}</span>}
               {isActive && !collapsed && (
-                <span className="ml-auto h-6 w-1 rounded-full bg-white/30 shrink-0" />
+                <span className="ml-auto h-6 w-1 bg-white/30 shrink-0" />
               )}
             </Link>
           );
@@ -107,7 +114,13 @@ export default function Sidebar({ user = DEFAULT_USER, onLogout, collapsed, onTo
               key={item.id}
               to={item.path}
               title={collapsed ? item.label : undefined}
-              className={`flex items-center rounded-lg py-3 text-sm font-medium transition-all duration-200 ${collapsed ? "justify-center px-2" : "gap-3 px-4"} ${
+              className={`flex items-center py-3 text-sm font-medium transition-all duration-200 ${collapsed ? "justify-center px-2" : "gap-3 px-4"} ${
+                collapsed
+                  ? "rounded-none"
+                  : isActive
+                    ? "rounded-none"
+                    : "rounded-lg"
+              } ${
                 isActive
                   ? "bg-primary text-white"
                   : "text-onSurface-variant hover:bg-surface-container-lowest hover:text-onSurface"
@@ -118,7 +131,7 @@ export default function Sidebar({ user = DEFAULT_USER, onLogout, collapsed, onTo
               </span>
               {!collapsed && <span className="truncate">{item.label}</span>}
               {isActive && !collapsed && (
-                <span className="ml-auto h-6 w-1 rounded-full bg-white/30 shrink-0" />
+                <span className="ml-auto h-6 w-1 bg-white/30 shrink-0" />
               )}
             </Link>
           );

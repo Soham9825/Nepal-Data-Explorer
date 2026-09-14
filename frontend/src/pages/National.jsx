@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import MetricCard from '../components/cards/MetricCard';
 import NewsCard from '../components/cards/NewsCard';
@@ -11,8 +11,8 @@ import { Icon } from '../components/ui/Icon';
 import ProvinceMap from '../components/national/ProvinceMap';
 import NewsModal from '../components/national/NewsModal';
 import { PROVINCE_PATHS } from '../data/provincePaths';
+import { API_BASE_URL } from '../config';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 const NEWS_API_URL = `${API_BASE_URL}/api/news/`;
 const POPULATION_API_URL = `${API_BASE_URL}/api/datasets/population-summary/`;
 const PROVINCE_POPULATION_API_URL = `${API_BASE_URL}/api/datasets/province-population-summary/`;

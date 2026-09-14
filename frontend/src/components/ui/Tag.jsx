@@ -1,4 +1,3 @@
-import React from 'react';
 
 export const Tag = ({ label, color, bg }) => (
   <span
