@@ -69,8 +69,15 @@ export default function Support() {
         body: JSON.stringify(form),
       });
       const result = await readJsonResponse(response);
-      setFeedback({ type: result.status, message: result.message });
-      setForm({ name: '', email: '', subject: '', message: '' });
+      if (!result || result.success === false) {
+        throw new Error(result.detail || result.message || 'We could not send your message. Please try again.');
+      }
+      if (result.status === 'warning') {
+        setFeedback({ type: 'warning', message: result.detail || result.message || 'Your support message was sent. Please review it for future messages.' });
+      } else {
+        setFeedback({ type: 'success', message: result.detail || 'Your support message was sent successfully.' });
+      }
+      setForm({ name: form.name, email: form.email, subject: '', message: '' });
     } catch (error) {
       setFeedback({ type: 'error', message: error.message || 'We could not send your message. Please try again.' });
     } finally {
@@ -164,7 +171,7 @@ export default function Support() {
                   {sending ? 'Checking...' : 'Send Message'}
                 </BtnPrimary>
               </div>
-              {feedback && <p className={`text-sm font-hanken ${feedback.type === 'error' || feedback.type === 'blocked' ? 'text-red-700' : 'text-amber-700'}`}>{feedback.message}</p>}
+              {feedback && <p className={`text-sm font-hanken ${feedback.type === 'success' ? 'text-green-700' : feedback.type === 'error' || feedback.type === 'blocked' ? 'text-red-700' : 'text-amber-700'}`}>{feedback.message}</p>}
             </div>
           </form>
         </SectionCard>
