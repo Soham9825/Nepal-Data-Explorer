@@ -35,6 +35,7 @@ class CustomUser(AbstractBaseUser,PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     is_verified = models.BooleanField(default=False)
+    email_verified = models.BooleanField(default=False)
 
     USERNAME_FIELD = 'username'
     REQUIRED_FIELDS = ['email']
@@ -89,5 +90,24 @@ class PasswordResetOTP(models.Model):
 
     def is_valid(self):
         return self.used_at is None and self.attempts < 5 and timezone.now() < self.expires_at
+
+
+class EmailVerificationToken(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="email_verification_tokens")
+    token_hash = models.CharField(max_length=64, unique=True)
+    email = models.EmailField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    def is_valid(self):
+        return self.used_at is None and timezone.now() < self.expires_at
+
+    @staticmethod
+    def hash_token(token):
+        return hashlib.sha256(token.encode()).hexdigest()
+
+    def __str__(self):
+        return f"Email verification for {self.user.username} ({self.email})"
 
 

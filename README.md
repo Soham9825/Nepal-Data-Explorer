@@ -1,8 +1,27 @@
 # Nepal Data Explorer
 
-## Backend setup
+A national dashboard for Nepal's economy, tourism and demographics, built with Django + React.
 
-Create and activate a Python virtual environment, then install the backend dependencies:
+![Index page](assets/indexpage.png)
+
+![Predictions](assets/prediction.png)
+
+## Tech Stack
+
+- **Backend:** Django, Django REST Framework, SimpleJWT, PostgreSQL (Neon), Hugging Face toxicity moderation
+- **Frontend:** React 18, Vite, TailwindCSS, Recharts, React Router, Leaflet
+
+## Features
+
+- National / provincial dashboards for economic, tourism and demographic data
+- AI-powered forecasts with ARIMA/SARIMA models and confidence intervals
+- Compare provinces side-by-side, browse datasets, and export reports
+- Google + GitHub OAuth login, JWT auth, email verification, and profanity/toxicity moderation on support messages
+- Live RSS news aggregation
+
+## Setup
+
+### 1. Backend
 
 ```bash
 cd backend
@@ -11,19 +30,28 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Download your trained Hugging Face toxicity model required by Django moderation:
+Set your environment variables in `backend/.env` (`SECRET_KEY`, `DATABASE_URL`, `FRONTEND_URL`, email SMTP settings, OAuth keys).
+
+Download the toxicity model weights (required for support-message moderation):
 
 ```bash
-python ../scripts/download_toxicity_model.py
+python scripts/download_toxicity_model.py
 ```
 
-The script downloads `model.safetensors` from `SohamAdhikari/NepalDataExplorer-ToxicDetectorModel`, your public Colab-trained model, into `backend/analytics/ml/toxicity_model/`. The project’s `config.json`, `tokenizer.json`, and `tokenizer_config.json` remain tracked locally because the Hugging Face repository currently contains only the weight file and `.gitattributes`. The large weight is intentionally ignored by Git. To use another compatible model repository, set `TOXICITY_MODEL_ID` before running the same command. A Hugging Face token is not required for your public repository.
-
-Run Django checks and tests:
+Run migrations, checks and tests:
 
 ```bash
+python manage.py migrate
 python manage.py check
 python manage.py test
 ```
 
-The moderation service loads the downloaded model locally and does not use Ollama or an external API at request time.
+### 2. Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The app runs at `http://localhost:5173` and expects the API at `http://localhost:8000`.

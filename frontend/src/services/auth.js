@@ -139,6 +139,29 @@ export const auth = {
     if (!res.ok) return parseError(res, 'Could not reset password');
     return res.json();
   },
+
+  sendVerificationEmail: async () => {
+    const csrf = await auth.getCSRF();
+    const res = await fetch(`${AUTH_BASE}/send-verification-email/`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { ...csrfHeader(csrf), ...auth.authenticatedHeaders() },
+    });
+    if (!res.ok) return parseError(res, 'Could not send verification email');
+    return res.json();
+  },
+
+  verifyEmail: async (token) => {
+    const csrf = await auth.getCSRF();
+    const res = await fetch(`${AUTH_BASE}/verify-email/`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: csrfHeader(csrf),
+      body: JSON.stringify({ token }),
+    });
+    if (!res.ok) return parseError(res, 'Invalid or expired verification link');
+    return res.json();
+  },
 };
 
 export default auth;

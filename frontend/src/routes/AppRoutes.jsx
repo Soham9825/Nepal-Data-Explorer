@@ -15,6 +15,7 @@ import Signup from "../pages/Signup";
 import ForgotPassword from "../pages/ForgotPassword";
 import VerifyOtp from "../pages/VerifyOtp";
 import ResetPassword from "../pages/ResetPassword";
+import VerifyEmail from "../pages/VerifyEmail";
 import Support from "../pages/Support";
 import NotFound from "../pages/NotFound";
 
@@ -135,6 +136,7 @@ export default function AppRoutes() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/verify-otp" element={<VerifyOtp />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
 
         {/* Catch-all */}
         <Route path="*" element={<NotFound />} />
