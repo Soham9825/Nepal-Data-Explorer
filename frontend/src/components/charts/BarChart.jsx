@@ -1,4 +1,4 @@
-import React, { useState, useRef, useLayoutEffect, useCallback } from "react";
+import { useState, useRef, useLayoutEffect, useCallback } from 'react';
 
 const DEFAULT_PALETTE = [
   "#b70011", "#0051d5", "#7a5100", "#316bf3",

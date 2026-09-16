@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { Icon } from '../ui/Icon';
 
 export default function NewsModal({ news, onClose }) {

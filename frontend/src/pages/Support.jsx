@@ -1,9 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import { SectionCard } from '../components/ui/Card';
 import { BtnPrimary } from '../components/ui/Button';
 import { Icon } from '../components/ui/Icon';
 import auth from '../services/auth';
+import { API_BASE_URL } from '../config';
+
+const SUPPORT_EMAIL = 'nepaldataexplorer@gmail.com';
+
+const inputClass =
+  "w-full px-4 py-3 border border-outline-variant font-sans text-sm text-onSurface bg-surface-lowest outline-none rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-hanken";
 
 export default function Support() {
   const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' });
@@ -20,6 +26,7 @@ export default function Support() {
       if (user?.email) setForm((current) => ({ ...current, email: user.email }));
     });
   }, []);
+
   const faqs = [
     { q: 'What data sources does Nepal Data Explorer use?', a: 'We aggregate from Nepal Rastra Bank (NRB), Central Bureau of Statistics (CBS), Department of Tourism (DoT), Ministry of Finance (MoF), and World Bank Open Data — all publicly available official sources.' },
     { q: 'How frequently is data updated?', a: 'Economic indicators (inflation, forex) update monthly. GDP & annual figures update annually after CBS publishes. Tourism data updates monthly via DoT.' },
@@ -29,12 +36,13 @@ export default function Support() {
   ];
 
   const contacts = [
-    { icon: 'email', label: 'Email Support', value: 'nepaldataexplorer@gmail.com', color: '#0051d5' },
+    { icon: 'email', label: 'Email Support', value: SUPPORT_EMAIL, color: '#0051d5' },
     { icon: 'phone', label: 'Helpline', value: '+977-9805446836', color: '#7a5100' },
     { icon: 'chat', label: 'Live Chat', value: 'Available 9 AM – 5 PM NST', color: '#b70011' },
   ];
 
-  const updateForm = (event) => setForm({ ...form, [event.target.name]: event.target.value });
+  const updateForm = (event) => setForm((prev) => ({ ...prev, [event.target.name]: event.target.value }));
+
   const readJsonResponse = async (response) => {
     const contentType = response.headers.get('content-type') || '';
     if (!contentType.includes('application/json')) {
@@ -53,14 +61,14 @@ export default function Support() {
     setSending(true);
     setFeedback(null);
     try {
-      const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
       if (!auth.getAccessToken()) {
         throw new Error('Please sign in again before sending a message.');
       }
-      const csrfResponse = await fetch(`${apiBaseUrl}/accounts/api/csrf/`, { credentials: 'include' });
+      const csrfResponse = await fetch(`${API_BASE_URL}/accounts/api/csrf/`, { credentials: 'include' });
       const csrf = await readJsonResponse(csrfResponse);
-      const response = await fetch(`${apiBaseUrl}/accounts/api/support/`, {
-        method: 'POST', credentials: 'include',
+      const response = await fetch(`${API_BASE_URL}/accounts/api/support/`, {
+        method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           'X-CSRFToken': csrf.csrfToken || csrf.csrf_token,
@@ -69,8 +77,15 @@ export default function Support() {
         body: JSON.stringify(form),
       });
       const result = await readJsonResponse(response);
-      setFeedback({ type: result.status, message: result.message });
-      setForm({ name: '', email: '', subject: '', message: '' });
+      if (result.status === 'blocked') {
+        setFeedback({ type: 'blocked', message: result.message });
+      } else if (result.status === 'warning') {
+        setFeedback({ type: 'warning', message: result.message });
+        setForm({ name: '', email: form.email, subject: '', message: '' });
+      } else {
+        setFeedback({ type: result.status === 'allowed' ? 'success' : 'error', message: result.message || 'Your message was sent successfully.' });
+        setForm({ name: '', email: form.email, subject: '', message: '' });
+      }
     } catch (error) {
       setFeedback({ type: 'error', message: error.message || 'We could not send your message. Please try again.' });
     } finally {
@@ -94,8 +109,8 @@ export default function Support() {
         {/* Contact Cards - Full Width Grid */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
           {contacts.map((c, i) => (
-            <div 
-              key={i} 
+            <div
+              key={i}
               className="bg-surface border border-outline-variant p-6 card-shadow flex flex-col items-center text-center gap-2 transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
               style={{ borderTop: `3px solid ${c.color}` }}
             >
@@ -111,8 +126,8 @@ export default function Support() {
         </section>
 
         {/* FAQ Section - Full Width */}
-        <SectionCard 
-          title="Frequently Asked Questions" 
+        <SectionCard
+          title="Frequently Asked Questions"
           subtitle="Common questions about data, sources & features"
           className="w-full"
         >
@@ -132,39 +147,63 @@ export default function Support() {
         </SectionCard>
 
         {/* Contact Form - Full Width */}
-        <SectionCard 
-          title="Send a Message" 
-          subtitle="We typically respond within 1 business day"
+        <SectionCard
+          title="Send a Message"
+          subtitle={`We typically respond within 1 business day — messages go to ${SUPPORT_EMAIL}`}
           className="w-full"
         >
-          <form className="w-full" onSubmit={handleSubmit}>
-            <div className="flex flex-col gap-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input name="name" value={form.name} onChange={updateForm} required
-                  placeholder="Full Name" 
-                  className="w-full px-4 py-3 border border-outline-variant font-sans text-sm text-onSurface bg-surface-lowest outline-none rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-hanken"
-                />
-                <input name="email" type="email" value={form.email} readOnly required
-                  placeholder="Account Email" 
-                  className="w-full px-4 py-3 border border-outline-variant font-sans text-sm text-onSurface bg-surface-lowest outline-none rounded-sm font-hanken"
-                />
-              </div>
-              <input name="subject" value={form.subject} onChange={updateForm} required
-                placeholder="Subject" 
-                className="w-full px-4 py-3 border border-outline-variant font-sans text-sm text-onSurface bg-surface-lowest outline-none rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-hanken"
+          <form className="w-full flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <input
+                name="name"
+                value={form.name}
+                onChange={updateForm}
+                placeholder="Full Name"
+                className={inputClass}
               />
-              <textarea name="message" value={form.message} onChange={updateForm} required
-                placeholder="Describe your issue or question..." 
-                rows={5} 
-                className="w-full px-4 py-3 border border-outline-variant font-sans text-sm text-onSurface bg-surface-lowest outline-none rounded-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-y font-hanken"
+              <input
+                type="email"
+                name="email"
+                value={form.email}
+                readOnly
+                placeholder="Account Email"
+                className={`${inputClass} bg-surface-high`}
               />
-              <div>
-                <BtnPrimary type="submit" disabled={sending} className="px-6 py-3">
-                  <Icon name="send" size={18} color="#fff" /> 
-                  {sending ? 'Checking...' : 'Send Message'}
-                </BtnPrimary>
+            </div>
+            <input
+              name="subject"
+              value={form.subject}
+              onChange={updateForm}
+              placeholder="Subject"
+              className={inputClass}
+            />
+            <textarea
+              name="message"
+              value={form.message}
+              onChange={updateForm}
+              placeholder="Describe your issue or question..."
+              rows={5}
+              className={`${inputClass} resize-y`}
+            />
+            {feedback && (
+              <div
+                role="status"
+                className={`text-sm font-hanken px-4 py-3 border-l-4 ${
+                  feedback.type === 'blocked' || feedback.type === 'error'
+                    ? 'border-[#b70011] bg-[#b70011]/5 text-[#b70011]'
+                    : feedback.type === 'warning'
+                      ? 'border-[#7a5100] bg-[#7a5100]/5 text-[#7a5100]'
+                      : 'border-[#0f7a3d] bg-[#0f7a3d]/5 text-[#0f7a3d]'
+                }`}
+              >
+                {feedback.message}
               </div>
-              {feedback && <p className={`text-sm font-hanken ${feedback.type === 'error' || feedback.type === 'blocked' ? 'text-red-700' : 'text-amber-700'}`}>{feedback.message}</p>}
+            )}
+            <div>
+              <BtnPrimary type="submit" disabled={sending} className="px-6 py-3">
+                <Icon name="send" size={18} color="#fff" />
+                {sending ? 'Checking...' : 'Send Message'}
+              </BtnPrimary>
             </div>
           </form>
         </SectionCard>

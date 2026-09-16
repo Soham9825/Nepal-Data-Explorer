@@ -4,7 +4,7 @@ import { PROVINCE_PATHS, NEPAL_MAP_VIEWBOX } from '../data/provincePaths';
 
 // Population data is merged in by name to add statistics to the real
 // geographic shapes below.
-export default function ProvinceMap({ provinces, populationData, selectedProvince, onProvinceClick }) {
+export default function ProvinceMap({ populationData, selectedProvince, onProvinceClick }) {
   const selectedId = selectedProvince?.id ?? null;
 
   // Build a lookup: province name -> population statistics

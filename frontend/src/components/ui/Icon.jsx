@@ -1,4 +1,3 @@
-import React from 'react';
 
 export const Icon = ({ name, size = 20, color, className = '', style = {} }) => (
   <span

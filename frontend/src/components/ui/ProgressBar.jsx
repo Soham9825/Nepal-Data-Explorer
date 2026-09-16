@@ -1,4 +1,3 @@
-import React from 'react';
 
 export const ProgressBar = ({ value, color, total = 100 }) => (
   <div className="h-2 bg-surface-highest rounded-full overflow-hidden">

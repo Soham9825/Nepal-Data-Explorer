@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { Icon } from '../ui/Icon';
 import { BtnOutline } from '../ui/Button';
 import DataTable from './DataTable';

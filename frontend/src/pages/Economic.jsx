@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from 'react';
 import DashboardLayout from "../components/layout/DashboardLayout";
 import { SectionCard } from "../components/ui/Card";
 import MetricCard from "../components/cards/MetricCard";
@@ -7,8 +7,9 @@ import BarChart from "../components/charts/BarChart";
 import RadialFanChart from "../components/charts/RadialFanChart";
 import DataFooter from "../components/common/DataFooter";
 import Loader from "../components/common/Loader";
+import { API_BASE_URL } from "../config";
 
-const API_URL = `${import.meta.env.VITE_API_URL || "http://localhost:8000"}/api/analytics/economic/?compact=1`;
+const API_URL = `${API_BASE_URL}/api/analytics/economic/?compact=1`;
 const COLORS = { primary: "#0051d5", accent: "#7a5100", danger: "#b70011", success: "#0f7a3d" };
 const formatValue = (value) => (value == null ? "—" : Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 }));
 

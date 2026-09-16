@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 const provinces = [
   { cx: 90, cy: 200, rx: 80, ry: 55, name: 'Sudurpashchim', id: 7, fill: '#7a5100' },

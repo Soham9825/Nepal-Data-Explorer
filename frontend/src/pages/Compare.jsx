@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { downloadCSV } from '../utils/download';
+import { API_BASE_URL } from '../config';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import { SectionCard } from '../components/ui/Card';
 import { BtnPrimary } from '../components/ui/Button';
@@ -51,7 +52,7 @@ export default function Compare() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  const apiBaseUrl = API_BASE_URL;
   const dataset = catalog.find((item) => item.id === datasetId) || null;
   const seriesLabel = (value) => String(value).replaceAll('_', ' ');
   const availableSeries = dataset?.series_by_filters?.statistic_type?.[filters.statistic_type]

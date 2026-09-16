@@ -2,8 +2,9 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { auth } from "../services/auth";
+import { API_BASE_URL } from "../config";
 
-const OAUTH_URL = `${import.meta.env.VITE_API_URL || "http://localhost:8000"}/accounts`;
+const OAUTH_URL = `${API_BASE_URL}/accounts`;
 
 const GoogleLogo = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4">

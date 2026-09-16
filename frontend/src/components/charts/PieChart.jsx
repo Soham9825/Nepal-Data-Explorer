@@ -1,4 +1,3 @@
-import React from 'react';
 
 export default function PieChart({ data }) {
   const total = data.reduce((sum, item) => sum + item.value, 0);

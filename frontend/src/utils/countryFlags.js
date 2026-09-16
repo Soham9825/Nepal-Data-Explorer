@@ -40,6 +40,38 @@ export function getCountryFlag(country) {
   return COUNTRY_FLAGS[name] || (matchingName && COUNTRY_FLAGS[matchingName]) || '🌐';
 }
 
+const COUNTRY_CODES = {
+  Afghanistan: 'AFG',
+  Australia: 'AUS',
+  Bangladesh: 'BAN',
+  Bhutan: 'BHU',
+  Canada: 'CAN',
+  China: 'CHN',
+  France: 'FRA',
+  Germany: 'GER',
+  India: 'IND',
+  Italy: 'ITA',
+  Japan: 'JPN',
+  Malaysia: 'MAS',
+  Myanmar: 'MYA',
+  Nepal: 'NEP',
+  Netherlands: 'NED',
+  Singapore: 'SIN',
+  'Sri Lanka': 'SRI',
+  Srilanka: 'SRI',
+  'United States of America': 'USA',
+  SouthKorea: 'KOR',
+  'South Korea': 'KOR',
+  Spain: 'ESP',
+  Thailand: 'THA',
+  UK: 'GBR',
+  'United Kingdom': 'GBR',
+  USA: 'USA',
+  US: 'USA',
+  'United States': 'USA',
+  Britain: 'GBR',
+};
+
 export function getCountryCode(country) {
   return COUNTRY_CODES[String(country || '').trim()] || String(country || '').trim().slice(0, 3).toUpperCase();
 }
