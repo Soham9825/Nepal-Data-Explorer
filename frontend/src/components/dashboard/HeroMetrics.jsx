@@ -1,4 +1,4 @@
-import React from 'react';
+
 import MetricCard from '../cards/MetricCard';
 
 export default function HeroMetrics({ metrics = [] }) {

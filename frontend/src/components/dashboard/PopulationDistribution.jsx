@@ -1,4 +1,4 @@
-import React from 'react';
+
 import ProgressBar from '../cards/ProgressBar';
 
 export default function PopulationDistribution({ data = [] }) {

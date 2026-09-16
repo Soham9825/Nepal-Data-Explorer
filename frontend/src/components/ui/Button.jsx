@@ -1,10 +1,7 @@
-import React from 'react';
 
-export const BtnPrimary = ({ children, onClick, type = 'button', disabled = false, className = '', style = {} }) => (
+export const BtnPrimary = ({ children, onClick, className = '', style = {} }) => (
   <button
     onClick={onClick}
-    type={type}
-    disabled={disabled}
     className={`ui-button rounded-sm bg-primary text-white font-hanken font-bold text-[13px] px-5 py-2.5 border-none cursor-pointer flex items-center justify-center gap-1.5 h-10 min-h-[40px] transition-[filter] duration-150 hover:brightness-110 ${className}`}
     style={style}
   >

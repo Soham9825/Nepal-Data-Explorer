@@ -20,8 +20,7 @@ export default function ProtectedRoute({ children }) {
         if (!mounted) return;
         setError(err);
       } finally {
-        if (!mounted) return;
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     })();
     return () => (mounted = false);
