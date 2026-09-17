@@ -203,6 +203,7 @@ TOXICITY_LABELS = {'toxic', 'toxicity', 'label_1'}
 CSV_UPLOAD_MAX_BYTES = 100 * 1024 * 1024
 CSV_UPLOAD_MAX_ROWS = 250000
 CSV_UPLOAD_MAX_COLUMNS = 5000
+CSV_UPLOAD_MAX_CELLS = 50_000_000
 PROFANITY_WORDS = {'randi', 'muji', 'machikne', 'khatey', 'besya', 'bitch', 'bastard', 'fuck', 'fucker', 'motherfucker', 'asshole', 'idiot', 'moron'}
 PROFANITY_PHRASES = {'randi ko ban', 'machikne ko ban'}
 FRONTEND_URL = config('FRONTEND_URL')
