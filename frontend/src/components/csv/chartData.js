@@ -265,12 +265,21 @@ export function applyFilters(rows = [], filters = []) {
   )));
 }
 
+const minMax = (numbers, kind) => {
+  if (numbers.length === 0) return null;
+  let value = numbers[0];
+  for (let i = 1; i < numbers.length; i += 1) {
+    if (kind === 'max' ? numbers[i] > value : numbers[i] < value) value = numbers[i];
+  }
+  return value;
+};
+
 const aggregateValues = (values, aggregation) => {
   if (aggregation === 'count') return values.length;
   const numbers = values.map(parseNumber).filter((value) => value !== null);
   if (numbers.length === 0) return null;
-  if (aggregation === 'min') return Math.min(...numbers);
-  if (aggregation === 'max') return Math.max(...numbers);
+  if (aggregation === 'min') return minMax(numbers, 'min');
+  if (aggregation === 'max') return minMax(numbers, 'max');
   if (aggregation === 'avg') return numbers.reduce((sum, value) => sum + value, 0) / numbers.length;
   if (aggregation === 'median') {
     const ordered = [...numbers].sort((a, b) => a - b);
