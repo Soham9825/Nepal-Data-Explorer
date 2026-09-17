@@ -114,10 +114,11 @@ export default function CSVExplorer() {
       });
       setStep('validate');
     } catch (err) {
+      const detail = err?.message && !/fetch|network|failed to fetch/i.test(err.message) ? err.message : null;
       setDataset({
         ...EMPTY_DATASET,
         fileName: file.name,
-        error: 'Unable to read this file. Please choose a valid CSV file.',
+        error: detail || 'Unable to read this file. Please choose a valid CSV file.',
       });
     }
   };

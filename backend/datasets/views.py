@@ -1,4 +1,5 @@
 import csv
+import logging
 from pathlib import Path
 
 from django.http import FileResponse, JsonResponse
@@ -8,6 +9,8 @@ from rest_framework.permissions import IsAuthenticated
 from django.conf import settings
 
 from .csv_validation import CSVValidationError, validate_csv
+
+logger = logging.getLogger(__name__)
 
 from .models import (
 	DashboardForecast,
@@ -101,9 +104,18 @@ def validate_uploaded_csv(request):
 			max_bytes=getattr(settings, "CSV_UPLOAD_MAX_BYTES", 100 * 1024 * 1024),
 			max_rows=getattr(settings, "CSV_UPLOAD_MAX_ROWS", 250000),
 			max_columns=getattr(settings, "CSV_UPLOAD_MAX_COLUMNS", 5000),
+			max_cells=getattr(settings, "CSV_UPLOAD_MAX_CELLS", 50_000_000),
 		)
 	except CSVValidationError as error:
 		return JsonResponse({"valid": False, "detail": error.message}, status=400)
+	except Exception:
+		# Never let a malformed file turn into a 500. Anything that escapes the
+		# validator fails the validation with a safe, generic message.
+		logger.exception("Unexpected failure while validating uploaded CSV")
+		return JsonResponse(
+			{"valid": False, "detail": "The file could not be processed safely. Please check the file and try again."},
+			status=400,
+		)
 	return JsonResponse(result)
 
 
