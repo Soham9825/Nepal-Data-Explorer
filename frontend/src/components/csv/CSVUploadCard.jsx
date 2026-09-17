@@ -103,7 +103,7 @@ export async function validateCSV(file) {
     return { valid: false, data: [], meta: {}, errors: [], warning: null, message: 'Please select a CSV file.' };
   }
   const fileName = file.name || '';
-  if (!fileName.toLowerCase().endsWith('.csv')) {
+  if (!fileName.toLowerCase().endsWith('.csv') && !fileName.toLowerCase().endsWith('.tsv')) {
     return { valid: false, data: [], meta: {}, errors: [], warning: null, message: 'Invalid file. Only CSV files are supported.' };
   }
   if (file.size === 0) {
@@ -232,7 +232,7 @@ export default function CSVUploadCard({ inputRef, fileName, error, warning, load
   return (
     <SectionCard
       title="Upload a dataset"
-      subtitle="Only CSV files are supported."
+      subtitle="Only CSV and TSV files are supported."
       action={fileName && !loading && (
         <BtnOutline onClick={onClear} className="normal-case tracking-normal">
           <Icon name="close" size={16} />
@@ -243,7 +243,7 @@ export default function CSVUploadCard({ inputRef, fileName, error, warning, load
       <input
         ref={inputRef}
         type="file"
-        accept=".csv,text/csv"
+        accept=".csv,.tsv,text/csv,text/tab-separated-values"
         onChange={onChange}
         className="hidden"
       />

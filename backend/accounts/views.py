@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth import login as auth_login, logout as auth_logout, authenticate
 from django.contrib.auth.hashers import check_password, make_password
-from .models import CustomUser, PasswordResetOTP, VerifiedEmail
+from .models import CustomUser, PasswordResetOTP, VerifiedEmail, EmailVerificationToken
 from django.core.mail import EmailMessage, send_mail
 from smtplib import SMTPException
 from socket import error as SocketError
@@ -165,7 +165,8 @@ def verifyemail(request):
             )
             user.password = signup_data['password_hash']
             user.is_verified = True
-            user.save()
+            user.email_verified = True
+            user.save(update_fields=['is_verified', 'email_verified'])
 
             del request.session['pending_signup']
             del request.session['verification_code']
@@ -310,7 +311,12 @@ def api_signup(request):
 
     user = CustomUser.objects.create_user(username=username, email=email, password=password)
     user.is_verified = True
-    user.save()
+    user.email_verified = False
+    user.save(update_fields=['is_verified', 'email_verified'])
+    try:
+        _send_email_verification(user)
+    except Exception:
+        logger.exception('Could not send verification email to %s', email)
     return JsonResponse({'username': user.username, 'email': user.email, **_jwt_for_user(user)})
 
 
@@ -399,6 +405,66 @@ def api_password_reset_confirm(request):
     return JsonResponse({'detail': 'Password reset successfully.'})
 
 
+def _send_email_verification(user):
+    raw_token = secrets.token_urlsafe(32)
+    EmailVerificationToken.objects.filter(user=user, used_at__isnull=True).update(used_at=timezone.now())
+    EmailVerificationToken.objects.create(
+        user=user,
+        token_hash=EmailVerificationToken.hash_token(raw_token),
+        email=user.email,
+        expires_at=timezone.now() + timedelta(hours=24),
+    )
+    verify_url = f"{settings.FRONTEND_URL.rstrip('/')}/verify-email?token={raw_token}"
+    try:
+        send_mail(
+            subject='Verify your email - Nepal Data Explorer',
+            message=f'Click the link below to verify your email address:\n\n{verify_url}\n\nThis link expires in 24 hours.',
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            fail_silently=False,
+        )
+    except (SMTPException, OSError, SocketError):
+        logger.exception('Could not send email verification to %s', user.email)
+        raise
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def api_send_verification_email(request):
+    user = request.user
+    if user.email_verified:
+        return JsonResponse({'success': True, 'detail': 'Your email is already verified.'})
+    try:
+        _send_email_verification(user)
+    except Exception:
+        return JsonResponse({'detail': 'Could not send verification email. Please try again later.'}, status=503)
+    return JsonResponse({'success': True, 'detail': 'Verification email sent. Please check your inbox.'})
+
+
+@require_POST
+@csrf_protect
+def api_verify_email(request):
+    data = _json_body(request)
+    token = (data or {}).get('token', '').strip()
+    if not token:
+        return JsonResponse({'detail': 'Verification token is required.'}, status=400)
+
+    token_hash = EmailVerificationToken.hash_token(token)
+    verification = EmailVerificationToken.objects.filter(token_hash=token_hash).select_related('user').first()
+
+    if not verification or not verification.is_valid():
+        return JsonResponse({'detail': 'This verification link is invalid or has expired. Please request a new one.'}, status=400)
+
+    verification.used_at = timezone.now()
+    verification.save(update_fields=['used_at'])
+
+    user = verification.user
+    user.email_verified = True
+    user.save(update_fields=['email_verified'])
+
+    return JsonResponse({'success': True, 'detail': 'Email verified successfully.'})
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def api_support_message(request):
@@ -408,15 +474,21 @@ def api_support_message(request):
     subject = (data or {}).get('subject', '').strip()
     message = (data or {}).get('message', '').strip()
     if not name or not subject or not message:
-        return JsonResponse({'detail': 'Name, subject, and message are required.'}, status=400)
+        return JsonResponse({'success': False, 'detail': 'Name, subject, and message are required.'}, status=400)
     try:
         validate_email(email)
     except ValidationError:
-        return JsonResponse({'detail': 'A valid email address is required.'}, status=400)
+        return JsonResponse({'success': False, 'detail': 'A valid email address is required.'}, status=400)
+
+    if not request.user.email_verified:
+        return JsonResponse(
+            {'success': False, 'detail': 'Please verify your email address before sending a support message.'},
+            status=400,
+        )
 
     moderation = moderate_message(message)
     if not moderation.allowed:
-        return JsonResponse(moderation.as_dict(), status=400)
+        return JsonResponse({**moderation.as_dict(), 'success': False}, status=400)
 
     try:
         EmailMessage(
@@ -428,8 +500,8 @@ def api_support_message(request):
         ).send(fail_silently=False)
     except Exception:
         logger.exception('Could not send support message')
-        return JsonResponse({'detail': 'Could not send your message right now.'}, status=503)
-    return JsonResponse(moderation.as_dict())
+        return JsonResponse({'success': False, 'detail': 'Could not send your message right now. Please try again later.'}, status=503)
+    return JsonResponse({'success': True, 'detail': 'Your support message was sent successfully.', **moderation.as_dict()})
 
 
 OAUTH_PROVIDERS = {
@@ -538,7 +610,8 @@ def oauth_callback(request, provider):
                 username = f'{base[:15]}_{secrets.token_hex(3)}'
             user = CustomUser.objects.create_user(username=username, email=email, password=secrets.token_urlsafe(32))
         user.is_verified = True
-        user.save(update_fields=['is_verified'])
+        user.email_verified = True
+        user.save(update_fields=['is_verified', 'email_verified'])
         auth_login(request, user)
         tokens = _jwt_for_user(user)
         return redirect(

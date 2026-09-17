@@ -23,6 +23,8 @@ urlpatterns = [
 	path('api/password-reset/verify/', views.api_password_reset_verify, name='api_password_reset_verify'),
 	path('api/password-reset/confirm/', views.api_password_reset_confirm, name='api_password_reset_confirm'),
 	path('api/support/', views.api_support_message, name='api_support_message'),
+	path('api/verify-email/', views.api_verify_email, name='api_verify_email'),
+	path('api/send-verification-email/', views.api_send_verification_email, name='api_send_verification_email'),
 	path('oauth/<str:provider>/', views.oauth_start, name='oauth_start'),
 	path('oauth/<str:provider>/callback/', views.oauth_callback, name='oauth_callback'),
 ]

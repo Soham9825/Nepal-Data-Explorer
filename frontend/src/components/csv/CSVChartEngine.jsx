@@ -20,11 +20,20 @@ const chartLabels = {
   table: ['table_view', 'Table'],
 };
 
+function minMax(values, kind) {
+  if (values.length === 0) return null;
+  let value = values[0];
+  for (let i = 1; i < values.length; i += 1) {
+    if (kind === 'max' ? values[i] > value : values[i] < value) value = values[i];
+  }
+  return value;
+}
+
 function Histogram({ data, valueKey }) {
   const values = data.map((row) => Number(row[valueKey])).filter(Number.isFinite);
   if (!values.length) return <EmptyChart message="No numeric values are available for this view." />;
-  const min = Math.min(...values);
-  const max = Math.max(...values);
+  const min = minMax(values, 'min');
+  const max = minMax(values, 'max');
   if (min === max) return <SimpleChart data={[{ range: String(min), count: values.length }]} />;
   const bins = Math.min(12, Math.max(5, Math.ceil(Math.sqrt(values.length))));
   const size = (max - min) / bins;
