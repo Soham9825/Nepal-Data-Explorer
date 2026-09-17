@@ -8,6 +8,7 @@ import RadialFanChart from "../components/charts/RadialFanChart";
 import DataFooter from "../components/common/DataFooter";
 import Loader from "../components/common/Loader";
 import { API_BASE_URL } from "../config";
+import { downloadEconomicReport } from "../services/reportApi";
 
 const API_URL = `${API_BASE_URL}/api/analytics/economic/?compact=1`;
 const COLORS = { primary: "#0051d5", accent: "#7a5100", danger: "#b70011", success: "#0f7a3d" };
@@ -96,6 +97,15 @@ export default function Economic() {
       ? filteredTrade.map((item) => ({ Year: item.year, Group: item.group, Value: item.value, Unit: item.unit }))
       : sectorChart.map((item) => ({ Sector: item.name, Value: item.value }));
 
+  const handleDownloadReport = () =>
+    downloadEconomicReport({
+      selected_indicators: ["growth", "trade", "sectors"],
+      indicator,
+      year,
+      range,
+      filters: {},
+    });
+
   if (loading) {
     return (
       <DashboardLayout pageTitle="Economic Data">
@@ -140,7 +150,7 @@ export default function Economic() {
         </div>
       </SectionCard>
       {error && <p className="text-sm text-danger">{error}</p>}{!loading && !error && !data && <p className="text-sm text-onSurface-variant">No economic data is available.</p>}
-      <DataFooter csvData={csvData} csvFilename={`economic-${indicator}.csv`} />
+      <DataFooter csvData={csvData} csvFilename={`economic-${indicator}.csv`} onDownloadReport={handleDownloadReport} />
     </div>
   </DashboardLayout>;
 }
