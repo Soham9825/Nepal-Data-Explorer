@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import MetricCard from '../components/cards/MetricCard';
 import NewsCard from '../components/cards/NewsCard';
@@ -11,19 +11,21 @@ import { Icon } from '../components/ui/Icon';
 import ProvinceMap from '../components/national/ProvinceMap';
 import NewsModal from '../components/national/NewsModal';
 import { PROVINCE_PATHS } from '../data/provincePaths';
+import { API_BASE_URL } from '../config';
+import { downloadNationalReport } from '../services/reportApi';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 const NEWS_API_URL = `${API_BASE_URL}/api/news/`;
 const POPULATION_API_URL = `${API_BASE_URL}/api/datasets/population-summary/`;
 const PROVINCE_POPULATION_API_URL = `${API_BASE_URL}/api/datasets/province-population-summary/`;
 const ECONOMIC_API_URL = `${API_BASE_URL}/api/analytics/economic/?summary=1`;
+const ECONOMIC_COMPACT_API_URL = `${API_BASE_URL}/api/analytics/economic/?compact=1`;
 const FALLBACK_NEPAL_POPULATION = 29164578;
 const PROV_COLORS = ['#b70011', '#0051d5', '#7a5100', '#316bf3', '#9a6800', '#5c403c', '#dc2626'];
 const NATIONAL_METRIC_CONFIG = [
   { id: 1, label: 'Total Population', trend: 'up', icon: 'groups', color: '#0051d5' },
   { id: 2, label: 'GDP Growth Rate', trend: 'down', icon: 'trending_up', color: '#0051d5' },
-  { id: 3, label: 'Literacy Rate', value: 'N/A', change: 'Not mapped', trend: 'up', subtitle: 'No literacy dataset connected yet', icon: 'auto_stories', color: '#7a5100' },
-  { id: 4, label: 'National Health Index', value: 'N/A', change: 'Not mapped', trend: 'up', subtitle: 'No health index dataset connected yet', icon: 'health_metrics', color: '#0051d5' },
+  { id: 3, label: 'Total Exports', trend: 'up', icon: 'north_east', color: '#0f7a3d' },
+  { id: 4, label: 'Total Imports', trend: 'down', icon: 'south_west', color: '#b70011' },
 ];
 
 const formatPublishedDate = (value) => {
@@ -60,6 +62,9 @@ export default function National() {
   const [populationGrowth, setPopulationGrowth] = useState(0.92);
   const [gdpTrend, setGdpTrend] = useState([]);
   const [provincePopulation, setProvincePopulation] = useState([]);
+  const [exportsValue, setExportsValue] = useState(null);
+  const [importsValue, setImportsValue] = useState(null);
+  const [latestTradeYear, setLatestTradeYear] = useState('');
 
   useEffect(() => {
     const fetchPopulation = async () => {
@@ -178,6 +183,41 @@ export default function National() {
       }
     };
 
+    const fetchEconomicTrade = async () => {
+      try {
+        const response = await fetch(ECONOMIC_COMPACT_API_URL, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          credentials: 'include',
+        });
+
+        if (!response.ok) {
+          throw new Error(`Economic trade API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const trade = Array.isArray(data?.trade) ? data.trade : [];
+        if (trade.length === 0) return;
+
+        const byYear = {};
+        trade.forEach((item) => {
+          const entry = byYear[item.year] || (byYear[item.year] = {});
+          if (item.group === 'Export') entry.exports = Number(item.value);
+          if (item.group === 'Import') entry.imports = Number(item.value);
+        });
+        const years = Object.keys(byYear);
+        if (years.length > 0) setLatestTradeYear(years.at(-1));
+        const latestTrade = byYear[years.at(-1)];
+        if (latestTrade?.exports != null) setExportsValue(latestTrade.exports);
+        if (latestTrade?.imports != null) setImportsValue(latestTrade.imports);
+      } catch (err) {
+        console.error('Failed to load foreign trade data:', err);
+      }
+    };
+
     const fetchNews = async () => {
       try {
         const response = await fetch(NEWS_API_URL, {
@@ -207,6 +247,7 @@ export default function National() {
     fetchPopulation();
     fetchProvincePopulation();
     fetchEconomicData();
+    fetchEconomicTrade();
     fetchNews();
   }, []);
 
@@ -236,6 +277,15 @@ export default function National() {
         subtitle: 'World Output real growth from economic API',
       };
     }
+    if (metric.label === 'Total Exports' || metric.label === 'Total Imports') {
+      const value = metric.label === 'Total Exports' ? exportsValue : importsValue;
+      return {
+        ...metric,
+        value: value != null ? Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 }) : 'N/A',
+        change: latestTradeYear || 'Unavailable',
+        subtitle: `${metric.label.toLowerCase()} by fiscal year`,
+      };
+    }
     return metric;
   });
 
@@ -249,6 +299,14 @@ export default function National() {
       Unit: 'people',
     })),
   ], [gdpTrend, provincePopulation]);
+
+  const handleDownloadReport = () =>
+    downloadNationalReport({
+      fiscal_year: '',
+      selected_indicators: ['population', 'gdp', 'gdp_growth'],
+      selected_province: selectedProvince,
+      filters: {},
+    });
 
   if (loading) {
     return (
@@ -388,7 +446,11 @@ export default function National() {
           </div>
         </section>
 
-        <DataFooter csvData={csvData} csvFilename="national-dataset.csv" />
+        <DataFooter
+          csvData={csvData}
+          csvFilename="national-dataset.csv"
+          onDownloadReport={handleDownloadReport}
+        />
       </div>
 
       <NewsModal news={selectedNews} onClose={() => setSelectedNews(null)} />

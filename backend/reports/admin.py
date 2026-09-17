@@ -1,0 +1,1 @@
+# Django admin registration is intentionally empty for the reports app.

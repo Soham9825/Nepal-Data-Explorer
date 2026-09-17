@@ -1,4 +1,3 @@
-import React from 'react';
 
 export default function NewsCard({ tag, tagColor, tagBg, time, headline, onClick }) {
   const handleKeyDown = (event) => {

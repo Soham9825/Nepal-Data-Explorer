@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { SectionCard } from '../ui/Card';
 
 const citations = [

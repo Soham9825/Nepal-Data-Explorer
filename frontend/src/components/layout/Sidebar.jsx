@@ -2,7 +2,6 @@
 // src/layout/Sidebar.jsx
 // ============================================================
 
-import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import UserCard from "../common/UserCard";
 
@@ -56,7 +55,7 @@ export default function Sidebar({ user = DEFAULT_USER, onLogout, collapsed, onTo
         onClick={onToggle}
         aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        className="absolute -right-3 top-[4.25rem] z-50 flex h-7 w-7 items-center justify-center rounded-full border border-outline-variant bg-surface text-onSurface-variant shadow-md transition-colors hover:bg-primary hover:text-white"
+        className="absolute -right-3 top-[4.25rem] z-50 flex h-7 w-7 items-center justify-center rounded-md border border-outline-variant bg-surface text-onSurface-variant shadow-md transition-colors hover:bg-primary hover:text-white"
       >
         <span className="material-symbols-outlined text-[18px]">
           {collapsed ? "chevron_right" : "chevron_left"}
@@ -68,7 +67,9 @@ export default function Sidebar({ user = DEFAULT_USER, onLogout, collapsed, onTo
         {!collapsed && <p className="px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-onSurface-variant opacity-60">Menu</p>}
 
         {navItems.map((item) => {
+          const isNational = item.id === "national";
           const isActive =
+            (isNational && (currentPath === "/" || currentPath === "/national")) ||
             currentPath === item.path ||
             (item.path !== "/" && currentPath.startsWith(item.path));
 
@@ -77,7 +78,9 @@ export default function Sidebar({ user = DEFAULT_USER, onLogout, collapsed, onTo
               key={item.id}
               to={item.path}
               title={collapsed ? item.label : undefined}
-              className={`flex items-center rounded-lg py-3 text-sm font-medium transition-all duration-200 ${collapsed ? "justify-center px-2" : "gap-3 px-4"} ${
+              className={`relative flex items-center py-3 text-sm font-medium transition-all duration-200 rounded-lg ${
+                collapsed ? "justify-center px-2" : "gap-3 px-4"
+              } ${
                 isActive
                   ? "bg-primary text-white"
                   : "text-onSurface-variant hover:bg-surface-container-lowest hover:text-onSurface"
@@ -88,7 +91,7 @@ export default function Sidebar({ user = DEFAULT_USER, onLogout, collapsed, onTo
               </span>
               {!collapsed && <span className="truncate">{item.label}</span>}
               {isActive && !collapsed && (
-                <span className="ml-auto h-6 w-1 rounded-full bg-white/30 shrink-0" />
+                <span className="ml-auto h-6 w-1 bg-white/30 shrink-0" />
               )}
             </Link>
           );
@@ -107,7 +110,9 @@ export default function Sidebar({ user = DEFAULT_USER, onLogout, collapsed, onTo
               key={item.id}
               to={item.path}
               title={collapsed ? item.label : undefined}
-              className={`flex items-center rounded-lg py-3 text-sm font-medium transition-all duration-200 ${collapsed ? "justify-center px-2" : "gap-3 px-4"} ${
+              className={`relative flex items-center py-3 text-sm font-medium transition-all duration-200 rounded-lg ${
+                collapsed ? "justify-center px-2" : "gap-3 px-4"
+              } ${
                 isActive
                   ? "bg-primary text-white"
                   : "text-onSurface-variant hover:bg-surface-container-lowest hover:text-onSurface"
@@ -118,7 +123,7 @@ export default function Sidebar({ user = DEFAULT_USER, onLogout, collapsed, onTo
               </span>
               {!collapsed && <span className="truncate">{item.label}</span>}
               {isActive && !collapsed && (
-                <span className="ml-auto h-6 w-1 rounded-full bg-white/30 shrink-0" />
+                <span className="ml-auto h-6 w-1 bg-white/30 shrink-0" />
               )}
             </Link>
           );
@@ -126,17 +131,15 @@ export default function Sidebar({ user = DEFAULT_USER, onLogout, collapsed, onTo
 
         {/* ================= User Card ================= */}
         {collapsed ? (
-          <div className="mt-4 flex justify-center" title={user.name}>
-            <div className="flex items-center gap-1">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-sm font-bold text-white">
-                {user.name.trim().slice(0, 2).toUpperCase()}
-              </div>
-              {onLogout && (
-                <button onClick={onLogout} className="rounded-lg p-2 hover:bg-surface-container-highest transition-colors" aria-label="Log out" title="Log out">
-                  <span className="material-symbols-outlined text-[18px] text-onSurface-variant">logout</span>
-                </button>
-              )}
+          <div className="mt-4 flex flex-col items-center gap-2" title={user.name}>
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-sm font-bold text-white">
+              {user.name.trim().slice(0, 2).toUpperCase()}
             </div>
+            {onLogout && (
+              <button onClick={onLogout} className="rounded-lg p-1.5 hover:bg-surface-container-highest transition-colors" aria-label="Log out" title="Log out">
+                <span className="material-symbols-outlined text-[18px] text-onSurface-variant">logout</span>
+              </button>
+            )}
           </div>
         ) : <UserCard user={user} variant="card" onLogout={onLogout} className="mt-4" />}
       </div>

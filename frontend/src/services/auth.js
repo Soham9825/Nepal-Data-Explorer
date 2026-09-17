@@ -1,4 +1,4 @@
-const AUTH_BASE = import.meta.env.VITE_AUTH_URL || 'http://localhost:8000/accounts/api';
+import { AUTH_API_URL as AUTH_BASE } from '../config';
 const USER_STORAGE_KEY = 'nepal-data-current-user';
 const ACCESS_TOKEN_KEY = 'nepal-data-access-token';
 const REFRESH_TOKEN_KEY = 'nepal-data-refresh-token';

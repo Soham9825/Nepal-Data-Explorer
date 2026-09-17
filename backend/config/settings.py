@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'datasets',
     "news",
     'analytics',
+    'reports',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',

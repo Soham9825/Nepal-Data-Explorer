@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import { SectionCard } from '../components/ui/Card';
 import { Icon } from '../components/ui/Icon';
@@ -12,6 +12,7 @@ import Loader from '../components/common/Loader';
 import { formatCountryName, getCountryFlag } from '../utils/countryFlags';
 
 import { tourismAPI } from '../services/tourismAPI';
+import { downloadTourismReport } from '../services/reportApi';
 
 const TABS = [
   { id: 'arrivals', label: 'Tourist Arrivals Trend' },
@@ -95,6 +96,17 @@ export default function Tourism() {
     : activeTab === 'source-markets'
       ? sourceMarkets.map((record) => ({ Year: record.year, Nationality: record.nationality, Arrivals: record.arrivals, Percentage: record.percent }))
       : revenueTrend.map((record) => ({ 'Fiscal year': record.fiscal_year, Metric: record.metric, Value: record.value, Unit: record.unit }));
+
+  const handleDownloadReport = () =>
+    downloadTourismReport({
+      fiscal_year: String(sourceMarketYear || ''),
+      selected_indicators: ['arrivals', 'source-markets', 'revenue'],
+      active_tab: activeTab,
+      arrival_range: arrivalRange,
+      revenue_range: revenueRange,
+      include_all_source_markets: showAllSourceMarkets,
+      filters: {},
+    });
 
   if (loading) {
     return (
@@ -278,7 +290,7 @@ export default function Tourism() {
         </SectionCard>
         </div>
 
-        <DataFooter csvData={csvData} csvFilename={`tourism-${activeTab}.csv`} />
+        <DataFooter csvData={csvData} csvFilename={`tourism-${activeTab}.csv`} onDownloadReport={handleDownloadReport} />
         {error && <p className="text-sm text-danger">{error}</p>}
         {!loading && !error && !tourismData && <p className="text-sm text-onSurface-variant">No tourism data is available.</p>}
       </div>

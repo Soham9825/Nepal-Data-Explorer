@@ -1,18 +1,18 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import ActionCard from '../components/reports/ActionCard';
 import ReportsList from '../components/reports/ReportsList';
 import ReportPreviewModal from '../components/reports/ReportPreviewModal';
 import CitationBlock from '../components/reports/CitationBlock';
 import { quickActions } from '../data/reportsData';
+import { API_BASE_URL } from '../config';
 
 export default function Reports() {
   const [activeReport, setActiveReport] = useState(null);
   const [reports, setReports] = useState([]);
 
   useEffect(() => {
-    const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-    fetch(`${apiBaseUrl}/api/datasets/files/`)
+    fetch(`${API_BASE_URL}/api/datasets/files/`)
       .then((response) => {
         if (!response.ok) throw new Error(`Reports API error: ${response.status}`);
         return response.json();
@@ -22,8 +22,7 @@ export default function Reports() {
   }, []);
 
   const handleDownload = (report) => {
-    const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-    window.open(`${apiBaseUrl}${report.download_url}`, '_blank', 'noopener,noreferrer');
+    window.open(`${API_BASE_URL}${report.download_url}`, '_blank', 'noopener,noreferrer');
   };
 
   return (

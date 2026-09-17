@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import { SectionCard } from '../components/ui/Card';
 import { TabBtn } from '../components/ui/Tabs';
@@ -8,6 +8,7 @@ import { downloadCSV } from '../utils/download';
 import LineChart from '../components/charts/LineChart';
 import BarChart from '../components/charts/BarChart';
 import { formatCountryName } from '../utils/countryFlags';
+import { API_BASE_URL } from '../config';
 
 const INDICATOR_LABELS = {
   monthly: 'Monthly Tourist Arrivals',
@@ -107,11 +108,10 @@ export default function Predictions() {
   const [nationalityHistory, setNationalityHistory] = useState([]);
   const [nationalityForecast, setNationalityForecast] = useState([]);
   const [arrivalTrend, setArrivalTrend] = useState([]);
-  const [tourismLoaded, setTourismLoaded] = useState(false);
 
   const requestId = useRef(0);
 
-  const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  const apiBaseUrl = API_BASE_URL;
 
   // Initial load of both the tourism history and the forecasts for the default horizon.
   useEffect(() => {
@@ -134,7 +134,6 @@ export default function Predictions() {
         );
         setMonthlyForecast(forecasts.monthly || []);
         setNationalityForecast(forecasts.nationality || []);
-        setTourismLoaded(true);
       })
       .catch((err) => {
         console.error('Unable to load prediction data:', err);
@@ -149,7 +148,6 @@ export default function Predictions() {
   const retry = () => {
     setLoading(true);
     setError(null);
-    setTourismLoaded(false);
     const id = ++requestId.current;
     Promise.all([
       fetch(`${apiBaseUrl}/api/analytics/tourism/`).then((r) => r.json()),
@@ -166,7 +164,6 @@ export default function Predictions() {
         );
         setMonthlyForecast(forecasts.monthly || []);
         setNationalityForecast(forecasts.nationality || []);
-        setTourismLoaded(true);
       })
       .catch((err) => {
         console.error('Unable to load prediction data:', err);
@@ -507,7 +504,7 @@ export default function Predictions() {
     });
 
     return result;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [isMonthly, monthlyForecastSorted, selectedNationalityForecast, monthlyHistory, selectedNationalityHistory]);
 
   function formatPeriod(item, monthly) {
@@ -705,7 +702,7 @@ export default function Predictions() {
 
         {/* Seasonality + Annual comparison */}
         {showContent && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6">
             {seasonality && (
               <SectionCard title="Seasonality" subtitle="Average arrivals by calendar month — history vs forecast" className="rounded-sm h-full">
                 <div className="h-80">
@@ -729,7 +726,7 @@ export default function Predictions() {
               subtitle="Real arrivals by year with the forecast period highlighted in green"
               className="rounded-sm h-full"
             >
-              <div className="h-80">
+              <div className={!isMonthly ? 'h-[28rem]' : 'h-96'}>
                 <BarChart
                   data={annual}
                   xKey="year"

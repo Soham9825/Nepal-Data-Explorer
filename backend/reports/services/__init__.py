@@ -1,0 +1,1 @@
+"""Report services: data retrieval, trends, charts and PDF assembly."""

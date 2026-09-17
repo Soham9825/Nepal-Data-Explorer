@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import NewsCard from '../cards/NewsCard';
 
 const categories = ['All', 'Economy', 'Tourism', 'Finance', 'Government', 'Agriculture'];

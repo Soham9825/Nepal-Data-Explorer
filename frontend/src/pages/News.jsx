@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import { Tag } from '../components/ui/Tag';
 import { Icon } from '../components/ui/Icon';
+import { API_BASE_URL } from '../config';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 const NEWS_API_URL = `${API_BASE_URL}/api/news/`;
 const TAG_COLORS = ['#0051d5', '#7a5100', '#b70011', '#5c403c'];
 

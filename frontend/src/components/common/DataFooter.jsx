@@ -70,27 +70,88 @@
 // }
 
 
+import { useState } from 'react';
 import { Icon } from '../ui/Icon';
+import { downloadCSV } from '../../utils/download';
+import { exportDataTablePdf, exportComprehensiveReportPdf } from '../../utils/exportPdf';
 
-function escapeCsvValue(value) {
-  const text = value == null ? '' : String(value);
-  return `"${text.replace(/"/g, '""')}"`;
+function toTitleCase(value) {
+  return String(value)
+    .replace(/\.[a-z]+$/i, '')
+    .replace(/[-_]+/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-export default function DataFooter({ csvData = [], csvFilename = 'dataset.csv' }) {
-  const exportCsv = () => {
+function collectReportSections() {
+  if (typeof document === 'undefined') return [];
+  const charts = Array.from(document.querySelectorAll('main svg'))
+    .filter((svg) => {
+      const rect = svg.getBoundingClientRect();
+      return rect.width >= 240 && rect.height >= 120;
+    })
+    .filter((svg) => !svg.parentElement?.closest('svg'));
+
+  return charts.map((svg) => {
+    let title = '';
+    let node = svg.parentElement;
+    for (let depth = 0; node && depth < 5; depth += 1) {
+      const heading = node.querySelector('h1, h2, h3, h4, h5');
+      if (heading && heading.textContent.trim()) {
+        title = heading.textContent.trim().replace(/\s+/g, ' ');
+        break;
+      }
+      node = node.parentElement;
+    }
+    return { title, element: svg };
+  });
+}
+
+export default function DataFooter({
+  csvData = [],
+  csvFilename = 'dataset.csv',
+  reportTitle,
+  reportSubtitle,
+  onDownloadReport,
+}) {
+  const [reportStatus, setReportStatus] = useState({
+    state: 'idle',
+    message: '',
+  });
+  const displayTitle = reportTitle || `${toTitleCase(csvFilename)} Data`;
+  const pdfFilename = csvFilename.replace(/\.(csv)$/i, '.pdf');
+  const exportCsv = () => downloadCSV(csvData, csvFilename);
+  const exportPdf = () => {
     if (!csvData.length) return;
-    const columns = [...new Set(csvData.flatMap((row) => Object.keys(row)))];
-    const content = [
-      columns.map(escapeCsvValue).join(','),
-      ...csvData.map((row) => columns.map((column) => escapeCsvValue(row[column])).join(',')),
-    ].join('\r\n');
-    const url = URL.createObjectURL(new Blob([`\uFEFF${content}`], { type: 'text/csv;charset=utf-8' }));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = csvFilename;
-    link.click();
-    URL.revokeObjectURL(url);
+    exportDataTablePdf(csvData, {
+      title: displayTitle,
+      subtitle: 'Exported from the Nepal Data Explorer',
+      filename: pdfFilename,
+    });
+  };
+  const exportComprehensiveReport = async () => {
+    if (typeof onDownloadReport === 'function') {
+      setReportStatus({ state: 'loading', message: 'Generating comprehensive report...' });
+      try {
+        await onDownloadReport();
+        setReportStatus({ state: 'success', message: 'Report downloaded successfully.' });
+      } catch (error) {
+        console.warn('Could not download the comprehensive report', error);
+        setReportStatus({ state: 'error', message: 'Unable to generate the report. Please try again.' });
+      }
+      return;
+    }
+    if (!csvData.length) return;
+    try {
+      await exportComprehensiveReportPdf(csvData, {
+        title: displayTitle,
+        subtitle: reportSubtitle || 'Comprehensive summary generated from the live dashboard data',
+        source: 'Nepal Data Explorer',
+        sections: collectReportSections(),
+        filename: pdfFilename,
+      });
+    } catch (error) {
+      console.warn('Could not generate the comprehensive report', error);
+    }
   };
 
   return (
@@ -101,18 +162,31 @@ export default function DataFooter({ csvData = [], csvFilename = 'dataset.csv' }
           Download raw data for research or policy analysis.
         </p>
       </div>
-      <div className="flex flex-wrap gap-4 justify-center">
-        <button onClick={exportCsv} disabled={!csvData.length} className="ui-button px-6 py-3 border border-outline-variant rounded-sm flex items-center space-x-2 text-on-surface hover:bg-surface-container-high transition-colors font-bold uppercase text-[12px] active:scale-95 font-sans disabled:opacity-50 disabled:cursor-not-allowed">
-          <Icon name="description" size={20} color="#0051d5" />
-          <span>Export CSV</span>
-        </button>
-        <button className="ui-button px-6 py-3 border border-outline-variant rounded-sm flex items-center space-x-2 text-on-surface hover:bg-surface-container-high transition-colors font-bold uppercase text-[12px] active:scale-95 font-sans">
-          <Icon name="picture_as_pdf" size={20} color="#b70011" />
-          <span>Export PDF</span>
-        </button>
-        <button className="ui-button px-8 py-3 bg-primary text-on-primary rounded-sm font-bold shadow-lg hover:brightness-110 active:scale-95 transition-all text-sm font-sans">
-          Download Comprehensive Report
-        </button>
+      <div className="flex flex-col items-center gap-2">
+        <div className="flex flex-wrap gap-4 justify-center">
+          <button onClick={exportCsv} disabled={!csvData.length} className="ui-button px-6 py-3 border border-outline-variant rounded-sm flex items-center space-x-2 text-on-surface hover:bg-surface-container-high transition-colors font-bold uppercase text-[12px] active:scale-95 font-sans disabled:opacity-50 disabled:cursor-not-allowed">
+            <Icon name="description" size={20} color="#0051d5" />
+            <span>Export CSV</span>
+          </button>
+          <button onClick={exportPdf} disabled={!csvData.length} className="ui-button px-6 py-3 border border-outline-variant rounded-sm flex items-center space-x-2 text-on-surface hover:bg-surface-container-high transition-colors font-bold uppercase text-[12px] active:scale-95 font-sans disabled:opacity-50 disabled:cursor-not-allowed">
+            <Icon name="picture_as_pdf" size={20} color="#b70011" />
+            <span>Export PDF</span>
+          </button>
+          <button onClick={exportComprehensiveReport} disabled={reportStatus.state === 'loading' || (!csvData.length && typeof onDownloadReport !== 'function')} className="ui-button px-8 py-3 bg-primary text-on-primary rounded-sm font-bold shadow-lg hover:brightness-110 active:scale-95 transition-all text-sm font-sans disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2">
+            <Icon name={reportStatus.state === 'loading' ? 'hourglass_top' : 'download'} size={20} color="#ffffff" />
+            <span>{reportStatus.state === 'loading' ? 'Generating...' : 'Download Comprehensive Report'}</span>
+          </button>
+        </div>
+        {reportStatus.state !== 'idle' && (
+          <p
+            className={[
+              'text-xs font-sans',
+              reportStatus.state === 'success' ? 'text-green-600' : 'text-nepal-crimson',
+            ].join(' ')}
+          >
+            {reportStatus.message}
+          </p>
+        )}
       </div>
     </div>
   );
