@@ -280,12 +280,36 @@ def _clean_bytes(fig):
     return buffer.getvalue()
 
 
-def _bar_style(ax):
+def _style_axes(ax, grid_axis="y", legend_font=8):
+    """Shared, clean styling for report charts (no top/right spines)."""
     for spine in ax.spines.values():
         spine.set_visible(False)
-    ax.tick_params(colors=TEXT)
-    ax.grid(axis="x", color=GRID, linewidth=0.6, alpha=0.7)
+    ax.spines["bottom"].set_visible(True)
+    ax.spines["bottom"].set_color("#d9d3d1")
+    ax.spines["left"].set_visible(True)
+    ax.spines["left"].set_color("#d9d3d1")
+    ax.tick_params(colors=TEXT, labelsize=8)
+    ax.grid(axis=grid_axis, color=GRID, linewidth=0.5, alpha=0.7)
     ax.set_axisbelow(True)
+    ax.margins(y=0.12)
+
+
+def _label_bars(ax, bars, template="{value:,.1f}", pad=5, textsize=8.5):
+    for bar in bars:
+        width = bar.get_width()
+        if width is None:
+            continue
+        ax.annotate(
+            template.format(value=width),
+            (width, bar.get_y() + bar.get_height() / 2),
+            textcoords="offset points",
+            xytext=(pad if width >= 0 else -pad, 0),
+            va="center", ha="left" if width >= 0 else "right",
+            fontsize=textsize, color=TEXT,
+        )
+
+
+_bar_style = _style_axes
 
 
 def _fmt_compact(value):
@@ -298,23 +322,32 @@ def _fmt_compact(value):
     return f"{value:,.0f}"
 
 
+def _line_chart(ax, x, values, color, label_fmt="{value:,.1f}"):
+    ax.plot(x, values, color=color, marker="o", linewidth=2.4, markersize=6, zorder=3)
+    ax.fill_between(x, values, min(0, min(values)) if values else 0, color=color, alpha=0.10, zorder=1)
+    for i, value in enumerate(values):
+        ax.annotate(
+            label_fmt.format(value=value), (x[i], value), textcoords="offset points",
+            xytext=(0, 9), ha="center", fontsize=8.5, color=TEXT, zorder=4,
+        )
+
+
 def gdp_trend_chart(dataset):
     window = dataset.get("gdp_window") or []
     if not window:
         return None
-    years = [point["year"] for point in window]
+    years = [str(point["year"]) for point in window]
     values = [point["value"] for point in window]
+    x = list(range(len(values)))
 
     fig, ax = plt.subplots(figsize=(6.8, 3.4))
-    ax.axhline(0, color="#bdb5b3", linewidth=1)
-    ax.plot(years, values, color=ACCENT, marker="o", linewidth=2.2, markersize=6)
-    for x, y in zip(years, values):
-        ax.annotate(f"{y:,.1f}%", (x, y), textcoords="offset points",
-                    xytext=(0, 8), ha="center", fontsize=9, color=TEXT)
+    ax.axhline(0, color="#bdb5b3", linewidth=1, zorder=1)
+    _line_chart(ax, x, values, ACCENT, "{value:,.1f}%")
+    ax.set_xticks(x, years, fontsize=8.5)
     ax.set_xlabel("Year")
-    ax.set_ylabel("Real GDP growth (%)", fontsize=9)
-    _bar_style(ax)
-    ax.grid(axis="y", visible=False)
+    ax.set_ylabel("Real growth (%)", fontsize=9)
+    _style_axes(ax)
+    ax.xaxis.grid(False)
     fig.tight_layout()
     return _clean_bytes(fig)
 
@@ -328,14 +361,11 @@ def population_distribution_chart(dataset):
     values = [p["pct"] for p in ordered]
 
     fig, ax = plt.subplots(figsize=(6.8, 4.0))
-    bars = ax.barh(names, values, color=PRIMARY, alpha=0.92, height=0.6)
-    for bar, value in zip(bars, values):
-        ax.annotate(f"{value:,.1f}%", (value, bar.get_y() + bar.get_height() / 2),
-                    textcoords="offset points", xytext=(5, 0), va="center",
-                    fontsize=8.5, color=TEXT)
+    bars = ax.barh(names, values, color=PRIMARY, alpha=0.92, height=0.62)
+    _label_bars(ax, bars, "{value:,.1f}%")
     ax.set_xlabel("Share of national population (%)", fontsize=9)
     ax.set_xlim(0, max(values) * 1.18)
-    _bar_style(ax)
+    _style_axes(ax, grid_axis="y")
     ax.grid(axis="y", visible=False)
     fig.tight_layout()
     return _clean_bytes(fig)
@@ -350,14 +380,11 @@ def density_chart(dataset):
     values = [p["population_density"] for p in ordered]
 
     fig, ax = plt.subplots(figsize=(6.8, 4.0))
-    bars = ax.barh(names, values, color=ACCENT, alpha=0.92, height=0.6)
-    for bar, value in zip(bars, values):
-        ax.annotate(f"{value:,.1f}", (value, bar.get_y() + bar.get_height() / 2),
-                    textcoords="offset points", xytext=(5, 0), va="center",
-                    fontsize=8.5, color=TEXT)
+    bars = ax.barh(names, values, color=ACCENT, alpha=0.92, height=0.62)
+    _label_bars(ax, bars, "{value:,.1f}")
     ax.set_xlabel("Population density (persons/km²)", fontsize=9)
     ax.set_xlim(0, max(values) * 1.16)
-    _bar_style(ax)
+    _style_axes(ax, grid_axis="y")
     ax.grid(axis="y", visible=False)
     fig.tight_layout()
     return _clean_bytes(fig)
@@ -372,14 +399,13 @@ def sectoral_chart(dataset):
     values = [s["value"] for s in ordered]
 
     fig, ax = plt.subplots(figsize=(6.8, 3.8))
-    bars = ax.barh(names, values, color=PRIMARY, alpha=0.92, height=0.62)
-    for bar, value in zip(bars, values):
-        ax.annotate(f"{value:,.1f}%", (value, bar.get_y() + bar.get_height() / 2),
-                    textcoords="offset points", xytext=(5, 0), va="center",
-                    fontsize=8.5, color=TEXT)
+    colors_list = [SUCCESS if v >= 0 else ACCENT for v in values]
+    bars = ax.barh(names, values, color=colors_list, alpha=0.92, height=0.62)
+    _label_bars(ax, bars, "{value:,.1f}%")
+    ax.axvline(0, color="#c9c1bf", linewidth=0.8)
     ax.set_xlabel(f"Growth ({sectors[0]['unit'] if sectors else '%'})", fontsize=9)
-    ax.set_xlim(0, max(values) * 1.22)
-    _bar_style(ax)
+    ax.set_xlim(min(values) * 1.2 if min(values) < 0 else 0, max(values) * 1.22)
+    _style_axes(ax, grid_axis="y")
     ax.grid(axis="y", visible=False)
     fig.tight_layout()
     return _clean_bytes(fig)
@@ -470,25 +496,25 @@ def tourism_arrivals_chart(dataset):
     window = trend[-12:]
     if not window:
         return None
-    years = [p["year"] for p in window]
+    years = [str(p["year"]) for p in window]
     values = [p.get("total_arrivals") or 0 for p in window]
+    x = list(range(len(values)))
 
     fig, ax = plt.subplots(figsize=(6.8, 3.4))
-    ax.plot(years, values, color=ACCENT, marker="o", linewidth=2.2, markersize=5)
-    for x, y in zip(years, values):
-        ax.annotate(f"{_fmt_compact(y)}", (x, y), textcoords="offset points",
-                    xytext=(0, 8), ha="center", fontsize=8, color=TEXT)
+    _line_chart(ax, x, values, ACCENT, "{value:,.0f}")
+    ax.set_xticks(x, years, fontsize=8.5)
     ax.set_xlabel("Year")
     ax.set_ylabel("Total arrivals", fontsize=9)
-    _bar_style(ax)
-    ax.grid(axis="y", visible=False)
+    _style_axes(ax)
+    ax.xaxis.grid(False)
     fig.tight_layout()
     return _clean_bytes(fig)
 
 
 def tourism_source_markets_chart(dataset):
     markets = sorted(
-        dataset.get("source_markets") or [], key=lambda m: (m.get("arrivals") or 0)
+        dataset.get("source_market_top") or dataset.get("source_markets") or [],
+        key=lambda m: (m.get("arrivals") or 0),
     )
     names = [m["nationality"] for m in markets]
     values = [m.get("arrivals") or 0 for m in markets]
@@ -497,14 +523,11 @@ def tourism_source_markets_chart(dataset):
 
     fig, ax = plt.subplots(figsize=(6.8, 4.6))
     bars = ax.barh(names, values, color=PRIMARY, alpha=0.92, height=0.62)
-    for bar, value in zip(bars, values):
-        ax.annotate(f"{_fmt_compact(value)}", (value, bar.get_y() + bar.get_height() / 2),
-                    textcoords="offset points", xytext=(5, 0), va="center",
-                    fontsize=8, color=TEXT)
+    _label_bars(ax, bars, "{value:,.0f}")
     year = dataset.get("source_market_year")
     ax.set_xlabel(f"Arrivals ({year})" if year else "Arrivals", fontsize=9)
     ax.set_xlim(0, max(values) * 1.18)
-    _bar_style(ax)
+    _style_axes(ax, grid_axis="y")
     ax.grid(axis="y", visible=False)
     fig.tight_layout()
     return _clean_bytes(fig)
@@ -516,18 +539,15 @@ def tourism_revenue_chart(dataset):
         return None
     labels = [p["fiscal_year"] for p in revenue]
     values = [p.get("value") or 0 for p in revenue]
-    positions = list(range(len(labels)))
+    x = list(range(len(labels)))
 
     fig, ax = plt.subplots(figsize=(6.8, 3.4))
-    ax.plot(positions, values, color="#5a3f00", marker="o", linewidth=2.2, markersize=5)
-    ax.set_xticks(positions, labels, rotation=28, ha="right", fontsize=8)
-    for x, y in zip(positions, values):
-        ax.annotate(f"{y:,.0f}", (x, y), textcoords="offset points", xytext=(0, 8),
-                    ha="center", fontsize=8, color=TEXT)
+    _line_chart(ax, x, values, "#5a3f00", "{value:,.0f}")
+    ax.set_xticks(x, labels, rotation=28, ha="right", fontsize=8)
     ax.set_xlabel("Fiscal year")
     ax.set_ylabel("Revenue (US$ million)", fontsize=9)
-    _bar_style(ax)
-    ax.grid(axis="y", visible=False)
+    _style_axes(ax)
+    ax.xaxis.grid(False)
     fig.tight_layout()
     return _clean_bytes(fig)
 
@@ -537,19 +557,18 @@ def economic_growth_chart(dataset):
     window = growth[-10:]
     if not window:
         return None
-    years = [p["year"].replace("Real_", "") for p in window]
+    years = [str(p["year"]).replace("Real_", "") for p in window]
     values = [p["value"] for p in window]
+    x = list(range(len(values)))
 
     fig, ax = plt.subplots(figsize=(6.8, 3.4))
-    ax.axhline(0, color="#bdb5b3", linewidth=1)
-    ax.plot(years, values, color=PRIMARY, marker="o", linewidth=2.2, markersize=5)
-    for x, y in zip(years, values):
-        ax.annotate(f"{y:,.1f}%", (x, y), textcoords="offset points", xytext=(0, 8),
-                    ha="center", fontsize=8.5, color=TEXT)
+    ax.axhline(0, color="#bdb5b3", linewidth=1, zorder=1)
+    _line_chart(ax, x, values, PRIMARY, "{value:,.1f}%")
+    ax.set_xticks(x, years, fontsize=8.5)
     ax.set_xlabel("Year")
     ax.set_ylabel("Real growth (%)", fontsize=9)
-    _bar_style(ax)
-    ax.grid(axis="y", visible=False)
+    _style_axes(ax)
+    ax.xaxis.grid(False)
     fig.tight_layout()
     return _clean_bytes(fig)
 
@@ -565,16 +584,13 @@ def economic_trade_chart(dataset):
     width = 0.36
 
     fig, ax = plt.subplots(figsize=(6.8, 3.6))
-    ax.bar([i - width / 2 for i in x], exports, width, color=SUCCESS, label="Exports")
-    ax.bar([i + width / 2 for i in x], imports, width, color=ACCENT, label="Imports")
+    export_bars = ax.bar([i - width / 2 for i in x], exports, width, color=SUCCESS, label="Exports")
+    import_bars = ax.bar([i + width / 2 for i in x], imports, width, color=ACCENT, label="Imports")
+    ax.axhline(0, color="#c9c1bf", linewidth=0.8, zorder=1)
     ax.set_xticks(x, labels, rotation=28, ha="right", fontsize=8)
-    ax.legend(fontsize=8, frameon=False)
-    for spine in ax.spines.values():
-        spine.set_visible(False)
-    ax.tick_params(colors=TEXT)
-    ax.grid(axis="y", color=GRID, linewidth=0.6, alpha=0.7)
-    ax.set_axisbelow(True)
-    ax.set_ylabel("Value (unit as recorded)", fontsize=9)
+    ax.legend(fontsize=8, frameon=False, loc="upper left")
+    _style_axes(ax, grid_axis="y")
+    ax.set_ylabel("Value (units as recorded)", fontsize=9)
     fig.tight_layout()
     return _clean_bytes(fig)
 
@@ -593,14 +609,13 @@ def economic_sectoral_chart(dataset):
         return None
 
     fig, ax = plt.subplots(figsize=(6.8, 5.0))
-    bars = ax.barh(names, values, color=PRIMARY, alpha=0.92, height=0.62)
-    for bar, value in zip(bars, values):
-        ax.annotate(f"{value:,.1f}%", (value, bar.get_y() + bar.get_height() / 2),
-                    textcoords="offset points", xytext=(5, 0), va="center",
-                    fontsize=8, color=TEXT)
+    colors_list = [SUCCESS if v >= 0 else ACCENT for v in values]
+    bars = ax.barh(names, values, color=colors_list, alpha=0.92, height=0.62)
+    _label_bars(ax, bars, "{value:,.1f}%")
+    ax.axvline(0, color="#c9c1bf", linewidth=0.8)
     ax.set_xlabel(f"Growth (%) — {latest_year}" if latest_year else "Growth (%)", fontsize=9)
-    ax.set_xlim(min(values) * 1.1 if min(values) < 0 else 0, max(values) * 1.2)
-    _bar_style(ax)
+    ax.set_xlim(min(values) * 1.2 if min(values) < 0 else 0, max(values) * 1.2)
+    _style_axes(ax, grid_axis="y")
     ax.grid(axis="y", visible=False)
     fig.tight_layout()
     return _clean_bytes(fig)

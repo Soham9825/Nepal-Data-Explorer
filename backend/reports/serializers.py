@@ -13,8 +13,9 @@ class DashboardStateSerializer(serializers.Serializer):
     selected_indicators = serializers.ListField(
         child=serializers.CharField(), required=False, default=list
     )
-    selected_province = serializers.CharField(
-        required=False, allow_blank=True, allow_null=True, default=None
+    selected_province = serializers.JSONField(
+        required=False, allow_null=True, default=None,
+        help_text="Province name/object selected on the national dashboard map.",
     )
     filters = serializers.DictField(required=False, default=dict)
     year_range = serializers.ListField(

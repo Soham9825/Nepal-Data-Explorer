@@ -130,6 +130,37 @@ def get_gdp_trend():
     return trend
 
 
+def get_trade_totals():
+    """Total exports and imports per fiscal year, matching the National
+    dashboard's hero metric cards (``TOTAL EXPORTS`` / ``TOTAL IMPORTS``).
+
+    Returns ``{"trade_by_year": [...], "unit": "..."}``.
+    """
+    rows = ForeignTradeStatistic.objects.filter(
+        Q(group="Export", subgroup="TOTAL EXPORTS")
+        | Q(group="Import", subgroup="TOTAL IMPORTS")
+    ).order_by("fiscal_year", "group")
+
+    units = {}
+    by_year = {}
+    for item in rows:
+        entry = by_year.setdefault(
+            _clean(item.fiscal_year),
+            {"fiscal_year": _clean(item.fiscal_year), "exports": None, "imports": None},
+        )
+        if item.unit:
+            units[item.fiscal_year] = _clean(item.unit)
+        if item.group.lower() == "export":
+            entry["exports"] = _float(item.value)
+        else:
+            entry["imports"] = _float(item.value)
+
+    return {
+        "trade_by_year": sorted(by_year.values(), key=lambda pair: pair["fiscal_year"]),
+        "unit": next((units[key] for key in reversed(list(units.keys()))), ""),
+    }
+
+
 def get_sectoral_growth():
     """Latest fiscal-year sectoral growth table from the backend (extra
     economic context, not shown on the National dashboard itself)."""
@@ -162,22 +193,83 @@ def get_sectoral_growth():
     }
 
 
-def apply_state_filters(dataset, state):
-    """Applies the dashboard filters the frontend actually sent.
+def _limit_series(points, range_key, state):
+    """Trims ``points`` to the last N records for ``5``/``10`` range options.
+    ``all`` (or an unrecognised value) returns the full series unchanged."""
+    value = str(state.get(range_key) or "").strip().lower()
+    if value in ("5", "10") and points:
+        return points[-int(value):]
+    return points
 
-    The National dashboard supports a province selection and a selected
-    indicators list; anything else in ``filters`` is ignored defensively.
+
+def _province_label(value):
+    """Normalises the ``selected_province`` payload (string or the object the
+    dashboard map emits) into a plain lower-case name."""
+    if isinstance(value, dict):
+        raw = value.get("name") or value.get("province_name") or value.get("province") or ""
+    elif isinstance(value, (str, int)):
+        raw = str(value)
+    else:
+        return ""
+    return raw.strip().lower()
+
+
+def apply_state_filters(dataset, state=None):
+    """Applies the dashboard filters the frontend actually sent so the report
+    reflects exactly what is selected on screen.
+
+    National: ``selected_province`` narrows the provincial comparison.
+    Tourism: ``arrival_range`` / ``revenue_range`` trim the visible series.
+    Economic: ``range`` trims the growth window; ``year`` narrows the
+        sectoral/trade series to the chosen fiscal year.
     """
-    selected = state.get("selected_province") or ""
+    state = state or {}
+
+    # -- National -----------------------------------------------------------------
+    selected = _province_label(state.get("selected_province"))
     if selected:
-        normalized = selected.strip().lower()
         for province in dataset.get("provinces", []):
-            if normalized in {
-                str(province.get("name", "")).lower(),
-                str(province.get("province_code", "")),
-            }:
+            province_name = str(province.get("name", "")).lower()
+            code = str(province.get("province_code", ""))
+            if selected == code or selected in province_name or province_name in selected:
                 dataset["_filtered_province"] = province
                 break
+
+    # -- Tourism -------------------------------------------------------------------
+    if "arrival_trend" in dataset:
+        trend = dataset.get("arrival_trend") or []
+        limited = _limit_series(trend, "arrival_range", state)
+        if limited is not trend:
+            dataset["arrival_trend"] = limited
+
+        revenue = dataset.get("revenue") or []
+        limited_revenue = _limit_series(revenue, "revenue_range", state)
+        if limited_revenue is not revenue:
+            dataset["revenue"] = limited_revenue
+            dataset["latest_revenue"] = limited_revenue[-1] if limited_revenue else None
+
+    # -- Economic -------------------------------------------------------------------
+    if "global_growth" in dataset:
+        growth = dataset.get("global_growth") or []
+        limited_growth = _limit_series(growth, "range", state)
+        if limited_growth is not growth:
+            dataset["global_growth"] = limited_growth
+            dataset["latest_global_growth"] = growth[-1] if growth else None
+
+        year = str(state.get("year") or "").strip().lower()
+        if year and year != "all":
+            if dataset.get("sectoral_growth") is not None:
+                dataset["sectoral_growth"] = [
+                    row for row in dataset["sectoral_growth"]
+                    if str(row.get("fiscal_year", "")).strip().lower() == year
+                ]
+                dataset["latest_sectoral_year"] = year
+            if dataset.get("trade_by_year") is not None:
+                dataset["trade_by_year"] = [
+                    row for row in dataset["trade_by_year"]
+                    if str(row.get("fiscal_year", "")).strip().lower() == year
+                ]
+
     return dataset
 
 
@@ -192,6 +284,7 @@ def build_report_dataset(state=None):
     provinces = get_province_population()
     trend = get_gdp_trend()
     sectoral = get_sectoral_growth()
+    trade = get_trade_totals()
 
     dashboard_window = trend[-_DASHBOARD_POINTS:] if trend else []
     latest_gdp = dashboard_window[-1] if dashboard_window else None
@@ -203,6 +296,7 @@ def build_report_dataset(state=None):
         "gdp_window": dashboard_window,
         "latest_gdp": latest_gdp,
         "sectoral": sectoral,
+        "trade": trade,
         "report_year": state.get("fiscal_year")
         or (latest_gdp["year"] if latest_gdp else ""),
     }
@@ -265,7 +359,7 @@ def build_tourism_dataset(state=None):
     report_year = state.get("fiscal_year") or latest_trend_year
     if report_year:
         report_year = str(report_year)
-    return {
+    dataset = {
         "kpis": {
             "total_tourists": latest_year.total_arrivals if latest_year else 0,
             "growth_percent": _float(latest_year.percent_change) if latest_year else None,
@@ -288,6 +382,7 @@ def build_tourism_dataset(state=None):
         "latest_revenue": revenue[-1] if revenue else None,
         "report_year": report_year or "",
     }
+    return apply_state_filters(dataset, state)
 
 
 def build_economic_dataset(state=None):
@@ -318,6 +413,7 @@ def build_economic_dataset(state=None):
             "fiscal_year": _clean(item.fiscal_year),
             "group": _clean(item.group),
             "value": _float(item.value),
+            "unit": _clean(item.unit),
         }
         for item in ForeignTradeStatistic.objects.filter(
             Q(group="Export", subgroup="TOTAL EXPORTS") | Q(group="Import", subgroup="TOTAL IMPORTS")
@@ -328,6 +424,7 @@ def build_economic_dataset(state=None):
         entry = trade_by_year.setdefault(
             row["fiscal_year"], {"fiscal_year": row["fiscal_year"], "exports": None, "imports": None}
         )
+        entry.setdefault("unit", row.get("unit") or "")
         if row["group"].lower() == "export":
             entry["exports"] = row["value"]
         else:
@@ -350,7 +447,7 @@ def build_economic_dataset(state=None):
     latest_sector_year = sector_years[0] if sector_years else None
 
     report_year = state.get("fiscal_year") or latest_sector_year or ""
-    return {
+    dataset = {
         "global_growth": growth_series,
         "latest_global_growth": growth_series[-1] if growth_series else None,
         "trade": trade_rows,
@@ -360,3 +457,114 @@ def build_economic_dataset(state=None):
         "latest_sectoral_year": latest_sector_year,
         "report_year": report_year or "",
     }
+    return apply_state_filters(dataset, state)
+
+
+def _csv_row(dataset, indicator, category, value, unit=""):
+    return {
+        "Dataset": dataset,
+        "Indicator": indicator,
+        "Category": "" if category is None else category,
+        "Value": value,
+        "Unit": unit,
+    }
+
+
+def build_national_csv_rows(state=None):
+    """Rows for the comprehensive National dataset CSV.
+
+    Exporting is deliberately exhaustive (not filtered): it mirrors what a
+    researcher would expect from a raw data file while the PDF report honours
+    the on-screen filters.
+    """
+    dataset = build_report_dataset(state)
+    rows = []
+
+    national = dataset.get("national") or {}
+    if national:
+        area = national.get("area_name") or "Nepal"
+        for indicator, value, unit in [
+            ("Total population", national.get("total_population"), "persons"),
+            ("Male population", national.get("male"), "persons"),
+            ("Female population", national.get("female"), "persons"),
+            ("Households", national.get("households"), "households"),
+            ("Sex ratio", national.get("sex_ratio"), "males per 100 females"),
+            ("Annual growth rate", national.get("growth_rate"), "%"),
+            ("Population density", national.get("population_density"), "persons/km²"),
+        ]:
+            rows.append(_csv_row("National Summary", indicator, area, value, unit))
+
+    for province in dataset.get("provinces") or []:
+        name = province.get("name")
+        rows.append(_csv_row("Population Distribution", "Total population", name, province.get("total_population"), "persons"))
+        rows.append(_csv_row("Population Distribution", "Share of national population", name, province.get("pct"), "%"))
+        rows.append(_csv_row("Population Distribution", "Population density", name, province.get("population_density"), "persons/km²"))
+
+    for point in dataset.get("gdp_trend") or []:
+        rows.append(_csv_row("GDP Trend", "Real growth (World Output)", point.get("year"), point.get("value"), "%"))
+
+    trade = (dataset.get("trade") or {}).get("trade_by_year") or []
+    trade_unit = (dataset.get("trade") or {}).get("unit") or "As recorded"
+    for pair in trade:
+        rows.append(_csv_row("Foreign Trade", "Total exports", pair.get("fiscal_year"), pair.get("exports"), trade_unit))
+        rows.append(_csv_row("Foreign Trade", "Total imports", pair.get("fiscal_year"), pair.get("imports"), trade_unit))
+
+    sectoral = dataset.get("sectoral") or {}
+    for sector in sectoral.get("sectors") or []:
+        rows.append(_csv_row("Sectoral Growth", sector.get("sector"), sectoral.get("fiscal_year"), sector.get("value"), sector.get("unit") or "%"))
+
+    return rows
+
+
+def build_economic_csv_rows(state=None):
+    """Rows for the comprehensive Economic dataset CSV (all indicators).
+
+    The CSV export intentionally includes the complete series so the file is
+    usable for external analysis regardless of the dashboard filters selected.
+    """
+    dataset = build_economic_dataset({})
+    rows = []
+
+    for point in dataset.get("global_growth") or []:
+        rows.append(_csv_row("Global Growth (World Output)", "Real growth", str(point.get("year", "")).replace("Real_", ""), point.get("value"), "%"))
+
+    for pair in dataset.get("trade_by_year") or []:
+        unit = pair.get("unit") or "As recorded"
+        rows.append(_csv_row("Foreign Trade", "Total exports", pair.get("fiscal_year"), pair.get("exports"), unit))
+        rows.append(_csv_row("Foreign Trade", "Total imports", pair.get("fiscal_year"), pair.get("imports"), unit))
+
+    for sector in dataset.get("sectoral_growth") or []:
+        rows.append(_csv_row("Sectoral Growth", sector.get("sector"), sector.get("fiscal_year"), sector.get("value"), "%"))
+
+    return rows
+
+
+def build_tourism_csv_rows(state=None):
+    """Rows for the comprehensive Tourism dataset CSV (all indicators).
+
+    The CSV export intentionally includes the complete series so the file is
+    usable for external analysis regardless of the dashboard tab selected.
+    """
+    dataset = build_tourism_dataset({})
+
+    arrival_trend = dataset.get("arrival_trend") or []
+    rows = []
+
+    for point in arrival_trend:
+        year = point.get("year")
+        rows.append(_csv_row("Tourist Arrivals", "Total arrivals", year, point.get("total_arrivals"), "arrivals"))
+        rows.append(_csv_row("Tourist Arrivals", "Third-country arrivals", year, point.get("third_country_arrivals"), "arrivals"))
+        rows.append(_csv_row("Tourist Arrivals", "Indian arrivals", year, point.get("indian_arrivals"), "arrivals"))
+        if point.get("percent_change") is not None:
+            rows.append(_csv_row("Tourist Arrivals", "Year-on-year change", year, point.get("percent_change"), "%"))
+
+    for market in dataset.get("source_markets") or []:
+        name = market.get("nationality")
+        year = market.get("year")
+        rows.append(_csv_row("Source Markets", f"{name} arrivals", year, market.get("arrivals"), "arrivals"))
+        rows.append(_csv_row("Source Markets", f"{name} share", year, market.get("percent"), "%"))
+
+    for point in dataset.get("revenue") or []:
+        rows.append(_csv_row("Tourism Revenue", "Revenue", point.get("fiscal_year"), point.get("value"), "US$ million"))
+
+    return rows

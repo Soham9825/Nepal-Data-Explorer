@@ -18,4 +18,19 @@ urlpatterns = [
         views.economic_dashboard_report,
         name="economic-dashboard-report",
     ),
+    path(
+        "national-csv/",
+        views.national_csv,
+        name="national-csv",
+    ),
+    path(
+        "tourism-csv/",
+        views.tourism_csv,
+        name="tourism-csv",
+    ),
+    path(
+        "economic-csv/",
+        views.economic_csv,
+        name="economic-csv",
+    ),
 ]

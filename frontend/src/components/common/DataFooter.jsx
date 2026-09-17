@@ -30,7 +30,6 @@
 // //   );
 // // }
 
-
 // import React from 'react';
 
 // export default function DataFooter() {
@@ -50,7 +49,7 @@
 //           <span>Updated {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
 //         </div>
 //       </div>
-      
+
 //       <div className="flex flex-wrap gap-3 justify-center">
 //         <button className="px-5 py-2.5 border border-outline-variant rounded-lg flex items-center gap-2 text-on-surface hover:bg-surface-container-high transition-all font-bold uppercase text-[11px] active:scale-95">
 //           <span className="material-symbols-outlined text-[18px] text-secondary">description</span>
@@ -69,17 +68,23 @@
 //   );
 // }
 
-
 import { useState } from 'react';
 import { Icon } from '../ui/Icon';
 import { downloadCSV } from '../../utils/download';
-import { exportDataTablePdf, exportComprehensiveReportPdf } from '../../utils/exportPdf';
+import { exportComprehensiveReportPdf } from '../../utils/exportPdf';
 
 function toTitleCase(value) {
   return String(value)
     .replace(/\.[a-z]+$/i, '')
     .replace(/[-_]+/g, ' ')
     .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function sectionBaseName(csvFilename) {
+  const base = toTitleCase(csvFilename)
+    .replace(/\s+Dataset$/i, '')
+    .replace(/\s+Data$/i, '');
+  return base || 'Dataset';
 }
 
 function collectReportSections() {
@@ -109,24 +114,75 @@ function collectReportSections() {
 export default function DataFooter({
   csvData = [],
   csvFilename = 'dataset.csv',
+  datasetLabel = '',
   reportTitle,
+  pdfTitle,
   reportSubtitle,
+  reportMeta = {},
   onDownloadReport,
+  onDownloadCsv,
 }) {
-  const [reportStatus, setReportStatus] = useState({
-    state: 'idle',
-    message: '',
-  });
-  const displayTitle = reportTitle || `${toTitleCase(csvFilename)} Data`;
+  const [reportStatus, setReportStatus] = useState({ state: 'idle', message: '' });
+  const [csvStatus, setCsvStatus] = useState({ state: 'idle', message: '' });
+  const [pdfStatus, setPdfStatus] = useState({ state: 'idle', message: '' });
+  const displayTitle = reportTitle
+    ? reportTitle
+    : datasetLabel
+      ? `${datasetLabel} Dataset`
+      : `${toTitleCase(csvFilename)} Data`;
+  const displayPdfTitle =
+    pdfTitle || (datasetLabel ? `${datasetLabel} Dashboard PDF Document` : displayTitle);
   const pdfFilename = csvFilename.replace(/\.(csv)$/i, '.pdf');
-  const exportCsv = () => downloadCSV(csvData, csvFilename);
-  const exportPdf = () => {
+  const baseName = datasetLabel || sectionBaseName(csvFilename);
+  const csvButtonLabel = `${baseName} Dataset CSV`;
+  const pdfButtonLabel = `${baseName} Dataset PDF`;
+  const reportButtonLabel = `${baseName} Dataset Report`;
+
+  const exportCsv = async () => {
+    if (csvData.length) {
+      setCsvStatus({ state: 'success', message: 'Displayed dataset downloaded.' });
+      downloadCSV(csvData, csvFilename);
+      return;
+    }
+    if (typeof onDownloadCsv === 'function') {
+      setCsvStatus({ state: 'loading', message: 'Preparing the full dataset...' });
+      try {
+        await onDownloadCsv();
+        setCsvStatus({ state: 'success', message: 'Full dataset downloaded.' });
+      } catch (error) {
+        console.warn('Could not download the full dataset', error);
+        setCsvStatus({
+          state: 'error',
+          message: 'Unable to prepare the dataset. Please try again.',
+        });
+      }
+      return;
+    }
+    setCsvStatus({ state: 'error', message: 'No displayed data is available to download.' });
+  };
+
+  const exportPdf = async () => {
     if (!csvData.length) return;
-    exportDataTablePdf(csvData, {
-      title: displayTitle,
-      subtitle: 'Exported from the Nepal Data Explorer',
-      filename: pdfFilename,
-    });
+    setPdfStatus({ state: 'loading', message: 'Preparing the PDF dataset...' });
+    try {
+      await exportComprehensiveReportPdf(csvData, {
+        title: displayPdfTitle,
+        subtitle:
+          reportSubtitle ||
+          `PDF document generated from the ${baseName} dashboard data exactly as displayed`,
+        source: 'Nepal Data Explorer',
+        sections: collectReportSections(),
+        filename: pdfFilename,
+        meta: { ...reportMeta, documentType: 'PDF Document' },
+      });
+      setPdfStatus({ state: 'success', message: 'PDF document downloaded.' });
+    } catch (error) {
+      console.warn('Could not generate the PDF dataset', error);
+      setPdfStatus({
+        state: 'error',
+        message: 'Unable to prepare the PDF dataset. Please try again.',
+      });
+    }
   };
   const exportComprehensiveReport = async () => {
     if (typeof onDownloadReport === 'function') {
@@ -136,7 +192,10 @@ export default function DataFooter({
         setReportStatus({ state: 'success', message: 'Report downloaded successfully.' });
       } catch (error) {
         console.warn('Could not download the comprehensive report', error);
-        setReportStatus({ state: 'error', message: 'Unable to generate the report. Please try again.' });
+        setReportStatus({
+          state: 'error',
+          message: 'Unable to generate the report. Please try again.',
+        });
       }
       return;
     }
@@ -144,15 +203,27 @@ export default function DataFooter({
     try {
       await exportComprehensiveReportPdf(csvData, {
         title: displayTitle,
-        subtitle: reportSubtitle || 'Comprehensive summary generated from the live dashboard data',
+        subtitle:
+          reportSubtitle ||
+          `Comprehensive summary of the ${baseName} dashboard data, exported exactly as displayed`,
         source: 'Nepal Data Explorer',
         sections: collectReportSections(),
-        filename: pdfFilename,
+        filename: csvFilename,
+        meta: { ...reportMeta, documentType: 'Comprehensive Report' },
       });
     } catch (error) {
       console.warn('Could not generate the comprehensive report', error);
     }
   };
+
+  const statusMessage =
+    reportStatus.state !== 'idle'
+      ? reportStatus
+      : pdfStatus.state !== 'idle'
+        ? pdfStatus
+        : csvStatus.state !== 'idle'
+          ? csvStatus
+          : null;
 
   return (
     <div className="bg-surface border border-outline-variant rounded-sm px-10 py-8 flex flex-col md:flex-row items-center justify-between card-shadow">
@@ -164,27 +235,57 @@ export default function DataFooter({
       </div>
       <div className="flex flex-col items-center gap-2">
         <div className="flex flex-wrap gap-4 justify-center">
-          <button onClick={exportCsv} disabled={!csvData.length} className="ui-button px-6 py-3 border border-outline-variant rounded-sm flex items-center space-x-2 text-on-surface hover:bg-surface-container-high transition-colors font-bold uppercase text-[12px] active:scale-95 font-sans disabled:opacity-50 disabled:cursor-not-allowed">
-            <Icon name="description" size={20} color="#0051d5" />
-            <span>Export CSV</span>
+          <button
+            onClick={exportCsv}
+            disabled={
+              csvStatus.state === 'loading' ||
+              (!csvData.length && typeof onDownloadCsv !== 'function')
+            }
+            className="ui-button px-6 py-3 border border-outline-variant rounded-sm flex items-center space-x-2 text-on-surface hover:bg-surface-container-high transition-colors font-bold uppercase text-[12px] active:scale-95 font-sans disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Icon
+              name={csvStatus.state === 'loading' ? 'hourglass_top' : 'description'}
+              size={20}
+              color="#0051d5"
+            />
+            <span>{csvStatus.state === 'loading' ? 'Preparing...' : csvButtonLabel}</span>
           </button>
-          <button onClick={exportPdf} disabled={!csvData.length} className="ui-button px-6 py-3 border border-outline-variant rounded-sm flex items-center space-x-2 text-on-surface hover:bg-surface-container-high transition-colors font-bold uppercase text-[12px] active:scale-95 font-sans disabled:opacity-50 disabled:cursor-not-allowed">
-            <Icon name="picture_as_pdf" size={20} color="#b70011" />
-            <span>Export PDF</span>
+          <button
+            onClick={exportPdf}
+            disabled={pdfStatus.state === 'loading' || !csvData.length}
+            className="ui-button px-6 py-3 border border-outline-variant rounded-sm flex items-center space-x-2 text-on-surface hover:bg-surface-container-high transition-colors font-bold uppercase text-[12px] active:scale-95 font-sans disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Icon
+              name={pdfStatus.state === 'loading' ? 'hourglass_top' : 'picture_as_pdf'}
+              size={20}
+              color="#b70011"
+            />
+            <span>{pdfStatus.state === 'loading' ? 'Preparing...' : pdfButtonLabel}</span>
           </button>
-          <button onClick={exportComprehensiveReport} disabled={reportStatus.state === 'loading' || (!csvData.length && typeof onDownloadReport !== 'function')} className="ui-button px-8 py-3 bg-primary text-on-primary rounded-sm font-bold shadow-lg hover:brightness-110 active:scale-95 transition-all text-sm font-sans disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2">
-            <Icon name={reportStatus.state === 'loading' ? 'hourglass_top' : 'download'} size={20} color="#ffffff" />
-            <span>{reportStatus.state === 'loading' ? 'Generating...' : 'Download Comprehensive Report'}</span>
+          <button
+            onClick={exportComprehensiveReport}
+            disabled={
+              reportStatus.state === 'loading' ||
+              (!csvData.length && typeof onDownloadReport !== 'function')
+            }
+            className="ui-button px-8 py-3 bg-primary text-on-primary rounded-sm font-bold shadow-lg hover:brightness-110 active:scale-95 transition-all text-sm font-sans disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+          >
+            <Icon
+              name={reportStatus.state === 'loading' ? 'hourglass_top' : 'download'}
+              size={20}
+              color="#ffffff"
+            />
+            <span>{reportStatus.state === 'loading' ? 'Generating...' : reportButtonLabel}</span>
           </button>
         </div>
-        {reportStatus.state !== 'idle' && (
+        {statusMessage && (
           <p
             className={[
               'text-xs font-sans',
-              reportStatus.state === 'success' ? 'text-green-600' : 'text-nepal-crimson',
+              statusMessage.state === 'success' ? 'text-green-600' : 'text-nepal-crimson',
             ].join(' ')}
           >
-            {reportStatus.message}
+            {statusMessage.message}
           </p>
         )}
       </div>

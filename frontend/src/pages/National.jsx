@@ -73,7 +73,7 @@ export default function National() {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-            'Accept': 'application/json',
+            Accept: 'application/json',
           },
           credentials: 'include',
         });
@@ -102,7 +102,7 @@ export default function National() {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-            'Accept': 'application/json',
+            Accept: 'application/json',
           },
           credentials: 'include',
         });
@@ -120,7 +120,8 @@ export default function National() {
             name: province.name,
             population: Number(province.total_population || 0).toLocaleString(),
             pct: Number(province.pct || 0),
-            density: province.population_density != null ? Number(province.population_density) : null,
+            density:
+              province.population_density != null ? Number(province.population_density) : null,
             color: PROV_COLORS[index % PROV_COLORS.length],
           }));
           setProvincePopulation(mapped);
@@ -137,7 +138,7 @@ export default function National() {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-            'Accept': 'application/json',
+            Accept: 'application/json',
           },
           credentials: 'include',
         });
@@ -153,7 +154,9 @@ export default function National() {
           .filter((item) => item.context === 'World Output' && item.series_type === 'real')
           .filter((item) => Number.isFinite(Number(item.value)))
           .map((item) => {
-            const yearMatch = String(item.period_label || item.published_year || '').match(/(19|20)\d{2}/);
+            const yearMatch = String(item.period_label || item.published_year || '').match(
+              /(19|20)\d{2}/
+            );
             return {
               year: yearMatch ? yearMatch[0] : String(item.published_year || 'N/A'),
               value: Number(item.value),
@@ -189,7 +192,7 @@ export default function National() {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-            'Accept': 'application/json',
+            Accept: 'application/json',
           },
           credentials: 'include',
         });
@@ -224,7 +227,7 @@ export default function National() {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-            'Accept': 'application/json',
+            Accept: 'application/json',
           },
           credentials: 'include',
         });
@@ -252,8 +255,9 @@ export default function National() {
   }, []);
 
   const handleProvinceClick = (provinceId) => {
-    const province = provincePopulation.find((p) => p.id === provinceId)
-      || PROVINCE_PATHS.find((p) => p.id === provinceId);
+    const province =
+      provincePopulation.find((p) => p.id === provinceId) ||
+      PROVINCE_PATHS.find((p) => p.id === provinceId);
     setSelectedProvince(province);
   };
 
@@ -281,7 +285,10 @@ export default function National() {
       const value = metric.label === 'Total Exports' ? exportsValue : importsValue;
       return {
         ...metric,
-        value: value != null ? Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 }) : 'N/A',
+        value:
+          value != null
+            ? Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 })
+            : 'N/A',
         change: latestTradeYear || 'Unavailable',
         subtitle: `${metric.label.toLowerCase()} by fiscal year`,
       };
@@ -289,16 +296,62 @@ export default function National() {
     return metric;
   });
 
-  const csvData = useMemo(() => [
-    ...gdpTrend.map((record) => ({ Dataset: 'GDP trend', Year: record.year, Value: record.value, Unit: '%' })),
-    ...provincePopulation.map((record) => ({
-      Dataset: 'Population distribution',
-      Province: record.name,
-      Population: String(record.population).replace(/,/g, ''),
-      Percentage: record.pct,
-      Unit: 'people',
-    })),
-  ], [gdpTrend, provincePopulation]);
+  const csvData = useMemo(
+    () => [
+      {
+        Dataset: 'Key indicators',
+        Indicator: 'Total Population',
+        Value: `${(populationTotal / 1000000).toFixed(2)}M`,
+        Period: `${populationGrowth >= 0 ? '+' : ''}${Number(populationGrowth || 0).toFixed(2)}% growth`,
+      },
+      {
+        Dataset: 'Key indicators',
+        Indicator: 'GDP Growth Rate',
+        Value: gdpTrend.at(-1) ? `${Number(gdpTrend.at(-1).value).toFixed(1)}%` : 'N/A',
+        Period: gdpTrend.at(-1)?.year || 'N/A',
+      },
+      {
+        Dataset: 'Key indicators',
+        Indicator: 'Total Exports',
+        Value:
+          exportsValue != null
+            ? Number(exportsValue).toLocaleString(undefined, { maximumFractionDigits: 2 })
+            : 'N/A',
+        Period: latestTradeYear || 'N/A',
+      },
+      {
+        Dataset: 'Key indicators',
+        Indicator: 'Total Imports',
+        Value:
+          importsValue != null
+            ? Number(importsValue).toLocaleString(undefined, { maximumFractionDigits: 2 })
+            : 'N/A',
+        Period: latestTradeYear || 'N/A',
+      },
+      ...gdpTrend.map((record) => ({
+        Dataset: 'GDP trend',
+        Year: record.year,
+        Value: record.value,
+        Unit: '%',
+      })),
+      ...provincePopulation.map((record) => ({
+        Dataset: 'Population distribution',
+        Province: record.name,
+        Population: String(record.population).replace(/,/g, ''),
+        Percentage: record.pct,
+        Unit: 'people',
+      })),
+    ],
+    [
+      gdpTrend,
+      provincePopulation,
+      populationTotal,
+      populationGrowth,
+      exportsValue,
+      importsValue,
+      latestTradeYear,
+    ]
+  );
 
   const handleDownloadReport = () =>
     downloadNationalReport({
@@ -356,12 +409,16 @@ export default function National() {
                 <Icon name="newspaper" size={24} color="#b70011" />
                 National Headlines
               </h3>
-              <p className="text-on-surface-variant text-[12px] font-sans">Latest policy updates &amp; reports</p>
+              <p className="text-on-surface-variant text-[12px] font-sans">
+                Latest policy updates &amp; reports
+              </p>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-3 max-h-[500px] scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
               {news.length === 0 ? (
-                <div className="p-4 text-sm text-on-surface-variant">No recent headlines available right now.</div>
+                <div className="p-4 text-sm text-on-surface-variant">
+                  No recent headlines available right now.
+                </div>
               ) : (
                 news.map((article, index) => (
                   <NewsCard
@@ -404,11 +461,15 @@ export default function National() {
             <div className="flex justify-between items-center mb-8">
               <div>
                 <h3 className="text-lg font-bold text-on-surface font-sans">GDP Trend (5 Years)</h3>
-                <p className="text-on-surface-variant text-[12px] font-sans">Annual growth percentage (%)</p>
+                <p className="text-on-surface-variant text-[12px] font-sans">
+                  Annual growth percentage (%)
+                </p>
               </div>
               <div className="flex items-center space-x-2">
                 <span className="w-3 h-3 bg-primary rounded-full" />
-                <span className="text-[10px] text-on-surface-variant font-bold uppercase font-sans">Growth Rate</span>
+                <span className="text-[10px] text-on-surface-variant font-bold uppercase font-sans">
+                  Growth Rate
+                </span>
               </div>
             </div>
 
@@ -431,16 +492,27 @@ export default function National() {
           <div className="bg-surface border border-outline-variant rounded-sm p-6 card-shadow hover:border-primary transition-colors duration-200">
             <div className="flex justify-between items-center mb-6">
               <div>
-                <h3 className="text-lg font-bold text-on-surface font-sans">Population Distribution</h3>
-                <p className="text-on-surface-variant text-[12px] font-sans">By Province (2021 Census)</p>
+                <h3 className="text-lg font-bold text-on-surface font-sans">
+                  Population Distribution
+                </h3>
+                <p className="text-on-surface-variant text-[12px] font-sans">
+                  By Province (2021 Census)
+                </p>
               </div>
               <span className="text-xs bg-surface-container-lowest px-3 py-1 rounded-sm border border-outline-variant text-on-surface-variant font-sans">
-                Total: {populationTotal ? `${(populationTotal / 1000000).toFixed(2)}M` : 'Loading...'}
+                Total:{' '}
+                {populationTotal ? `${(populationTotal / 1000000).toFixed(2)}M` : 'Loading...'}
               </span>
             </div>
             <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
               {provincePopulation.map((p) => (
-                <ProgressBar key={p.name} name={p.name} population={p.population} pct={p.pct} color={p.color} />
+                <ProgressBar
+                  key={p.name}
+                  name={p.name}
+                  population={p.population}
+                  pct={p.pct}
+                  color={p.color}
+                />
               ))}
             </div>
           </div>
@@ -449,7 +521,14 @@ export default function National() {
         <DataFooter
           csvData={csvData}
           csvFilename="national-dataset.csv"
+          datasetLabel="National"
+          reportTitle="National Dashboard Report"
           onDownloadReport={handleDownloadReport}
+          reportMeta={{
+            fiscalYear: latestTradeYear || gdpTrend.at(-1)?.year || '',
+            selectedProvince: selectedProvince?.name || '',
+            indicators: 'Population, GDP & trade',
+          }}
         />
       </div>
 

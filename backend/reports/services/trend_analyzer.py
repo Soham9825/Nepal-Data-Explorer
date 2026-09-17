@@ -72,6 +72,20 @@ def analyze(dataset):
             f"rate used by the dashboard GDP trend is {_pct(current)}%, remaining {direction} zero."
         )
 
+    trade_by_year = (dataset.get("trade") or {}).get("trade_by_year") or []
+    if trade_by_year:
+        latest_trade = trade_by_year[-1]
+        exports = latest_trade.get("exports")
+        imports = latest_trade.get("imports")
+        if exports is not None and imports is not None:
+            balance = exports - imports
+            state = "surplus" if balance > 0 else ("deficit" if balance < 0 else "balanced")
+            observations.append(
+                f"For fiscal year {latest_trade['fiscal_year']}, total exports were "
+                f"{_fmt_int(exports)} and total imports {_fmt_int(imports)}, a trade "
+                f"{state} of {_fmt_int(abs(balance))}."
+            )
+
     if len(gdp_window) >= 2:
         first = gdp_window[0]
         last = gdp_window[-1]

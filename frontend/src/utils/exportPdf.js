@@ -3,6 +3,7 @@ import autoTable from 'jspdf-autotable';
 import { downloadBlob } from './download';
 
 const ACCENT = '#b70011';
+const ACCENT_DARK = '#7a0a12';
 const TEXT_LIGHT = '#ffffff';
 const TEXT_DARK = '#16161d';
 const TEXT_MUTED = '#5f5f6a';
@@ -41,14 +42,120 @@ function slugPdfFilename(base) {
   return `${clean.replace(/^-+|-+$/g, '') || 'dataset'}.pdf`;
 }
 
-function reportPdfFilename(base) {
-  const clean = (base || 'dataset.pdf').replace(/\.(csv|pdf)$/i, '').replace(/[^a-z0-9-]+/gi, '-');
-  const slug = clean.replace(/^-+|-+$/g, '') || 'dataset';
-  return `${/-report$/i.test(slug) ? slug : `${slug}-report`}.pdf`;
-}
-
 function createDoc() {
   return new jsPDF({ orientation: PAGE_ORIENTATION, unit: 'pt', format: PAGE_FORMAT });
+}
+
+function drawCoverPage(doc, { title, subtitle, source, meta = {} }) {
+  const pageWidth = PAGE_WIDTH;
+  const pageHeight = PAGE_HEIGHT;
+
+  // Primary branding first — accent header band opens with the product name
+  doc.setFillColor(ACCENT);
+  doc.rect(0, 0, pageWidth, 224, 'F');
+  doc.setFillColor(ACCENT_DARK);
+  doc.rect(0, 224, pageWidth, 8, 'F');
+
+  doc.setTextColor(TEXT_LIGHT);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.text('NEPAL DATA EXPLORER', MARGIN, 48);
+
+  // Dashboard title
+  doc.setTextColor(TEXT_LIGHT);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(30);
+  doc.text(title.split('\n')[0], MARGIN, 104, { maxWidth: pageWidth - MARGIN * 2 });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(13);
+  doc.setTextColor('#fbeaea');
+  doc.text(meta.documentType || 'PDF Document', MARGIN, 132, { maxWidth: pageWidth - MARGIN * 2 });
+
+  // Fiscal year + generated date
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor('#ffffff');
+  doc.text(`Fiscal Year: ${meta.fiscalYear || 'All periods'}`, MARGIN, 164, {
+    maxWidth: pageWidth - MARGIN * 2,
+  });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10.5);
+  doc.setTextColor('#fbeaea');
+  const contextBits = [meta.selectedProvince, meta.indicator].filter(Boolean);
+  if (contextBits.length) {
+    doc.text(contextBits.join('  ·  '), MARGIN, 186, { maxWidth: pageWidth - MARGIN * 2 });
+  }
+  doc.text(`Generated: ${meta.generated || formatDate()}`, MARGIN, 206, {
+    maxWidth: pageWidth - MARGIN * 2,
+  });
+
+  // Body area
+  let y = 296;
+
+  if (subtitle) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11.5);
+    doc.setTextColor(TEXT_MUTED);
+    const subtitleLines = doc.splitTextToSize(subtitle, pageWidth - MARGIN * 2);
+    doc.text(subtitleLines, MARGIN, y);
+    y += subtitleLines.length * 16 + 22;
+  }
+
+  // Overview facts strip
+  const facts = [
+    { label: 'Records', value: meta.totalRecords ?? '' },
+    { label: 'Groups', value: meta.groups ?? '' },
+    { label: 'Fields', value: meta.fields ?? '' },
+    { label: 'Prepared', value: meta.prepared ?? '' },
+  ];
+  const factBoxWidth = (pageWidth - MARGIN * 2) / facts.length;
+  facts.forEach((fact, index) => {
+    const x = MARGIN + index * factBoxWidth;
+    doc.setFillColor(index % 2 === 0 ? '#fdf3f2' : '#eef4ff');
+    doc.roundedRect(x, y, factBoxWidth - 14, 68, 5, 5, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.setTextColor(ACCENT);
+    doc.text(String(fact.value ?? '—'), x + 8, y + 28);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(TEXT_MUTED);
+    doc.text(fact.label.toUpperCase(), x + 8, y + 44);
+  });
+  y += 96;
+
+  // Scope blurb
+  doc.setDrawColor('#d9d0ce');
+  doc.setLineWidth(0.75);
+  doc.line(MARGIN, y, pageWidth - MARGIN, y);
+  y += 18;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9.5);
+  doc.setTextColor(TEXT_MUTED);
+  const scope = [
+    'This document consolidates the datasets displayed on the Nepal Data Explorer dashboard.',
+    'It presents the data tables and live visualizations behind every chart shown on the page,',
+    'suitable for research, policy analysis and offline review.',
+  ];
+  doc.text(scope, MARGIN, y, { maxWidth: pageWidth - MARGIN * 2 });
+  y += scope.length * 15 + 14;
+
+  // Source footer
+  if (source) {
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(9);
+    doc.setTextColor(TEXT_MUTED);
+    doc.text(`Source: ${source}`, MARGIN, y);
+  }
+
+  // Bottom accent strip
+  doc.setFillColor(ACCENT);
+  doc.rect(0, pageHeight - 22, pageWidth, 22, 'F');
+  doc.setTextColor(TEXT_LIGHT);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.text(FOOTER_TEXT, MARGIN, pageHeight - 9);
+  doc.text(`Generated ${formatDate()}`, pageWidth - MARGIN, pageHeight - 9, { align: 'right' });
 }
 
 function drawHeader(doc, { title, subtitle }) {
@@ -72,7 +179,8 @@ function drawHeader(doc, { title, subtitle }) {
 
 function drawPageFrame(doc) {
   const pageCount = doc.getNumberOfPages();
-  for (let page = 1; page <= pageCount; page += 1) {
+  // Start at page 2 — the cover page has its own footer
+  for (let page = 2; page <= pageCount; page += 1) {
     doc.setPage(page);
     doc.setDrawColor(ACCENT);
     doc.setLineWidth(1);
@@ -81,7 +189,9 @@ function drawPageFrame(doc) {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
     doc.text(FOOTER_TEXT, MARGIN, PAGE_HEIGHT - 22);
-    doc.text(`Page ${page} of ${pageCount}`, PAGE_WIDTH - MARGIN, PAGE_HEIGHT - 22, { align: 'right' });
+    doc.text(`Page ${page} of ${pageCount}`, PAGE_WIDTH - MARGIN, PAGE_HEIGHT - 22, {
+      align: 'right',
+    });
   }
 }
 
@@ -200,7 +310,15 @@ export function exportDataTablePdf(csvData = [], options = {}) {
     body: rows,
     startY: 92,
     margin: { left: MARGIN, right: MARGIN, bottom: 48 },
-    styles: { font: 'helvetica', fontSize: 8, textColor: TEXT_DARK, cellPadding: 4, valign: 'middle', lineColor: '#e9e2e0', lineWidth: 0.4 },
+    styles: {
+      font: 'helvetica',
+      fontSize: 8,
+      textColor: TEXT_DARK,
+      cellPadding: 4,
+      valign: 'middle',
+      lineColor: '#e9e2e0',
+      lineWidth: 0.4,
+    },
     headStyles: { fillColor: ACCENT, textColor: TEXT_LIGHT, fontStyle: 'bold', fontSize: 8 },
     alternateRowStyles: { fillColor: ROW_ALT },
     columnStyles: {},
@@ -218,6 +336,7 @@ export async function exportComprehensiveReportPdf(csvData = [], options = {}) {
     source = '',
     sections = [],
     filename,
+    meta = {},
   } = options;
 
   const columns = resolveColumns(csvData);
@@ -230,58 +349,65 @@ export async function exportComprehensiveReportPdf(csvData = [], options = {}) {
 
   const doc = createDoc();
 
-  drawHeader(doc, { title: 'Comprehensive Report', subtitle });
+  drawCoverPage(doc, {
+    title,
+    subtitle,
+    source,
+    meta: {
+      totalRecords: csvData.length,
+      groups: groups.length,
+      fields: columns.length,
+      prepared: formatDate(),
+      ...meta,
+    },
+  });
 
-  let y = 104;
+  doc.addPage();
+
+  let y = 92;
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(15);
-  doc.setTextColor(TEXT_DARK);
-  doc.text(title, MARGIN, y);
-  y += 20;
-
-  if (source) {
-    doc.setFont('helvetica', 'italic');
-    doc.setFontSize(9);
-    doc.setTextColor(TEXT_MUTED);
-    doc.text(`Source: ${source}`, MARGIN, y);
-    y += 18;
-  }
+  doc.setFontSize(16);
+  doc.setTextColor(ACCENT_DARK);
+  doc.text('What is included', MARGIN, y);
+  y += 22;
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9.5);
+  doc.setFontSize(10);
   doc.setTextColor(TEXT_DARK);
-  const intro = `This report was generated on ${formatDate()} from the live Nepal Data Explorer datasets. It contains ${csvData.length} records across ${groups.length} dataset group${groups.length === 1 ? '' : 's'} and ${columns.length} fields.`;
+  const intro =
+    `This PDF document contains the data currently displayed on the dashboard ` +
+    `(${meta.fiscalYear ? `fiscal year ${meta.fiscalYear}, ` : ''}generated ${formatDate()}). ` +
+    `Every table below is exported exactly as it appears on the page, with ` +
+    `${csvData.length} record${csvData.length === 1 ? '' : 's'} across ${groups.length} dataset ` +
+    `group${groups.length === 1 ? '' : 's'}:`;
   const introLines = doc.splitTextToSize(intro, CONTENT_WIDTH);
   doc.text(introLines, MARGIN, y);
-  y += introLines.length * 14 + 16;
+  y += introLines.length * 16 + 6;
 
-  doc.setDrawColor(ACCENT);
-  doc.setLineWidth(1);
-  doc.line(MARGIN, y, PAGE_WIDTH - MARGIN, y);
-  y += 14;
-
-  const facts = [
-    { label: 'Total records', value: csvData.length },
-    { label: 'Dataset groups', value: groups.length },
-    { label: 'Fields', value: columns.length },
-    { label: 'Report date', value: formatDate() },
-  ];
-
-  const factBoxWidth = CONTENT_WIDTH / facts.length;
-  facts.forEach((fact, index) => {
-    const x = MARGIN + index * factBoxWidth;
-    doc.setFillColor(index % 2 === 0 ? '#fdf3f2' : '#eef4ff');
-    doc.roundedRect(x, y, factBoxWidth - 12, 56, 4, 4, 'F');
+  // List each included dataset group with its record count
+  const groupBoxHeight = 30;
+  groups.forEach(([groupName, groupRows], index) => {
+    if (y + groupBoxHeight > PAGE_HEIGHT - 80) {
+      doc.addPage();
+      y = 60;
+    }
+    doc.setFillColor(index % 2 === 0 ? '#eef4ff' : '#fdf3f2');
+    doc.roundedRect(MARGIN, y, CONTENT_WIDTH, groupBoxHeight, 5, 5, 'F');
+    doc.setDrawColor('#d9d0ce');
+    doc.setLineWidth(0.5);
+    doc.roundedRect(MARGIN, y, CONTENT_WIDTH, groupBoxHeight, 5, 5, 'S');
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(16);
-    doc.setTextColor(ACCENT);
-    doc.text(String(fact.value), x + 6, y + 26);
+    doc.setFontSize(11);
+    doc.setTextColor(ACCENT_DARK);
+    doc.text(groupName, MARGIN + 14, y + 13);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
+    doc.setFontSize(9);
     doc.setTextColor(TEXT_MUTED);
-    doc.text(fact.label.toUpperCase(), x + 6, y + 42);
+    doc.text(`${groupRows.length} record${groupRows.length === 1 ? '' : 's'}`, MARGIN + 14, y + 25);
+    y += groupBoxHeight + 10;
   });
-  y += 76;
+
+  y += 10;
 
   if (sections.length) {
     y = sectionHeading(doc, {
@@ -307,7 +433,15 @@ export async function exportComprehensiveReportPdf(csvData = [], options = {}) {
       head: [groupColumns],
       body: bodyRows,
       margin: { left: MARGIN, right: MARGIN, bottom: 48 },
-      styles: { font: 'helvetica', fontSize: 8, textColor: TEXT_DARK, cellPadding: 4, valign: 'middle', lineColor: '#e9e2e0', lineWidth: 0.4 },
+      styles: {
+        font: 'helvetica',
+        fontSize: 8,
+        textColor: TEXT_DARK,
+        cellPadding: 4,
+        valign: 'middle',
+        lineColor: '#e9e2e0',
+        lineWidth: 0.4,
+      },
       headStyles: { fillColor: ACCENT, textColor: TEXT_LIGHT, fontStyle: 'bold', fontSize: 8 },
       alternateRowStyles: { fillColor: ROW_ALT },
     });
@@ -329,5 +463,5 @@ export async function exportComprehensiveReportPdf(csvData = [], options = {}) {
   }
 
   drawPageFrame(doc);
-  downloadBlob(doc.output('blob'), reportPdfFilename(filename));
+  downloadBlob(doc.output('blob'), slugPdfFilename(filename));
 }

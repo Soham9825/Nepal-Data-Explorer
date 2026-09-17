@@ -1,3 +1,5 @@
+import csv
+import io
 import traceback
 
 from django.http import HttpResponse
@@ -17,6 +19,35 @@ def _pdf_response(pdf_bytes, filename):
     response["Content-Disposition"] = f"attachment; filename={filename}"
     response["X-Report-Filename"] = filename
     return response
+
+
+def _csv_response(rows, filename, empty_detail="No data is available for export."):
+    """Builds a UTF-8 (BOM) CSV download from a list of row dicts.
+
+    The BOM and stable column order follow the same convention used by the
+    frontend `downloadCSV` helper so exports open cleanly in Excel/Sheets.
+    """
+    if not rows:
+        return Response({"detail": empty_detail}, status=400)
+    columns = list(dict.fromkeys(key for row in rows for key in row.keys()))
+    buffer = io.StringIO()
+    buffer.write("\ufeff")
+    writer = csv.DictWriter(buffer, fieldnames=columns)
+    writer.writeheader()
+    for row in rows:
+        writer.writerow({column: row.get(column, "") for column in columns})
+    response = HttpResponse(buffer.getvalue(), content_type="text/csv; charset=utf-8")
+    response["Content-Disposition"] = f"attachment; filename={filename}"
+    response["X-Report-Filename"] = filename
+    return response
+
+
+def _serialized_state(request):
+    """Accepts the dashboard state as a POST body or GET query parameters."""
+    data = request.data if str(request.method).upper() == "POST" else request.query_params
+    serializer = DashboardStateSerializer(data=data)
+    serializer.is_valid(raise_exception=True)
+    return serializer.validated_data
 
 
 @api_view(["POST"])
@@ -122,3 +153,53 @@ def economic_dashboard_report(request):
         )
 
     return _pdf_response(pdf_bytes, filename)
+
+
+# ---------------------------------------------------------------------------
+# Comprehensive CSV exports
+# ---------------------------------------------------------------------------
+
+@api_view(["GET", "POST"])
+@permission_classes([AllowAny])
+def national_csv(request):
+    """Downloads the complete National dashboard dataset as a CSV.
+
+    Accepts the same dashboard state as the PDF report (GET query params or a
+    POSTed JSON body) for future filtering; the export itself contains every
+    indicator available in the backend (summary, provinces, GDP trend,
+    foreign trade and sectoral growth) so the file can be used directly for
+    research or analysis.
+    """
+    state = _serialized_state(request)
+    try:
+        rows = report_data.build_national_csv_rows(state)
+    except Exception as exc:  # pragma: no cover - defensive
+        traceback.print_exc()
+        return Response({"detail": f"Unable to generate the CSV file: {exc}"}, status=500)
+    return _csv_response(rows, "National_Dataset.csv", "No national data is available for export.")
+
+
+@api_view(["GET", "POST"])
+@permission_classes([AllowAny])
+def tourism_csv(request):
+    """Downloads the complete Tourism dashboard dataset as a CSV."""
+    state = _serialized_state(request)
+    try:
+        rows = report_data.build_tourism_csv_rows(state)
+    except Exception as exc:  # pragma: no cover - defensive
+        traceback.print_exc()
+        return Response({"detail": f"Unable to generate the CSV file: {exc}"}, status=500)
+    return _csv_response(rows, "Tourism_Dataset.csv", "No tourism data is available for export.")
+
+
+@api_view(["GET", "POST"])
+@permission_classes([AllowAny])
+def economic_csv(request):
+    """Downloads the complete Economic dashboard dataset as a CSV."""
+    state = _serialized_state(request)
+    try:
+        rows = report_data.build_economic_csv_rows(state)
+    except Exception as exc:  # pragma: no cover - defensive
+        traceback.print_exc()
+        return Response({"detail": f"Unable to generate the CSV file: {exc}"}, status=500)
+    return _csv_response(rows, "Economic_Dataset.csv", "No economic data is available for export.")
