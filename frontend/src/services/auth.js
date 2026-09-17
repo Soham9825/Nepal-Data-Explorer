@@ -167,6 +167,18 @@ export const auth = {
     if (!res.ok) return parseError(res, 'Invalid or expired verification link');
     return res.json();
   },
+
+  exchangeOAuthCode: async (code) => {
+    const csrf = await auth.getCSRF();
+    const res = await fetch(`${AUTH_BASE}/oauth/exchange/`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: csrfHeader(csrf),
+      body: JSON.stringify({ code }),
+    });
+    if (!res.ok) return parseError(res, 'OAuth sign-in failed');
+    return res.json();
+  },
 };
 
 export default auth;

@@ -8,7 +8,6 @@ from socket import error as SocketError
 from functools import wraps
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
-import random
 import time
 import re
 from django.http import JsonResponse
@@ -81,7 +80,7 @@ def signup(request):
             'password_hash': make_password(password)
         }
 
-        code = f'{random.randint(100000, 999999)}'
+        code = f'{secrets.randbelow(1000000):06d}'
         request.session['verification_code'] = code
         request.session['last_verification_sent'] = time.time()
         request.session.set_expiry(60 * 15)
@@ -135,7 +134,7 @@ def forgotpassword(request):
     return render(request, 'forgotpassword.html', {'title': 'Forgot Password'})
 
 def send_verification_email(user):
-    code = f'{random.randint(100000,999999)}'
+    code = f'{secrets.randbelow(1000000):06d}'
     VerifiedEmail.objects.update_or_create(user = user, defaults={'code':code})
 
     send_mail(
@@ -157,7 +156,7 @@ def verifyemail(request):
         if not entered_code.isdigit():
             return render(request, 'verification.html', {'error': 'Code must be numeric'})
 
-        if entered_code == stored_code:
+        if secrets.compare_digest(entered_code, stored_code):
             user = CustomUser.objects.create_user(
                 username=signup_data['username'],
                 email=signup_data['email'],
@@ -203,7 +202,7 @@ def resend_verification_email(request):
         return redirect('signup')
 
     email = signup_data.get('email')
-    code = f'{random.randint(100000, 999999)}'
+    code = f'{secrets.randbelow(1000000):06d}'
     request.session['verification_code'] = code
     request.session['last_verification_sent'] = now
 
@@ -599,6 +598,42 @@ def _oauth_user(provider, access_token):
     return email, profile.get('name') or profile.get('login')
 
 
+@require_POST
+@csrf_protect
+def api_oauth_exchange(request):
+    """Exchanges a short-lived, single-use OAuth code for JWT tokens.
+
+    The browser only ever sees the one-time code in the OAuth redirect URL.
+    JWT tokens are returned via this POST endpoint so they never appear in
+    browser history, referrer headers, or access logs.
+    """
+    data = _json_body(request)
+    code = (data or {}).get('code', '').strip()
+    if not code:
+        return JsonResponse({'detail': 'OAuth code is required.'}, status=400)
+
+    codes = request.session.get('oauth_codes') or {}
+    stored = codes.pop(code, None)
+    request.session['oauth_codes'] = codes
+    if not stored:
+        return JsonResponse({'detail': 'Invalid or expired OAuth code.'}, status=400)
+    if timezone.now().timestamp() > stored.get('expires', 0):
+        return JsonResponse({'detail': 'Invalid or expired OAuth code.'}, status=400)
+
+    try:
+        user = CustomUser.objects.get(pk=stored['user_id'], is_active=True)
+    except CustomUser.DoesNotExist:
+        return JsonResponse({'detail': 'Invalid or expired OAuth code.'}, status=400)
+
+    return JsonResponse({
+        'username': user.username,
+        'email': user.email,
+        'is_staff': user.is_staff,
+        'is_superuser': user.is_superuser,
+        **_jwt_for_user(user),
+    })
+
+
 def oauth_callback(request, provider):
     config = OAUTH_PROVIDERS.get(provider)
     if not config or request.GET.get('error'):
@@ -636,9 +671,15 @@ def oauth_callback(request, provider):
         user.email_verified = True
         user.save(update_fields=['is_verified', 'email_verified'])
         auth_login(request, user)
-        tokens = _jwt_for_user(user)
+        oauth_code = secrets.token_urlsafe(32)
+        codes = request.session.setdefault('oauth_codes', {})
+        codes[oauth_code] = {
+            'user_id': user.pk,
+            'expires': (timezone.now() + timedelta(minutes=2)).timestamp(),
+        }
+        request.session['oauth_codes'] = codes
         return redirect(
-            f"{settings.FRONTEND_URL.rstrip('/')}/login?{urlencode({'oauth': 'success', **tokens})}"
+            f"{settings.FRONTEND_URL.rstrip('/')}/login?{urlencode({'oauth': 'success', 'code': oauth_code})}"
         )
     except OAuthProviderError as error:
         return _oauth_redirect(provider, error.code)

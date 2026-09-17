@@ -58,19 +58,17 @@ export default function Login() {
 
     if (oauthResult !== "success") return;
 
-    const oauthAccess = params.get("access");
-    const oauthRefresh = params.get("refresh");
-    if (!oauthAccess || !oauthRefresh) {
+    const oauthCode = params.get("code");
+    if (!oauthCode) {
       alert("Google sign-in did not return an authentication token.");
       window.history.replaceState({}, document.title, "/login");
       return;
     }
-    auth.storeTokens({ access: oauthAccess, refresh: oauthRefresh });
     setLoading(true);
     window.history.replaceState({}, document.title, "/login");
-    auth.getCurrentUser()
+    auth.exchangeOAuthCode(oauthCode)
       .then((user) => {
-        if (!user) throw new Error("The Google session could not be verified.");
+        auth.storeTokens(user);
         navigate("/national", { replace: true });
       })
       .catch((err) => alert(err.message || "Google sign-in failed"))

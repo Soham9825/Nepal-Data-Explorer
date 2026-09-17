@@ -26,6 +26,7 @@ urlpatterns = [
 	path('api/support/', views.api_support_message, name='api_support_message'),
 	path('api/verify-email/', views.api_verify_email, name='api_verify_email'),
 	path('api/send-verification-email/', views.api_send_verification_email, name='api_send_verification_email'),
-	path('oauth/<str:provider>/', views.oauth_start, name='oauth_start'),
-	path('oauth/<str:provider>/callback/', views.oauth_callback, name='oauth_callback'),
+path('oauth/<str:provider>/', views.oauth_start, name='oauth_start'),
+    path('oauth/<str:provider>/callback/', views.oauth_callback, name='oauth_callback'),
+    path('api/oauth/exchange/', views.api_oauth_exchange, name='api_oauth_exchange'),
 ]

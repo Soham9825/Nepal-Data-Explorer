@@ -1,50 +1,92 @@
 # Nepal Data Explorer
 
-A national dashboard for Nepal's economy, tourism and demographics, built with Django + React.
+A national data platform for Nepal's economy, tourism, and demographics, built with Django and React. It provides interactive dashboards, AI-powered forecasts, comparative analytics, RSS news aggregation, and OAuth-based authentication.
 
 ![Index page](assets/indexpage.png)
-
 ![Predictions](assets/prediction.png)
-
-## Tech Stack
-
-- **Backend:** Django, Django REST Framework, SimpleJWT, PostgreSQL (Neon), Hugging Face toxicity moderation
-- **Frontend:** React 18, Vite, TailwindCSS, Recharts, React Router, Leaflet
 
 ## Features
 
-- National / provincial dashboards for economic, tourism and demographic data
-- AI-powered forecasts with ARIMA/SARIMA models and confidence intervals
-- Compare provinces side-by-side, browse datasets, and export reports
-- Google + GitHub OAuth login, JWT auth, email verification, and profanity/toxicity moderation on support messages
-- Live RSS news aggregation
+- National and provincial dashboards for economic, tourism, and demographic data
+- AI-powered forecasting with ARIMA/SARIMA models and confidence intervals
+- Province comparison, dataset exploration, and PDF/CSV report exports
+- Authentication via Google and GitHub OAuth, JWT sessions, and email verification
+- Custom toxicity moderation for support messages, backed by a fine-tuned DistilBERT classifier (trained for Nepali and English) with an additional bilingual profanity filter
 
-## Setup
+## Technology Stack
+
+| Layer     | Technologies                                                |
+| --------- | ----------------------------------------------------------- |
+| Backend   | Django, Django REST Framework, SimpleJWT, PostgreSQL        |
+| Frontend  | React 18, Vite, TailwindCSS, Recharts, React Router, Leaflet |
+| ML        | Custom DistilBERT toxicity classifier (fine-tuned in Colab), ARIMA/SARIMA |
+
+## Prerequisites
+
+| Tool       | Version |
+| ---------- | ------- |
+| Python     | 3.11+   |
+| Node.js    | 18+     |
+| npm        | 9+      |
+| PostgreSQL | 14+ (optional — a remote `DATABASE_URL` also works) |
+
+## Getting Started
 
 ### 1. Backend
 
+#### Create a virtual environment
+
+| OS       | Command                                        |
+| -------- | ---------------------------------------------- |
+| macOS/Linux | `python3 -m venv venv`                          |
+| Windows (CMD) | `py -m venv venv`                           |
+| Windows (PowerShell) | `py -m venv venv`                 |
+
+Activate it:
+
+| OS       | Command                                   |
+| -------- | ------------------------------------------ |
+| macOS/Linux | `source venv/bin/activate`              |
+| Windows (CMD) | `venv\Scripts\activate.bat`            |
+| Windows (PowerShell) | `venv\Scripts\Activate.ps1`       |
+
+#### Install dependencies and configure
+
 ```bash
 cd backend
-python3 -m venv venv
-source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Set your environment variables in `backend/.env` (`SECRET_KEY`, `DATABASE_URL`, `FRONTEND_URL`, email SMTP settings, OAuth keys).
+Create the environment file. On macOS/Linux:
 
-Download the toxicity model weights (required for support-message moderation):
+```bash
+touch .env
+```
+
+On Windows (CMD or PowerShell):
+
+```
+type nul > .env
+```
+
+Open `.env` with any text editor and populate it as described in the [Environment Variables](#environment-variables) section below.
+
+Download the toxicity model weights. These are the trained weights for the project's custom DistilBERT toxicity detector (available as the `NepalDataExplorer-ToxicDetectorModel` repository on Hugging Face; override the repo with `TOXICITY_MODEL_ID` if you host a fork). Required for support-message moderation:
 
 ```bash
 python scripts/download_toxicity_model.py
 ```
 
-Run migrations, checks and tests:
+Apply migrations, run checks and tests, then start the server:
 
 ```bash
 python manage.py migrate
 python manage.py check
 python manage.py test
+python manage.py runserver
 ```
+
+The backend is available at `http://localhost:8000`.
 
 ### 2. Frontend
 
@@ -54,4 +96,62 @@ npm install
 npm run dev
 ```
 
-The app runs at `http://localhost:5173` and expects the API at `http://localhost:8000`.
+The frontend runs at `http://localhost:5173` and expects the API at `http://localhost:8000`.
+
+## Environment Variables
+
+Create a `.env` file inside the `backend/` directory containing the variables below. **The `.env` file is git-ignored — never commit it.** If you do, rotate every credential immediately, as values remain visible in git history even after deletion.
+
+| Variable               | Description / Example                                                        |
+| ---------------------- | --------------------------------------------------------------------------- |
+| `SECRET_KEY`           | Long random string. Generate with `python -c "import secrets; print(secrets.token_urlsafe(64))"` |
+| `DEBUG`                | `True` for local development, `False` in production                          |
+| `ALLOWED_HOSTS`        | Comma-separated hosts, e.g. `localhost,127.0.0.1,yourdomain.com`            |
+| `DATABASE_URL`         | PostgreSQL connection string, e.g. `postgres://user:password@localhost:5432/dbname` |
+| `FRONTEND_URL`         | `http://localhost:5173`                                                      |
+| `EMAIL_BACKEND`        | `django.core.mail.backends.smtp.EmailBackend`                                |
+| `EMAIL_HOST`           | `smtp.gmail.com`                                                             |
+| `EMAIL_PORT`           | `587`                                                                        |
+| `EMAIL_USE_TLS`        | `True`                                                                       |
+| `EMAIL_HOST_USER`      | Your email address, e.g. `you@gmail.com`                                     |
+| `EMAIL_HOST_PASSWORD`  | Your Gmail **App Password** (never your normal Gmail password)               |
+| `DEFAULT_FROM_EMAIL`   | `you@gmail.com`                                                              |
+| `GOOGLE_CLIENT_ID`     | Google OAuth client ID                                                       |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret                                                   |
+| `GOOGLE_REDIRECT_URI`  | `http://localhost:8000/accounts/oauth/google/callback/`                     |
+| `GITHUB_CLIENT_ID`     | GitHub OAuth app client ID                                                   |
+| `GITHUB_CLIENT_SECRET` | GitHub OAuth app client secret                                               |
+| `GITHUB_REDIRECT_URI`  | `http://localhost:8000/accounts/oauth/github/callback/`                     |
+
+### Minimum example
+
+```ini
+SECRET_KEY=replace-with-a-long-random-string
+DEBUG=True
+ALLOWED_HOSTS=localhost,127.0.0.1
+DATABASE_URL=postgres://user:password@localhost:5432/nepal_data_explorer
+FRONTEND_URL=http://localhost:5173
+EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=you@gmail.com
+EMAIL_HOST_PASSWORD=your-app-password
+DEFAULT_FROM_EMAIL=you@gmail.com
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_REDIRECT_URI=http://localhost:8000/accounts/oauth/google/callback/
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+GITHUB_REDIRECT_URI=http://localhost:8000/accounts/oauth/github/callback/
+```
+
+## Security Notes
+
+- `.env` is git-ignored; only non-secret default values belong in version control.
+- OAuth sign-in exchanges a short-lived, single-use code for JWT tokens — tokens are never placed in URLs.
+- Set `DEBUG=False` and a real `ALLOWED_HOSTS` before deployment. When `DEBUG=False`, the application automatically enforces HTTPS-only cookies, HSTS, and a strict referrer policy.
+
+## License
+
+Private project.

@@ -1,6 +1,6 @@
 import csv
 import io
-import traceback
+import logging
 
 from django.http import HttpResponse
 from rest_framework.decorators import (
@@ -12,6 +12,8 @@ from rest_framework.response import Response
 
 from .serializers import DashboardStateSerializer
 from .services import chart_generator, report_data, report_generator, trend_analyzer
+
+logger = logging.getLogger(__name__)
 
 
 def _pdf_response(pdf_bytes, filename):
@@ -78,9 +80,9 @@ def national_dashboard_report(request):
         charts = chart_generator.build_all(dataset)
         pdf_bytes, filename = report_generator.build_pdf(dataset, charts, trends, state)
     except Exception as exc:  # pragma: no cover - defensive
-        traceback.print_exc()
+        logger.exception('Failed to generate national dashboard report')
         return Response(
-            {"detail": f"Unable to generate the report: {exc}"},
+            {"detail": "Unable to generate the report."},
             status=500,
         )
 
@@ -110,9 +112,9 @@ def tourism_dashboard_report(request):
         charts = chart_generator.build_tourism(dataset)
         pdf_bytes, filename = report_generator.build_tourism_pdf(dataset, charts, trends, state)
     except Exception as exc:  # pragma: no cover - defensive
-        traceback.print_exc()
+        logger.exception('Failed to generate tourism dashboard report')
         return Response(
-            {"detail": f"Unable to generate the report: {exc}"},
+            {"detail": "Unable to generate the report."},
             status=500,
         )
 
@@ -146,9 +148,9 @@ def economic_dashboard_report(request):
         charts = chart_generator.build_economic(dataset)
         pdf_bytes, filename = report_generator.build_economic_pdf(dataset, charts, trends, state)
     except Exception as exc:  # pragma: no cover - defensive
-        traceback.print_exc()
+        logger.exception('Failed to generate economic dashboard report')
         return Response(
-            {"detail": f"Unable to generate the report: {exc}"},
+            {"detail": "Unable to generate the report."},
             status=500,
         )
 
@@ -174,8 +176,8 @@ def national_csv(request):
     try:
         rows = report_data.build_national_csv_rows(state)
     except Exception as exc:  # pragma: no cover - defensive
-        traceback.print_exc()
-        return Response({"detail": f"Unable to generate the CSV file: {exc}"}, status=500)
+        logger.exception('Failed to generate national CSV export')
+        return Response({"detail": "Unable to generate the CSV file."}, status=500)
     return _csv_response(rows, "National_Dataset.csv", "No national data is available for export.")
 
 
@@ -187,8 +189,8 @@ def tourism_csv(request):
     try:
         rows = report_data.build_tourism_csv_rows(state)
     except Exception as exc:  # pragma: no cover - defensive
-        traceback.print_exc()
-        return Response({"detail": f"Unable to generate the CSV file: {exc}"}, status=500)
+        logger.exception('Failed to generate tourism CSV export')
+        return Response({"detail": "Unable to generate the CSV file."}, status=500)
     return _csv_response(rows, "Tourism_Dataset.csv", "No tourism data is available for export.")
 
 
@@ -200,6 +202,6 @@ def economic_csv(request):
     try:
         rows = report_data.build_economic_csv_rows(state)
     except Exception as exc:  # pragma: no cover - defensive
-        traceback.print_exc()
-        return Response({"detail": f"Unable to generate the CSV file: {exc}"}, status=500)
+        logger.exception('Failed to generate economic CSV export')
+        return Response({"detail": "Unable to generate the CSV file."}, status=500)
     return _csv_response(rows, "Economic_Dataset.csv", "No economic data is available for export.")
