@@ -28,7 +28,7 @@ from django.db.utils import OperationalError
 from django.utils import timezone
 from .models import PasswordResetToken
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
@@ -240,7 +240,7 @@ def api_login(request):
     except Exception:
         return JsonResponse({'detail': 'Invalid JSON'}, status=400)
 
-    identifier = data.get('username') or data.get('email')
+    identifier = (data.get('username') or data.get('email') or '').strip()
     password = data.get('password')
     remember_me = data.get('remember_me', False)
 
@@ -251,17 +251,26 @@ def api_login(request):
     user = authenticate(request, username=identifier, password=password)
 
     if not user:
-        # try email lookup
+        # try email lookup (case-insensitive)
         try:
-            u = CustomUser.objects.get(email=identifier)
+            u = CustomUser.objects.get(email__iexact=identifier)
             user = authenticate(request, username=u.username, password=password)
         except CustomUser.DoesNotExist:
             user = None
 
     if user:
-        return JsonResponse({'username': user.username, 'email': user.email, **_jwt_for_user(user)})
+        return JsonResponse({
+            'username': user.username,
+            'email': user.email,
+            'is_staff': user.is_staff,
+            'is_superuser': user.is_superuser,
+            **_jwt_for_user(user),
+        })
     else:
-        return JsonResponse({'detail': 'Invalid credentials'}, status=401)
+        return JsonResponse(
+            {'detail': 'Credentials do not match. Please check your username/email and password.'},
+            status=401,
+        )
 
 
 @api_view(['POST'])
@@ -273,7 +282,21 @@ def api_logout_api(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def api_me(request):
-    return Response({'username': request.user.username, 'email': request.user.email})
+    return Response({
+        'username': request.user.username,
+        'email': request.user.email,
+        'is_staff': request.user.is_staff,
+        'is_superuser': request.user.is_superuser,
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def api_admin_users(request):
+    users = CustomUser.objects.values(
+        'id', 'username', 'email', 'is_staff', 'is_superuser', 'is_active', 'is_verified', 'email_verified'
+    ).order_by('-is_superuser', '-is_staff', 'username')
+    return Response({'users': list(users)})
 
 
 @require_POST

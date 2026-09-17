@@ -29,6 +29,14 @@ export default function Sidebar({ user = DEFAULT_USER, onLogout, collapsed, onTo
   const location = useLocation();
   const currentPath = location.pathname;
 
+  const isAdmin = !!(user && (user.isStaff || user.isSuperuser));
+  const navItemsWithAdmin = isAdmin
+    ? [
+        { id: "admin", label: "Admin Panel", icon: "admin_panel_settings", path: "/admin", admin: true },
+        ...navItems,
+      ]
+    : navItems;
+
   return (
     <aside className={`${collapsed ? "w-20" : "w-64"} relative h-screen flex flex-col border-r border-outline-variant bg-surface shrink-0 shadow-sm transition-[width] duration-200`}>
 
@@ -66,7 +74,7 @@ export default function Sidebar({ user = DEFAULT_USER, onLogout, collapsed, onTo
       <nav className={`flex-1 space-y-1 overflow-y-auto ${collapsed ? "p-3 pt-12" : "p-4"}`}>
         {!collapsed && <p className="px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-onSurface-variant opacity-60">Menu</p>}
 
-        {navItems.map((item) => {
+        {navItemsWithAdmin.map((item) => {
           const isNational = item.id === "national";
           const isActive =
             (isNational && (currentPath === "/" || currentPath === "/national")) ||

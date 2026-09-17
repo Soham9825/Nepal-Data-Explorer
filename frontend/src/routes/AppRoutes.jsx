@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import ProtectedRoute from "./ProtectedRoute";
+import AdminRoute from "./AdminRoute";
 
 import National from "../pages/National";
 import Economic from "../pages/Economic";
@@ -17,6 +18,7 @@ import VerifyOtp from "../pages/VerifyOtp";
 import ResetPassword from "../pages/ResetPassword";
 import VerifyEmail from "../pages/VerifyEmail";
 import Support from "../pages/Support";
+import Admin from "../pages/Admin";
 import NotFound from "../pages/NotFound";
 
 import CSVExplorer from "../pages/CSVExplorer";
@@ -128,6 +130,16 @@ export default function AppRoutes() {
             <CSVExplorer />
           </ProtectedRoute>
         }
+        />
+
+        {/* Admin-only route (non-admins see the 404 page) */}
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute>
+              <Admin />
+            </AdminRoute>
+          }
         />
 
         {/* Public route */}

@@ -110,6 +110,11 @@ export const auth = {
       return null;
     }
   },
+
+  isAdmin: (user = null) => {
+    const current = user || auth.getCachedUser();
+    return !!(current && (current.is_staff || current.is_superuser));
+  },
   requestPasswordReset: async (email) => {
     const csrf = await auth.getCSRF();
     const res = await fetch(`${AUTH_BASE}/password-reset/request/`, {

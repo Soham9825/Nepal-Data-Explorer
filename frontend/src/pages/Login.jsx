@@ -30,6 +30,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [formError, setFormError] = useState("");
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -78,13 +79,14 @@ export default function Login() {
 
   const handleLogin = (e) => {
     e.preventDefault();
+    setFormError("");
     setLoading(true);
     (async () => {
       try {
         await auth.login({ username: email, password });
         navigate("/national");
       } catch (err) {
-        alert(err.message || "Login failed");
+        setFormError(err.message || "Login failed");
       } finally {
         setLoading(false);
       }
@@ -145,8 +147,8 @@ export default function Login() {
 
           <div className="mt-10">
             <input
-              type="email"
-              placeholder="Email address"
+              type="text"
+              placeholder="Username or email"
               className="field"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -171,6 +173,16 @@ export default function Login() {
               {show ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
+
+          {formError && (
+            <p
+              className="mt-4 rounded-md px-3 py-2.5 text-sm font-medium"
+              role="alert"
+              style={{ background: "rgba(200,30,58,0.08)", color: "var(--crimson-deep)" }}
+            >
+              {formError}
+            </p>
+          )}
 
           <button
             type="submit"

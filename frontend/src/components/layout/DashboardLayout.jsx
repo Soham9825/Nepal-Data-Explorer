@@ -22,8 +22,9 @@ export default function DashboardLayout({ children, pageTitle }) {
     return cachedUser
       ? {
         name: cachedUser.username || cachedUser.email || DEFAULT_USER.name,
-        role: cachedUser.role || DEFAULT_USER.role,
+        role: cachedUser.role || (cachedUser.is_superuser || cachedUser.is_staff ? 'Administrator' : DEFAULT_USER.role),
         avatarUrl: cachedUser.avatarUrl,
+        isStaff: cachedUser.is_staff || cachedUser.is_superuser || false,
       }
       : DEFAULT_USER;
   });
@@ -39,8 +40,9 @@ export default function DashboardLayout({ children, pageTitle }) {
         if (!mounted || !user) return;
         setCurrentUser({
           name: user.username || user.email || DEFAULT_USER.name,
-          role: user.role || DEFAULT_USER.role,
+          role: user.role || (user.is_superuser || user.is_staff ? 'Administrator' : DEFAULT_USER.role),
           avatarUrl: user.avatarUrl,
+          isStaff: user.is_staff || user.is_superuser || false,
         });
       })
       .catch((error) => {

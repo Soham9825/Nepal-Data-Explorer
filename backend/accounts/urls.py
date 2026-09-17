@@ -18,6 +18,7 @@ urlpatterns = [
     path('api/logout/', views.api_logout_api, name='api_logout_api'),
     path('api/signup/', views.api_signup, name='api_signup'),
     path('api/me/', views.api_me, name='api_me'),
+    path('api/admin/users/', views.api_admin_users, name='api_admin_users'),
 	path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 	path('api/password-reset/request/', views.api_password_reset_request, name='api_password_reset_request'),
 	path('api/password-reset/verify/', views.api_password_reset_verify, name='api_password_reset_verify'),
