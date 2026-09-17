@@ -4,6 +4,8 @@
   "private": true,
   "dependencies": {
     "@vitejs/plugin-react": "^6.0.2",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.27.0",
     "papaparse": "^5.7.0",

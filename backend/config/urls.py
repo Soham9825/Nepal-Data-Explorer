@@ -23,4 +23,5 @@ urlpatterns = [
     path('api/datasets/', include('datasets.urls')),
     path('api/analytics/', include('analytics.urls')),
     path('api/news/', include('news.urls')),
+    path('api/reports/', include('reports.urls')),
 ]
