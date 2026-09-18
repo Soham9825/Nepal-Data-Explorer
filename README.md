@@ -76,6 +76,14 @@ python manage.py runserver
 
 The backend is available at `http://localhost:8000`.
 
+#### Fill the database with the CSV data (also works with a Neon `DATABASE_URL`)
+
+```bash
+python manage.py import_curated_datasets --set tourism --set population --set economic
+python manage.py import_province_gdp datasets/data/Province_wise_gdp_growth.csv
+python manage.py import_nationality_forecasts
+```
+
 ### 2. Frontend
 
 ```bash
