@@ -57,19 +57,7 @@ cd backend
 pip install -r requirements.txt
 ```
 
-Create the environment file. On macOS/Linux:
-
-```bash
-touch .env
-```
-
-On Windows (CMD or PowerShell):
-
-```
-type nul > .env
-```
-
-Open `.env` with any text editor and populate it as described in the [Environment Variables](#environment-variables) section below.
+Copy the [minimum example](#environment-variables) below into a `.env` file inside `backend/` and adjust the values as needed.
 
 Download the toxicity model weights. These are the trained weights for the project's custom DistilBERT toxicity detector (available as the `NepalDataExplorer-ToxicDetectorModel` repository on Hugging Face; override the repo with `TOXICITY_MODEL_ID` if you host a fork). Required for support-message moderation:
 
@@ -100,30 +88,7 @@ The frontend runs at `http://localhost:5173` and expects the API at `http://loca
 
 ## Environment Variables
 
-Create a `.env` file inside the `backend/` directory containing the variables below. **The `.env` file is git-ignored — never commit it.** If you do, rotate every credential immediately, as values remain visible in git history even after deletion.
-
-| Variable               | Description / Example                                                        |
-| ---------------------- | --------------------------------------------------------------------------- |
-| `SECRET_KEY`           | Long random string. Generate with `python -c "import secrets; print(secrets.token_urlsafe(64))"` |
-| `DEBUG`                | `True` for local development, `False` in production                          |
-| `ALLOWED_HOSTS`        | Comma-separated hosts, e.g. `localhost,127.0.0.1,yourdomain.com`            |
-| `DATABASE_URL`         | PostgreSQL connection string, e.g. `postgres://user:password@localhost:5432/dbname` |
-| `FRONTEND_URL`         | `http://localhost:5173`                                                      |
-| `EMAIL_BACKEND`        | `django.core.mail.backends.smtp.EmailBackend`                                |
-| `EMAIL_HOST`           | `smtp.gmail.com`                                                             |
-| `EMAIL_PORT`           | `587`                                                                        |
-| `EMAIL_USE_TLS`        | `True`                                                                       |
-| `EMAIL_HOST_USER`      | Your email address, e.g. `you@gmail.com`                                     |
-| `EMAIL_HOST_PASSWORD`  | Your Gmail **App Password** (never your normal Gmail password)               |
-| `DEFAULT_FROM_EMAIL`   | `you@gmail.com`                                                              |
-| `GOOGLE_CLIENT_ID`     | Google OAuth client ID                                                       |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret                                                   |
-| `GOOGLE_REDIRECT_URI`  | `http://localhost:8000/accounts/oauth/google/callback/`                     |
-| `GITHUB_CLIENT_ID`     | GitHub OAuth app client ID                                                   |
-| `GITHUB_CLIENT_SECRET` | GitHub OAuth app client secret                                               |
-| `GITHUB_REDIRECT_URI`  | `http://localhost:8000/accounts/oauth/github/callback/`                     |
-
-### Minimum example
+Create a `.env` file inside the `backend/` directory with the following minimum example. **The `.env` file is git-ignored — never commit it.** If you do, rotate every credential immediately, as values remain visible in git history even after deletion.
 
 ```ini
 SECRET_KEY=replace-with-a-long-random-string
@@ -146,12 +111,31 @@ GITHUB_CLIENT_SECRET=
 GITHUB_REDIRECT_URI=http://localhost:8000/accounts/oauth/github/callback/
 ```
 
-## Security Notes
+### Create the environment file
 
-- `.env` is git-ignored; only non-secret default values belong in version control.
-- OAuth sign-in exchanges a short-lived, single-use code for JWT tokens — tokens are never placed in URLs.
-- Set `DEBUG=False` and a real `ALLOWED_HOSTS` before deployment. When `DEBUG=False`, the application automatically enforces HTTPS-only cookies, HSTS, and a strict referrer policy.
+On macOS/Linux:
 
-## License
+```bash
+cd backend
+touch .env
+```
+
+On Windows (CMD or PowerShell):
+
+```
+cd backend
+type nul > .env
+```
+
+Then paste the example above into `.env` and fill in your own values (generate a secret with `python -c "import secrets; print(secrets.token_urlsafe(64))"`).
+
+### Create a superuser
+
+```bash
+cd backend
+python manage.py createsuperuser
+```
+
+Run it interactively and enter the admin username, email, and password. The superuser grants access to Django's admin interface at `http://localhost:8000/admin/`.
 
 Private project.
