@@ -1,35 +1,32 @@
 import { Navigate, Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { auth } from "../services/auth";
-import Loader from "../components/common/Loader";
 import NotFound from "../pages/NotFound";
 
 export default function AdminRoute({ children }) {
-  const [loading, setLoading] = useState(true);
-  const [authed, setAuthed] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [state, setState] = useState(() => {
+    const cached = auth.getCachedUser();
+    if (cached) {
+      return cached.is_staff || cached.is_superuser ? "admin" : "user";
+    }
+    return auth.getAccessToken() ? "rechecking" : "guest";
+  });
   const [error, setError] = useState(null);
 
   useEffect(() => {
     let mounted = true;
-    (async () => {
-      try {
-        const user = await auth.getCurrentUser();
+    auth
+      .getCurrentUser()
+      .then((user) => {
         if (!mounted) return;
-        setAuthed(!!user);
-        setIsAdmin(!!(user && (user.is_staff || user.is_superuser)));
-      } catch (err) {
-        console.warn('Admin check failed', err);
-        if (!mounted) return;
-        setError(err);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
+        setState(user && (user.is_staff || user.is_superuser) ? "admin" : user ? "user" : "guest");
+      })
+      .catch((err) => {
+        console.warn("Admin check failed", err);
+        if (mounted && !auth.getCachedUser()) setError(err);
+      });
     return () => (mounted = false);
   }, []);
-
-  if (loading) return <Loader fullScreen />;
 
   if (error) {
     return (
@@ -53,7 +50,7 @@ export default function AdminRoute({ children }) {
     );
   }
 
-  if (!authed) return <Navigate to="/login" replace />;
-  if (!isAdmin) return <NotFound />;
+  if (state === "guest") return <Navigate to="/login" replace />;
+  if (state === "user") return <NotFound />;
   return children;
 }
