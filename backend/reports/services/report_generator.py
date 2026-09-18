@@ -910,6 +910,8 @@ def build_economic_story(dataset, charts, trends, state):
     trade = dataset.get("trade_by_year") or []
     sectors = dataset.get("sectoral_growth") or []
     latest_sector_year = dataset.get("latest_sectoral_year")
+    province_gdp = dataset.get("province_gdp") or {}
+    province_latest = province_gdp.get("latest")
     report_year = dataset.get("report_year") or ""
     generated = datetime.now()
     generated_label = generated.strftime("%B %d, %Y at %H:%M")
@@ -926,7 +928,7 @@ def build_economic_story(dataset, charts, trends, state):
         "title": "Economic Dashboard Report",
         "subtitle": "Nepal Data Explorer",
         "tagline": "Comprehensive Report",
-        "descriptor": "World output, foreign trade and sectoral growth for the economic dashboard",
+        "descriptor": "World output, foreign trade, sectoral and province-level GDP growth for the economic dashboard",
         "accent": ACCENT,
         "accent_dark": ACCENT_DARK,
     }
@@ -961,6 +963,25 @@ def build_economic_story(dataset, charts, trends, state):
             f"and the strongest recorded sector growth of <b>{_p(top_sector['value'])}%</b> "
             f"in {_cell(top_sector['sector'])}"
         )
+    province_latest_records = (
+        list(province_latest["provinces"].values()) if province_latest and province_latest.get("provinces") else []
+    )
+    province_note = None
+    if len(province_latest_records) >= 2:
+        scaled = [
+            (record.get("province"), record.get("growth_basic_price"))
+            for record in province_latest_records
+            if record.get("growth_basic_price") is not None
+        ]
+        if len(scaled) >= 2:
+            fastest = max(scaled, key=lambda pair: pair[1])
+            slowest = min(scaled, key=lambda pair: pair[1])
+            province_note = (
+                f"and province-level GDP growth spanning <b>{_p(fastest[1])}%</b> "
+                f"({_cell(fastest[0])}) to <b>{_p(slowest[1])}%</b> ({_cell(slowest[0])}) "
+                f"in fiscal year {province_latest['fiscal_year']}"
+            )
+            parts.append(province_note)
     story.append(Paragraph(" ".join(parts) + ".", styles["body"]))
 
     fig = charts.get("economic_growth")
@@ -1061,18 +1082,52 @@ def build_economic_story(dataset, charts, trends, state):
         sector_style.add("ALIGN", (0, 1), (0, -1), "LEFT")
         _table(story, sector_rows, [CONTENT_W * 0.7, CONTENT_W * 0.3], sector_style)
 
+    # Province-level GDP ---------------------------------------------------------------
+    _section(story, styles, "6. Province-level GDP Growth")
+    story.append(
+        Paragraph(
+            f"GDP growth at basic prices for each province in the most recent fiscal year "
+            f"({province_latest['fiscal_year'] if province_latest else 'latest'}), from the "
+            "province-level GDP dataset.",
+            styles["body"],
+        )
+    )
+    fig = charts.get("economic_province_gdp")
+    if fig:
+        story.append(_image(fig, max_width=CONTENT_W * 0.92, max_height=220))
+    if province_latest and province_latest.get("provinces"):
+        province_rows = [["Province", "GDP (basic prices)", "GDP (purchaser prices)", "Status"]]
+        ordered_provinces = [p for p in (province_gdp.get("provinces") or []) if p in province_latest["provinces"]]
+        for province in ordered_provinces:
+            record = province_latest["provinces"][province]
+            province_rows.append([
+                _cell(record["province"]),
+                f"{_p(record.get('growth_basic_price'))}%",
+                f"{_p(record.get('growth_purchaser_price'))}%",
+                _cell(record.get("data_status") or ""),
+            ])
+        province_style = _table_style()
+        province_style.add("ALIGN", (0, 1), (0, -1), "LEFT")
+        _table(
+            story,
+            province_rows,
+            [CONTENT_W * 0.34, CONTENT_W * 0.24, CONTENT_W * 0.26, CONTENT_W * 0.16],
+            province_style,
+        )
+
     # Key trends ------------------------------------------------------------------------
-    _section(story, styles, "6. Key Trends & Observations")
+    _section(story, styles, "7. Key Trends & Observations")
     for i, observation in enumerate(trends, start=1):
         story.append(Paragraph(f"<b>{i}.</b> {observation}", styles["bullet"]))
 
     # Data sources ----------------------------------------------------------------------
-    _section(story, styles, "7. Data Sources")
+    _section(story, styles, "8. Data Sources")
     sources_rows = [
         ["Dataset", "Fields", "Reference"],
         ["Global Economics", "Context, real growth values, published year", "GlobalEconomicSeries"],
         ["Foreign Trade", "Total exports / imports per fiscal year", "ForeignTradeStatistic"],
         ["Sectoral Growth", "Sector-level annual growth", "SectoralGrowth"],
+        ["Province GDP Growth", "GDP growth at basic / purchaser prices by province", "ProvinceGDPStatistic"],
     ]
     sources_style = _table_style()
     sources_style.add("ALIGN", (1, 0), (2, -1), "LEFT")
@@ -1084,7 +1139,7 @@ def build_economic_story(dataset, charts, trends, state):
     )
 
     # Methodology -----------------------------------------------------------------------
-    _section(story, styles, "8. Methodology")
+    _section(story, styles, "9. Methodology")
     story.append(
         Paragraph(
             "All figures are queried directly from the backend database that also powers the "
@@ -1092,6 +1147,8 @@ def build_economic_story(dataset, charts, trends, state):
             "World Output real growth is deduplicated to the most recently published value per "
             "calendar year. Foreign trade uses the total exports and total imports series only. "
             "Sectoral performance shows the sectors recorded for the most recent fiscal year. "
+            "Province-level GDP growth is taken one record per province and fiscal year, "
+            "preferring the most recently published status. "
             "Charts are rendered from the same retrieved data.",
             styles["body"],
         )
@@ -1105,13 +1162,14 @@ def build_economic_story(dataset, charts, trends, state):
     )
 
     # Data dictionary -------------------------------------------------------------------
-    _section(story, styles, "9. Data Dictionary")
+    _section(story, styles, "10. Data Dictionary")
     dictionary = [
         ["Variable", "Description", "Unit"],
         ["World Output real growth", "Real growth of global output", "%"],
         ["Exports / Imports", "Total value traded per fiscal year", "As recorded"],
         ["Balance", "Exports minus imports", "As recorded"],
         ["Sectoral growth", "Growth by economic sector", "%"],
+        ["Province GDP growth", "Growth at basic / purchaser prices by province", "%"],
     ]
     _table(
         story,
@@ -1120,7 +1178,7 @@ def build_economic_story(dataset, charts, trends, state):
     )
 
     # Appendix --------------------------------------------------------------------------
-    _section(story, styles, "10. Appendix: Report Parameters")
+    _section(story, styles, "11. Appendix: Report Parameters")
     params = [
         ["Parameter", "Value"],
         ["Report period", report_period],

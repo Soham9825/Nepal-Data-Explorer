@@ -226,6 +226,24 @@ def analyze_economic(dataset):
                 f"{bottom['sector']} ({_pct(bottom['value'])}%)."
             )
 
+    province_gdp = dataset.get("province_gdp") or {}
+    province_latest = province_gdp.get("latest")
+    if province_latest and province_latest.get("provinces"):
+        total = [
+            (record.get("province"), record.get("growth_basic_price"))
+            for record in province_latest["provinces"].values()
+            if record.get("growth_basic_price") is not None
+        ]
+        if len(total) >= 2:
+            strongest = max(total, key=lambda pair: pair[1])
+            weakest = min(total, key=lambda pair: pair[1])
+            observations.append(
+                f"For fiscal year {province_latest['fiscal_year']}, province-level GDP growth at "
+                f"basic prices ranged from {_pct(strongest[1])}% in {strongest[0]} to "
+                f"{_pct(weakest[1])}% in {weakest[0]} ({_pct(sum(v for _, v in total) / len(total))}% "
+                f"unweighted average across the {len(total)} provinces)."
+            )
+
     if not observations:
         return ["No economic data observations could be derived from the current dataset."]
     return observations

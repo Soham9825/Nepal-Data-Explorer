@@ -7,13 +7,34 @@ import BarChart from '../components/charts/BarChart';
 import RadialFanChart from '../components/charts/RadialFanChart';
 import DataFooter from '../components/common/DataFooter';
 import Loader from '../components/common/Loader';
+import ErrorMessage from '../components/common/ErrorMessage';
 import { API_BASE_URL } from '../config';
 import { downloadEconomicReport } from '../services/reportApi';
+import {
+  GROWTH_METRICS,
+  PROVINCE_COLORS,
+  PROVINCE_ORDER,
+  buildGrowthChartData,
+  fetchProvinceGDP,
+  latestAverage,
+  latestProvinceRecord,
+  latestSum,
+} from '../services/provinceGDP';
 
 const API_URL = `${API_BASE_URL}/api/analytics/economic/?compact=1`;
 const COLORS = { primary: '#0051d5', accent: '#7a5100', danger: '#b70011', success: '#0f7a3d' };
 const formatValue = (value) =>
   value == null ? '—' : Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 });
+const formatCompact = (value) => {
+  if (value == null) return '—';
+  const n = Number(value);
+  const sign = n < 0 ? '-' : '';
+  const absolute = Math.abs(n);
+  if (absolute >= 1e9) return `${sign}${(absolute / 1e9).toFixed(2)}B`;
+  if (absolute >= 1e6) return `${sign}${(absolute / 1e6).toFixed(2)}M`;
+  if (absolute >= 1e3) return `${sign}${(absolute / 1e3).toFixed(0)}K`;
+  return formatValue(n);
+};
 
 export default function Economic() {
   const [data, setData] = useState(null);
@@ -22,6 +43,11 @@ export default function Economic() {
   const [range, setRange] = useState('5');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [provinceGdp, setProvinceGdp] = useState(null);
+  const [provinceGdpLoading, setProvinceGdpLoading] = useState(true);
+  const [provinceGdpError, setProvinceGdpError] = useState('');
+  const [selectedProvince, setSelectedProvince] = useState('All');
+  const [growthMetric, setGrowthMetric] = useState('basic_price');
 
   useEffect(() => {
     fetch(API_URL, { headers: { Accept: 'application/json' }, credentials: 'include' })
@@ -32,6 +58,13 @@ export default function Economic() {
       .then(setData)
       .catch((requestError) => setError(requestError.message))
       .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    fetchProvinceGDP()
+      .then(setProvinceGdp)
+      .catch((requestError) => setProvinceGdpError(requestError.message))
+      .finally(() => setProvinceGdpLoading(false));
   }, []);
 
   const growth = data?.global_growth || [];
@@ -87,18 +120,108 @@ export default function Economic() {
     year: item.name,
     value: item.value,
   }));
+  const gdpGrowthRows = buildGrowthChartData(provinceGdp, growthMetric, selectedProvince);
+  const gdpSeries =
+    selectedProvince === 'All'
+      ? (provinceGdp?.provinces || []).map((name) => ({
+          key: name,
+          color: PROVINCE_COLORS[name],
+          label: name,
+        }))
+      : [
+          {
+            key: 'value',
+            color: PROVINCE_COLORS[selectedProvince],
+            label: 'Growth %',
+          },
+        ];
+  const gdpLatestBlock = latestProvinceRecord(provinceGdp, selectedProvince);
+  const selectedGdpRecord =
+    selectedProvince === 'All' ? null : provinceGdp?.latest?.provinces?.[selectedProvince] || null;
+  const latestGdpYear = provinceGdp?.latest?.fiscal_year || '';
+  const growthField = growthMetric === 'purchaser_price' ? 'growth_purchaser_price' : 'growth_basic_price';
+  const provinceCards = [
+    {
+      label: 'GDP at Current Prices',
+      value: formatCompact(
+        selectedProvince === 'All' ? latestSum(provinceGdp, 'gdp_current') : selectedGdpRecord?.gdp_current
+      ),
+      subtitle: 'NRs., latest fiscal year',
+      change: gdpLatestBlock ? `${latestGdpYear} · ${gdpLatestBlock.dataStatus}` : 'Unavailable',
+      icon: 'payments',
+      color: PROVINCE_COLORS[selectedProvince] || '#0051d5',
+    },
+    {
+      label: 'GDP at Constant Prices',
+      value: formatCompact(
+        selectedProvince === 'All' ? latestSum(provinceGdp, 'gdp_constant') : selectedGdpRecord?.gdp_constant
+      ),
+      subtitle: 'NRs., latest fiscal year',
+      change: latestGdpYear || 'Unavailable',
+      icon: 'account_balance',
+      color: '#316bf3',
+    },
+    {
+      label: 'GDP per Capita',
+      value: formatCompact(
+        selectedProvince === 'All'
+          ? latestAverage(provinceGdp, 'per_capita_gdp_nrs')
+          : selectedGdpRecord?.per_capita_gdp_nrs
+      ),
+      subtitle: selectedProvince === 'All' ? 'NRs., province average' : 'NRs.',
+      change: latestGdpYear || 'Unavailable',
+      icon: 'person',
+      color: '#0f7a3d',
+    },
+    {
+      label: `Growth (${GROWTH_METRICS[growthMetric].shortLabel})`,
+      value:
+        (selectedProvince === 'All'
+          ? latestAverage(provinceGdp, growthField)
+          : selectedGdpRecord?.[growthField]) == null
+          ? '—'
+          : `${formatValue(
+              selectedProvince === 'All'
+                ? latestAverage(provinceGdp, growthField)
+                : selectedGdpRecord?.[growthField]
+            )}%`,
+      subtitle: selectedProvince === 'All' ? 'Latest FY average' : selectedProvince,
+      change: latestGdpYear || 'Unavailable',
+      icon: 'trending_up',
+      color: '#b70011',
+    },
+  ];
+  const gdpStatusChip = provinceGdp?.latest?.data_status ? (
+    <span
+      className={`inline-flex items-center rounded-sm px-2 py-1 text-xs font-bold ${
+        provinceGdp.latest.data_status === 'Provisional'
+          ? 'bg-[#fef3c7] text-[#92400e]'
+          : provinceGdp.latest.data_status === 'Revised'
+            ? 'bg-[#e0e7ff] text-[#3730a3]'
+            : 'bg-[#d1fae5] text-[#065f46]'
+      }`}
+    >
+      {provinceGdp.latest.data_status} {latestGdpYear}
+    </span>
+  ) : null;
   const chartTitle =
     indicator === 'growth'
       ? 'World Output Real Growth'
       : indicator === 'trade'
         ? 'Total Exports vs Imports'
-        : 'Sectoral Growth';
+        : indicator === 'province'
+          ? 'Province-wise GDP Growth Rate'
+          : 'Sectoral Growth';
   const chartSubtitle =
     indicator === 'growth'
       ? 'World Output real series from the global economics dataset'
       : indicator === 'trade'
         ? 'Total trade values by fiscal year'
-        : `Top sectors in ${year === 'All' ? latestSectorYear || 'latest year' : year}`;
+        : indicator === 'province'
+          ? selectedProvince === 'All'
+            ? 'Annual real growth (%) per province by fiscal year — CBS series'
+            : `${selectedProvince} annual real growth (%) by fiscal year — CBS series`
+          : `Top sectors in ${year === 'All' ? latestSectorYear || 'latest year' : year}`;
   const cards = [
     {
       label: 'World Output Growth',
@@ -159,6 +282,16 @@ export default function Economic() {
       Sector: item.name,
       Value: item.value,
     })),
+    ...(provinceGdp?.growth?.basic_price || []).flatMap((row) =>
+      (provinceGdp.provinces || []).map((name) => ({
+        Dataset: 'Province-wise GDP growth',
+        'Fiscal Year': row.fiscal_year,
+        Province: name,
+        'Growth Basic Price (%)': row[name] ?? '',
+        'Growth Purchaser Price (%)':
+          provinceGdp.growth.purchaser_price?.find((r) => r.fiscal_year === row.fiscal_year)?.[name] ?? '',
+      }))
+    ),
   ];
 
   const reportFiscalYear =
@@ -200,9 +333,9 @@ export default function Economic() {
             </p>
           </div>
         </div>
-        <div className="grid gap-6 md:grid-cols-3">
-          {cards.map((card) => (
-            <MetricCard key={card.label} {...card} change="" trend="up" />
+        <div className="grid gap-6 md:grid-cols-4">
+          {[...cards, ...provinceCards].map((card) => (
+            <MetricCard key={card.label} {...card} change={card.change ?? ''} trend="up" />
           ))}
         </div>
         <div className="flex flex-col gap-4 rounded-sm border border-outline-variant bg-surface p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -211,6 +344,7 @@ export default function Economic() {
               ['growth', 'World Output Growth'],
               ['trade', 'Trade'],
               ['sectors', 'Sectoral Growth'],
+              ['province', 'Province-wise GDP'],
             ].map(([id, label]) => (
               <button
                 key={id}
@@ -224,7 +358,7 @@ export default function Economic() {
               </button>
             ))}
           </div>
-          {indicator !== 'sectors' && (
+          {(indicator === 'growth' || indicator === 'trade') && (
             <div className="flex shrink-0 items-center gap-1 rounded-sm border border-outline-variant bg-white p-1">
               {[
                 ['5', '5 years'],
@@ -258,39 +392,102 @@ export default function Economic() {
         <SectionCard
           title={chartTitle}
           subtitle={chartSubtitle}
+          action={indicator === 'province' ? gdpStatusChip : null}
           className="overflow-hidden rounded-sm"
           contentClassName="p-0"
         >
-          <div
-            className={`${indicator === 'sectors' ? 'h-[620px]' : 'h-[520px]'} min-h-[400px] min-w-0 w-full overflow-hidden`}
-          >
-            {indicator === 'sectors' ? (
-              <RadialFanChart data={sectorFanData} title="Sectoral Growth" unit="%" />
-            ) : indicator === 'growth' ? (
-              <LineChart
-                data={chartData}
-                xKey="year"
-                labelKey="year"
-                tooltipKey="year"
-                series={[{ key: 'value', color: COLORS.primary, label: 'Real growth (%)' }]}
-                height="100%"
-                unit="%"
-                xPadding={48}
-                showZeroLine
-              />
-            ) : (
-              <BarChart
-                data={chartData}
-                xKey="year"
-                series={[
-                  { key: 'exports', color: COLORS.success, label: 'Exports' },
-                  { key: 'imports', color: COLORS.danger, label: 'Imports' },
-                ]}
-                height="100%"
-                bordered={false}
-              />
-            )}
-          </div>
+          {indicator === 'province' ? (
+            <div className="flex h-[640px] flex-col">
+              <div className="flex flex-col gap-3 border-b border-outline-variant bg-surface-container-lowest p-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex flex-wrap gap-2">
+                  {['All', ...PROVINCE_ORDER].map((name) => (
+                    <button
+                      key={name}
+                      onClick={() => setSelectedProvince(name)}
+                      className={`rounded-sm px-3.5 py-2 text-sm font-semibold transition-colors ${selectedProvince === name ? 'bg-primary text-white' : 'border border-outline-variant bg-white text-onSurface-variant hover:border-primary hover:text-primary'}`}
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex shrink-0 items-center gap-1 self-start rounded-sm border border-outline-variant bg-white p-1 lg:self-auto">
+                  {Object.values(GROWTH_METRICS).map((metric) => (
+                    <button
+                      key={metric.key}
+                      onClick={() => setGrowthMetric(metric.key)}
+                      className={`rounded-sm px-3 py-1.5 text-xs font-semibold transition-colors ${growthMetric === metric.key ? 'bg-primary text-white' : 'text-onSurface-variant hover:bg-surface-container-highest'}`}
+                    >
+                      {metric.shortLabel}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {provinceGdpLoading ? (
+                <div className="flex min-h-[380px] flex-1 items-center justify-center">
+                  <Loader size="lg" />
+                </div>
+              ) : provinceGdpError ? (
+                <div className="flex min-h-[380px] flex-1 items-center justify-center p-6">
+                  <ErrorMessage
+                    title="Failed to load province GDP data"
+                    message={provinceGdpError}
+                    onRetry={() => window.location.reload()}
+                  />
+                </div>
+              ) : gdpGrowthRows.length === 0 ? (
+                <div className="flex min-h-[380px] flex-1 items-center justify-center p-6 text-sm text-onSurface-variant">
+                  No province-wise GDP data is available for{' '}
+                  {selectedProvince === 'All' ? 'the selected filters' : selectedProvince}.
+                </div>
+              ) : (
+                <div className="min-h-0 flex-1 p-5">
+                  <BarChart
+                    data={gdpGrowthRows}
+                    xKey="fiscal_year"
+                    series={gdpSeries}
+                    height="100%"
+                    bordered={false}
+                    showLegend={selectedProvince === 'All'}
+                  />
+                </div>
+              )}
+              <div className="border-t border-outline-variant px-5 py-3 text-xs text-onSurface-variant">
+                Source: CBS province-wise GDP series. Growth values show annual change for each fiscal
+                year; R = revised, P = provisional figures.
+              </div>
+            </div>
+          ) : (
+            <div
+              className={`${indicator === 'sectors' ? 'h-[620px]' : 'h-[520px]'} min-h-[400px] min-w-0 w-full overflow-hidden`}
+            >
+              {indicator === 'sectors' ? (
+                <RadialFanChart data={sectorFanData} title="Sectoral Growth" unit="%" />
+              ) : indicator === 'growth' ? (
+                <LineChart
+                  data={chartData}
+                  xKey="year"
+                  labelKey="year"
+                  tooltipKey="year"
+                  series={[{ key: 'value', color: COLORS.primary, label: 'Real growth (%)' }]}
+                  height="100%"
+                  unit="%"
+                  xPadding={48}
+                  showZeroLine
+                />
+              ) : (
+                <BarChart
+                  data={chartData}
+                  xKey="year"
+                  series={[
+                    { key: 'exports', color: COLORS.success, label: 'Exports' },
+                    { key: 'imports', color: COLORS.danger, label: 'Imports' },
+                  ]}
+                  height="100%"
+                  bordered={false}
+                />
+              )}
+            </div>
+          )}
         </SectionCard>
         {error && <p className="text-sm text-danger">{error}</p>}
         {!loading && !error && !data && (
@@ -304,9 +501,9 @@ export default function Economic() {
           onDownloadReport={handleDownloadReport}
           reportMeta={{
             fiscalYear: reportFiscalYear,
-            indicators: 'World Output Growth, Foreign Trade, Sectoral Growth',
+            indicators: 'World Output Growth, Foreign Trade, Sectoral Growth, Province-wise GDP Growth',
             periodRange: range === 'all' ? 'All years' : `${range} years`,
-            selectedProvince: '',
+            selectedProvince: selectedProvince === 'All' ? '' : selectedProvince,
           }}
         />
       </div>

@@ -6,6 +6,7 @@ from .models import (
     ForeignTradeStatistic,
     GlobalEconomicSeries,
     NewsArticle,
+    ProvinceGDPStatistic,
     ProvinceMetric,
     SalaryIndex,
     SectoralGrowth,
@@ -125,6 +126,21 @@ class GlobalEconomicSeriesAdmin(admin.ModelAdmin):
     )
     list_filter = ("series_type", "published_year", "context")
     search_fields = ("context", "period_label", "series_type")
+
+
+@admin.register(ProvinceGDPStatistic)
+class ProvinceGDPStatisticAdmin(admin.ModelAdmin):
+    list_display = (
+        "province",
+        "fiscal_year",
+        "gdp_current",
+        "growth_basic_price",
+        "growth_purchaser_price",
+        "per_capita_gdp_nrs",
+        "data_status",
+    )
+    list_filter = ("province", "fiscal_year", "data_status")
+    search_fields = ("province", "fiscal_year")
 
 
 @admin.register(ProvinceMetric)

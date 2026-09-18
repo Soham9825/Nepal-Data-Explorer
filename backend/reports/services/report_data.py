@@ -21,6 +21,7 @@ from datasets.models import (
     ForeignTradeStatistic,
     GlobalEconomicSeries,
     PopulationBySex,
+    ProvinceGDPStatistic,
     SectoralGrowth,
     TouristArrivalByNationality,
     TouristArrivalByYear,
@@ -29,6 +30,16 @@ from datasets.models import (
 
 _FALLBACK_YEAR_RE = re.compile(r"(19|20)\d{2}")
 _DASHBOARD_POINTS = 5
+
+PROVINCE_GDP_ORDER = [
+    "Koshi",
+    "Madhesh",
+    "Bagmati",
+    "Gandaki",
+    "Lumbini",
+    "Karnali",
+    "Sudurpashchim",
+]
 
 
 def _float(value):
@@ -273,6 +284,87 @@ def apply_state_filters(dataset, state=None):
     return dataset
 
 
+GDP_DETAIL_FIELDS = (
+    "gdp_basic_current",
+    "taxes_subsidies_current",
+    "gdp_current",
+    "gdp_basic_constant",
+    "taxes_subsidies_constant",
+    "gdp_constant",
+    "growth_basic_price",
+    "growth_purchaser_price",
+    "per_capita_gdp_nrs",
+    "nominal_per_capita_gdp_usd",
+)
+
+
+def _serialize_province_gdp(record):
+    return {
+        "fiscal_year": _clean(record.fiscal_year),
+        "fiscal_year_bs": _clean(record.fiscal_year_bs),
+        "province": _clean(record.province),
+        "data_status": _clean(record.data_status),
+        **{
+            field: _float(getattr(record, field))
+            for field in GDP_DETAIL_FIELDS
+        },
+    }
+
+
+_PROVINCE_GDP_FIELDS = "gross_domestic_product, taxes_less_subsidies, gross_domestic_product_at_purchaser_price, growth_basic_price, growth_purchaser_price".replace(", ", ",")
+
+
+def get_province_gdp():
+    """Province-wise GDP series, mirroring `analytics.views.province_gdp_data`.
+
+    One de-duplicated row per province / fiscal year (latest status first),
+    with a per-year growth series at basic and purchaser prices plus the
+    most recent fiscal-year snapshot.
+    """
+    queryset = ProvinceGDPStatistic.objects.all()
+    rows = {
+        (record.province, record.fiscal_year): record
+        for record in queryset.order_by(
+            "fiscal_year", "province", "-data_status"
+        )
+    }
+    unique_rows = sorted(rows.values(), key=lambda row: (row.fiscal_year, row.province))
+
+    ordered_provinces = [p for p in PROVINCE_GDP_ORDER if p in {row.province for row in unique_rows}]
+    ordered_years = sorted(
+        {row.fiscal_year for row in unique_rows},
+        key=lambda label: int(_FALLBACK_YEAR_RE.search(label).group(0)),
+    )
+
+    basic_by_year = {year: {"fiscal_year": year} for year in ordered_years}
+    purchaser_by_year = {year: {"fiscal_year": year} for year in ordered_years}
+    for row in unique_rows:
+        basic_by_year[row.fiscal_year][row.province] = _float(row.growth_basic_price)
+        purchaser_by_year[row.fiscal_year][row.province] = _float(row.growth_purchaser_price)
+
+    latest_year = ordered_years[-1] if ordered_years else None
+    latest_rows = [row for row in unique_rows if row.fiscal_year == latest_year] if latest_year else []
+
+    return {
+        "provinces": ordered_provinces,
+        "fiscal_years": ordered_years,
+        "growth": {
+            "basic_price": [basic_by_year[year] for year in ordered_years],
+            "purchaser_price": [purchaser_by_year[year] for year in ordered_years],
+        },
+        "latest": {
+            "fiscal_year": latest_year,
+            "data_status": latest_rows[0].data_status if latest_rows else None,
+            "provinces": {
+                row.province: _serialize_province_gdp(row)
+                for row in latest_rows
+            },
+        }
+        if latest_rows
+        else None,
+    }
+
+
 def build_report_dataset(state=None):
     """Collects everything the report needs from the database.
 
@@ -455,6 +547,7 @@ def build_economic_dataset(state=None):
         "latest_trade_year": trade_by_year[-1]["fiscal_year"] if trade_by_year else None,
         "sectoral_growth": sector_rows,
         "latest_sectoral_year": latest_sector_year,
+        "province_gdp": get_province_gdp(),
         "report_year": report_year or "",
     }
     return apply_state_filters(dataset, state)
@@ -535,6 +628,33 @@ def build_economic_csv_rows(state=None):
 
     for sector in dataset.get("sectoral_growth") or []:
         rows.append(_csv_row("Sectoral Growth", sector.get("sector"), sector.get("fiscal_year"), sector.get("value"), "%"))
+
+    province_gdp = dataset.get("province_gdp") or {}
+    for metric, label in (("basic_price", "GDP growth (basic prices)"), ("purchaser_price", "GDP growth (purchaser prices)")):
+        for point in (province_gdp.get("growth") or {}).get(metric) or []:
+            year = point.get("fiscal_year")
+            for province in province_gdp.get("provinces") or []:
+                value = point.get(province)
+                if value is not None:
+                    rows.append(_csv_row("Province GDP Growth", label, f"{province} · {year}", value, "%"))
+
+    latest = province_gdp.get("latest")
+    if latest and latest.get("provinces"):
+        for record in latest["provinces"].values():
+            rows.append(_csv_row(
+                "Province GDP Growth",
+                "GDP at basic prices (current)",
+                f"{record.get('province')} · {latest.get('fiscal_year')}",
+                record.get("gdp_basic_current"),
+                "As recorded",
+            ))
+            rows.append(_csv_row(
+                "Province GDP Growth",
+                "GDP at purchaser prices (current)",
+                f"{record.get('province')} · {latest.get('fiscal_year')}",
+                record.get("gdp_current"),
+                "As recorded",
+            ))
 
     return rows
 

@@ -416,6 +416,50 @@ class ProvinceMetric(models.Model):
         return f"{self.province} - {self.domain} - {self.metric}"
 
 
+class ProvinceGDPStatistic(models.Model):
+    STATUS_FINAL = "Final"
+    STATUS_REVISED = "Revised"
+    STATUS_PROVISIONAL = "Provisional"
+    STATUS_CHOICES = [
+        (STATUS_FINAL, "Final"),
+        (STATUS_REVISED, "Revised"),
+        (STATUS_PROVISIONAL, "Provisional"),
+    ]
+
+    fiscal_year = models.CharField(max_length=20)     # 2018/19 (AD) - canonical, sortable
+    fiscal_year_bs = models.CharField(max_length=20, blank=True)  # 2075/76 (BS)
+    fiscal_year_label = models.CharField(max_length=50, blank=True)  # original text, traceability
+    province = models.CharField(max_length=50)
+    gdp_basic_current = models.DecimalField(max_digits=25, decimal_places=2, null=True, blank=True)
+    taxes_subsidies_current = models.DecimalField(max_digits=25, decimal_places=2, null=True, blank=True)
+    gdp_current = models.DecimalField(max_digits=25, decimal_places=2, null=True, blank=True)
+    gdp_basic_constant = models.DecimalField(max_digits=25, decimal_places=2, null=True, blank=True)
+    taxes_subsidies_constant = models.DecimalField(max_digits=25, decimal_places=2, null=True, blank=True)
+    gdp_constant = models.DecimalField(max_digits=25, decimal_places=2, null=True, blank=True)
+    growth_basic_price = models.DecimalField(max_digits=8, decimal_places=4, null=True, blank=True)
+    growth_purchaser_price = models.DecimalField(max_digits=8, decimal_places=4, null=True, blank=True)
+    per_capita_gdp_nrs = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
+    nominal_per_capita_gdp_usd = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+    data_status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_FINAL)
+
+    class Meta:
+        ordering = ["fiscal_year", "province"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["province", "fiscal_year"],
+                name="unique_province_gdp_province_fiscal_year",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["province"]),
+            models.Index(fields=["fiscal_year"]),
+            models.Index(fields=["data_status"]),
+        ]
+
+    def __str__(self):
+        return f"{self.province} - {self.fiscal_year} ({self.data_status})"
+
+
 class TourismDestination(models.Model):
     name = models.CharField(max_length=150)
     province = models.CharField(max_length=100, blank=True)

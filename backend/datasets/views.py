@@ -17,6 +17,7 @@ from .models import (
 	GlobalEconomicSeries,
 	NewsArticle,
 	PopulationBySex,
+	ProvinceGDPStatistic,
 	ProvinceMetric,
 	TourismDestination,
 	TouristArrivalByYear,
@@ -69,6 +70,7 @@ def health_check(request):
 			"datasets": {
 				"tourist_arrivals_by_year": TouristArrivalByYear.objects.count(),
 				"tourist_arrivals_by_month": TouristArrivalMonthly.objects.count(),
+				"province_gdp": ProvinceGDPStatistic.objects.count(),
 				"province_metrics": ProvinceMetric.objects.count(),
 				"tourism_destinations": TourismDestination.objects.count(),
 				"global_economic_series": GlobalEconomicSeries.objects.count(),
@@ -130,6 +132,7 @@ def dashboard_catalog(request):
 			],
 			"supported_models": [
 				"GlobalEconomicSeries",
+				"ProvinceGDPStatistic",
 				"ProvinceMetric",
 				"TourismDestination",
 				"NewsArticle",

@@ -15,6 +15,7 @@ from datasets.models import (
 	ForeignTradeStatistic,
 	GlobalEconomicSeries,
 	NewsArticle,
+	ProvinceGDPStatistic,
 	ProvinceMetric,
 	SalaryIndex,
 	SectoralGrowth,
@@ -83,6 +84,47 @@ MONTH_ORDER = {month: index for index, month in enumerate(
 	["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
 	start=1,
 )}
+
+# Deterministic province order shared with the National section.
+PROVINCE_GDP_ORDER = [
+	"Koshi",
+	"Madhesh",
+	"Bagmati",
+	"Gandaki",
+	"Lumbini",
+	"Karnali",
+	"Sudurpashchim",
+]
+
+GDP_DETAIL_FIELDS = (
+	"gdp_basic_current",
+	"taxes_subsidies_current",
+	"gdp_current",
+	"gdp_basic_constant",
+	"taxes_subsidies_constant",
+	"gdp_constant",
+	"growth_basic_price",
+	"growth_purchaser_price",
+	"per_capita_gdp_nrs",
+	"nominal_per_capita_gdp_usd",
+)
+
+
+def _fiscal_year_sort_key(label):
+	try:
+		return int(str(label).strip()[:4])
+	except (TypeError, ValueError):
+		return 0
+
+
+def _serialize_province_gdp(record):
+	return {
+		"fiscal_year": record.fiscal_year,
+		"fiscal_year_bs": record.fiscal_year_bs,
+		"province": record.province,
+		"data_status": record.data_status,
+		**{field: _decimal(getattr(record, field)) for field in GDP_DETAIL_FIELDS},
+	}
 
 
 def _decimal(value):
@@ -352,7 +394,22 @@ def dashboard_overview(request):
 					for item in WholesalePriceIndex.objects.order_by("fiscal_year", "period", "index_name", "group", "subgroup")
 				],
 				"employment": [],
-				"gdp": [],
+				"gdp": [
+					{
+						"fiscal_year": item.fiscal_year,
+						"province": item.province,
+						"gdp_basic_current": _decimal(item.gdp_basic_current),
+						"gdp_basic_constant": _decimal(item.gdp_basic_constant),
+						"gdp_current": _decimal(item.gdp_current),
+						"gdp_constant": _decimal(item.gdp_constant),
+						"growth_basic_price": _decimal(item.growth_basic_price),
+						"growth_purchaser_price": _decimal(item.growth_purchaser_price),
+						"per_capita_gdp_nrs": _decimal(item.per_capita_gdp_nrs),
+						"nominal_per_capita_gdp_usd": _decimal(item.nominal_per_capita_gdp_usd),
+						"data_status": item.data_status,
+					}
+					for item in ProvinceGDPStatistic.objects.order_by("fiscal_year", "province")
+				],
 				"inflation": [],
 			},
 			"news": [
@@ -377,9 +434,9 @@ def dashboard_overview(request):
 				"economic": True,
 				"news": NewsArticle.objects.exists(),
 				"forecasting": DashboardForecast.objects.exists(),
-				"province": ProvinceMetric.objects.exists(),
+				"province": ProvinceGDPStatistic.objects.exists() or ProvinceMetric.objects.exists(),
 			},
-			"missing_requirement_sections": ["gdp", "inflation", "employment", "province"],
+			"missing_requirement_sections": ["inflation", "employment"],
 		}
 	)
 
@@ -492,10 +549,115 @@ def economic_dashboard(request):
 
 @api_view(["GET"])
 @permission_classes([AllowAny])
+def province_gdp_data(request):
+	"""Province-wise GDP series for the Economic dashboard.
+
+	Supported query filters:
+	  ?province=Koshi        case-insensitive province name
+	  ?fiscal_year=2018/19   AD fiscal-year label
+	  ?status=Provisional    Final | Revised | Provisional
+
+	Response mirrors the National-section comparison format: one row per fiscal
+	year holding each province's growth value, so the frontend can render the
+	chart directly and never needs to read the CSV.
+	"""
+	queryset = ProvinceGDPStatistic.objects.all()
+
+	province_filter = request.query_params.get("province")
+	if province_filter:
+		queryset = queryset.filter(province__iexact=province_filter)
+
+	status_filter = request.query_params.get("status")
+	if status_filter:
+		queryset = queryset.filter(data_status__iexact=status_filter)
+
+	fiscal_year_filter = request.query_params.get("fiscal_year")
+	if fiscal_year_filter:
+		queryset = queryset.filter(fiscal_year=fiscal_year_filter)
+
+	rows = list(queryset.order_by("fiscal_year", "province"))
+	if not rows:
+		return Response(
+			{
+				"provinces": [],
+				"fiscal_years": [],
+				"growth": {"basic_price": [], "purchaser_price": []},
+				"latest": None,
+			}
+		)
+
+	ordered_provinces = [p for p in PROVINCE_GDP_ORDER if p in {row.province for row in rows}]
+	ordered_years = sorted({row.fiscal_year for row in rows}, key=_fiscal_year_sort_key)
+
+	basic_by_year = {year: {"fiscal_year": year} for year in ordered_years}
+	purchaser_by_year = {year: {"fiscal_year": year} for year in ordered_years}
+	latest_records = {}
+
+	for row in rows:
+		basic_by_year[row.fiscal_year][row.province] = _decimal(row.growth_basic_price)
+		purchaser_by_year[row.fiscal_year][row.province] = _decimal(row.growth_purchaser_price)
+		latest_records[row.fiscal_year] = row if row.fiscal_year not in latest_records else latest_records[row.fiscal_year]
+
+	latest_year = ordered_years[-1] if ordered_years else None
+	latest_rows = [row for row in rows if row.fiscal_year == latest_year] if latest_year else []
+
+	return Response(
+		{
+			"provinces": ordered_provinces,
+			"fiscal_years": ordered_years,
+			"growth": {
+				"basic_price": [basic_by_year[year] for year in ordered_years],
+				"purchaser_price": [purchaser_by_year[year] for year in ordered_years],
+			},
+			"latest": {
+				"fiscal_year": latest_year,
+				"data_status": latest_rows[0].data_status if latest_rows else None,
+				"provinces": {
+					row.province: _serialize_province_gdp(row)
+					for row in latest_rows
+				},
+			}
+			if latest_rows
+			else None,
+		}
+	)
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def province_gdp_detail(request, province_name):
+	"""Province-specific GDP details across fiscal years."""
+	rows = (
+		ProvinceGDPStatistic.objects.filter(province__iexact=province_name)
+		.order_by("fiscal_year")
+	)
+	serialized = [_serialize_province_gdp(item) for item in rows]
+	serialized.sort(key=lambda item: _fiscal_year_sort_key(item["fiscal_year"]))
+
+	return Response(
+		{
+			"province": serialized[0]["province"] if serialized else province_name,
+			"fiscal_years": [item["fiscal_year"] for item in serialized],
+			"data": serialized,
+			"available": bool(rows),
+		}
+	)
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
 def province_dashboard(request, province_name):
 	province_metrics = ProvinceMetric.objects.filter(province__iexact=province_name).order_by("domain", "metric", "year")
 	destinations = TourismDestination.objects.filter(province__iexact=province_name).order_by("rank", "name")
 	news = NewsArticle.objects.filter(province__iexact=province_name).order_by("-published_at", "title")[:15]
+	gdp_rows = (
+		ProvinceGDPStatistic.objects.filter(province__iexact=province_name)
+		.order_by("fiscal_year")
+	)
+	gdp_serialized = [
+		_serialize_province_gdp(item) for item in gdp_rows
+	]
+	gdp_serialized.sort(key=lambda item: _fiscal_year_sort_key(item["fiscal_year"]))
 
 	return Response(
 		{
@@ -512,7 +674,8 @@ def province_dashboard(request, province_name):
 						"notes": item.notes,
 					}
 					for item in province_metrics
-				]
+				],
+				"gdp": gdp_serialized,
 			},
 			"tourism": {
 				"destinations": [
@@ -538,6 +701,7 @@ def province_dashboard(request, province_name):
 			],
 			"available": {
 				"province_metrics": province_metrics.exists(),
+				"gdp": bool(gdp_serialized),
 				"destinations": destinations.exists(),
 				"news": bool(news),
 			},
@@ -724,6 +888,8 @@ def catalog(request):
 				"/api/analytics/tourism/",
 				"/api/analytics/economic/",
 				"/api/analytics/provinces/<province>/",
+				"/api/analytics/province-gdp/",
+				"/api/analytics/province-gdp/<province>/",
 				"/api/analytics/news/",
 				"/api/analytics/forecasts/",
 				"/api/analytics/compare/catalog/",
@@ -745,11 +911,12 @@ def catalog(request):
 				"SalaryIndex",
 				"SectoralGrowth",
 				"WholesalePriceIndex",
+				"ProvinceGDPStatistic",
 				"ProvinceMetric",
 				"TourismDestination",
 				"NewsArticle",
 				"DashboardForecast",
 			],
-			"missing_requirement_sections": ["gdp", "inflation", "employment", "province"],
+			"missing_requirement_sections": ["inflation", "employment"],
 		}
 	)

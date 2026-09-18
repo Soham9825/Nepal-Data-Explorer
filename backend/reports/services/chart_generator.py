@@ -309,6 +309,21 @@ def _label_bars(ax, bars, template="{value:,.1f}", pad=5, textsize=8.5):
         )
 
 
+def _label_vertical_bars(ax, bars, template="{value:,.1f}", pad=3, textsize=8.5):
+    for bar in bars:
+        height = bar.get_height()
+        if height is None:
+            continue
+        ax.annotate(
+            template.format(value=height),
+            (bar.get_x() + bar.get_width() / 2, height),
+            textcoords="offset points",
+            xytext=(0, pad),
+            va="bottom", ha="center",
+            fontsize=textsize, color=TEXT,
+        )
+
+
 _bar_style = _style_axes
 
 
@@ -621,6 +636,36 @@ def economic_sectoral_chart(dataset):
     return _clean_bytes(fig)
 
 
+def economic_province_gdp_chart(dataset):
+    province_gdp = dataset.get("province_gdp") or {}
+    latest = province_gdp.get("latest")
+    if not latest or not latest.get("provinces"):
+        return None
+    pairs = [
+        (province, latest["provinces"][province].get("growth_basic_price"))
+        for province in province_gdp.get("provinces") or []
+        if province in latest["provinces"] and latest["provinces"][province].get("growth_basic_price") is not None
+    ]
+    if not pairs:
+        return None
+    names = [name for name, _ in pairs]
+    values = [value for _, value in pairs]
+    x = list(range(len(values)))
+
+    fig, ax = plt.subplots(figsize=(6.8, 3.6))
+    colors_list = [SUCCESS if value >= 0 else ACCENT for value in values]
+    bars = ax.bar(x, values, color=colors_list, alpha=0.92, width=0.62)
+    _label_vertical_bars(ax, bars, "{value:,.1f}%")
+    ax.axhline(0, color="#c9c1bf", linewidth=0.8)
+    ax.set_xticks(x, names, rotation=28, ha="right", fontsize=7.5)
+    ax.set_ylabel(f"GDP growth (%) — {latest.get('fiscal_year')}" if latest.get("fiscal_year") else "GDP growth (%)", fontsize=9)
+    _style_axes(ax, grid_axis="y")
+    ax.grid(axis="y", visible=False)
+    ax.set_xlim(-0.5, len(values) - 0.5)
+    fig.tight_layout()
+    return _clean_bytes(fig)
+
+
 def build_tourism(dataset):
     """PNG bytes for every chart used by the tourism report."""
     return {
@@ -636,4 +681,5 @@ def build_economic(dataset):
         "economic_growth": economic_growth_chart(dataset),
         "economic_trade": economic_trade_chart(dataset),
         "economic_sectoral": economic_sectoral_chart(dataset),
+        "economic_province_gdp": economic_province_gdp_chart(dataset),
     }

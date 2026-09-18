@@ -13,5 +13,7 @@ urlpatterns = [
 	path("forecasts/", views.forecasts, name="forecasts"),
 	path("compare/catalog/", views.compare_catalog, name="compare-catalog"),
 	path("compare/data/", views.compare_data, name="compare-data"),
+	path("province-gdp/", views.province_gdp_data, name="province-gdp"),
+	path("province-gdp/<str:province_name>/", views.province_gdp_detail, name="province-gdp-detail"),
 	path("provinces/<str:province_name>/", views.province_dashboard, name="province-dashboard"),
 ]
