@@ -674,7 +674,7 @@ def oauth_callback(request, provider):
         oauth_code = secrets.token_urlsafe(32)
         codes = request.session.setdefault('oauth_codes', {})
         codes[oauth_code] = {
-            'user_id': user.pk,
+            'user_id': str(user.pk),
             'expires': (timezone.now() + timedelta(minutes=2)).timestamp(),
         }
         request.session['oauth_codes'] = codes
