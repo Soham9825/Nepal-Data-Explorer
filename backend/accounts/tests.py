@@ -115,9 +115,12 @@ class EmailVerificationTests(TestCase):
 			expires_at=timezone.now() + timedelta(hours=24))
 		response = self.client.post(reverse('accounts:api_verify_email'), data={'token': raw}, content_type='application/json')
 		self.assertEqual(response.status_code, 200)
-		self.assertTrue(response.json().get('success'))
+		data = response.json()
+		self.assertTrue(data.get('success'))
+		self.assertIn('access', data)
 		self.user.refresh_from_db()
 		self.assertTrue(self.user.email_verified)
+		self.assertTrue(self.user.is_verified)
 
 	def test_verify_email_invalid_token(self):
 		response = self.client.post(reverse('accounts:api_verify_email'), data={'token': 'does-not-exist'}, content_type='application/json')
@@ -142,6 +145,28 @@ class EmailVerificationTests(TestCase):
 		record.save(update_fields=['used_at'])
 		response = self.client.post(reverse('accounts:api_verify_email'), data={'token': raw}, content_type='application/json')
 		self.assertEqual(response.status_code, 400)
+
+
+class SignupVerificationFlowTests(TestCase):
+	"""New signups must stay unverified until the emailed link is clicked."""
+
+	def setUp(self):
+		self.client = APIClient()
+
+	def test_signup_does_not_verify_or_issue_tokens(self):
+		with patch('accounts.views.send_mail') as mock_send:
+			response = self.client.post(reverse('accounts:api_signup'), data={
+				'username': 'newbie', 'email': 'newbie@gmail.com',
+				'password': 'strong-pass-123', 'confirm_password': 'strong-pass-123',
+			}, content_type='application/json')
+		self.assertEqual(response.status_code, 200)
+		data = response.json()
+		self.assertNotIn('access', data)
+		self.assertNotIn('refresh', data)
+		user = CustomUser.objects.get(username='newbie')
+		self.assertFalse(user.is_verified)
+		self.assertFalse(user.email_verified)
+		mock_send.assert_called_once()
 
 
 class SupportMessageVerifiedEmailTests(TestCase):

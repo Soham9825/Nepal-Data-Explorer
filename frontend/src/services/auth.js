@@ -84,8 +84,10 @@ export const auth = {
     });
     if (!res.ok) return parseError(res, 'Signup failed');
     const user = await res.json();
-    auth.storeTokens(user);
-    window.localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+    if (user.access) {
+      auth.storeTokens(user);
+      window.localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+    }
     return user;
   },
 

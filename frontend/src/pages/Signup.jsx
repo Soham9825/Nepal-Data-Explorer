@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { auth } from "../services/auth";
 import { API_BASE_URL } from "../config";
@@ -24,7 +24,6 @@ const GithubLogo = () => (
 const STUPA_PHOTO = "https://commons.wikimedia.org/wiki/Special:FilePath/Boudhanath%20stupa%2C%20Kathmandu%2001.jpg";
 
 export default function Signup() {
-  const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -32,15 +31,18 @@ export default function Signup() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [signedUp, setSignedUp] = useState(false);
+  const [formError, setFormError] = useState("");
 
   const handleSignup = async (e) => {
     e.preventDefault();
+    setFormError("");
     setLoading(true);
     try {
       await auth.signup({ username, email, password, confirm_password: confirm });
-      navigate("/national");
+      setSignedUp(true);
     } catch (err) {
-      alert(err.message || "Signup failed");
+      setFormError(err.message || "Signup failed");
     } finally {
       setLoading(false);
     }
@@ -94,6 +96,24 @@ export default function Signup() {
 
       {/* Right: form */}
       <div className="flex justify-center items-center px-6 py-14">
+        {signedUp ? (
+          <div className="w-full max-w-[390px] rounded-2xl border border-black/[0.07] bg-white p-8 text-center shadow-[0_20px_60px_rgba(23,21,18,0.08)] sm:p-10">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full" style={{ background: "rgba(200,30,58,0.08)" }}>
+              <svg className="h-6 w-6" style={{ color: "var(--crimson)" }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="2" y="4" width="20" height="16" rx="2" />
+                <path d="m22 7-10 5L2 7" />
+              </svg>
+            </div>
+            <h2 className="display mt-4 text-xl" style={{ color: "var(--ink)" }}>Check your email</h2>
+            <p className="mt-3 text-sm leading-relaxed" style={{ color: "var(--stone)" }}>
+              We sent a verification link to <span className="font-medium" style={{ color: "var(--ink)" }}>{email}</span>. Click the
+              link in the email to verify your account and sign in.
+            </p>
+            <Link to="/login" className="mt-8 block w-full rounded p-3 text-center text-sm font-medium text-white" style={{ background: "var(--crimson)" }}>
+              Go to Sign in
+            </Link>
+          </div>
+        ) : (
         <form onSubmit={handleSignup} className="w-full max-w-[390px] rounded-2xl border border-black/[0.07] bg-white p-8 shadow-[0_20px_60px_rgba(23,21,18,0.08)] sm:p-10">
           <h2 className="display text-2xl" style={{ color: "var(--ink)" }}>Create your account</h2>
           <p className="mt-2 text-sm" style={{ color: "var(--stone)" }}>Join Nepal Data Explorer.</p>
@@ -177,6 +197,16 @@ export default function Signup() {
             )}
           </button>
 
+          {formError && (
+            <p
+              className="mt-4 rounded-md px-3 py-2.5 text-sm font-medium"
+              role="alert"
+              style={{ background: "rgba(200,30,58,0.08)", color: "var(--crimson-deep)" }}
+            >
+              {formError}
+            </p>
+          )}
+
           <div className="mt-8 flex items-center gap-3 text-xs" style={{ color: "var(--stone)" }}>
             <span className="h-px flex-1" style={{ background: "rgba(23,21,18,0.1)" }} />
             <span>or</span>
@@ -206,7 +236,8 @@ export default function Signup() {
               Sign in
             </Link>
           </p>
-        </form>
+          </form>
+        )}
       </div>
     </div>
   );

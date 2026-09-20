@@ -332,14 +332,18 @@ def api_signup(request):
         return JsonResponse({'detail': 'Passwords do not match'}, status=400)
 
     user = CustomUser.objects.create_user(username=username, email=email, password=password)
-    user.is_verified = True
+    user.is_verified = False
     user.email_verified = False
     user.save(update_fields=['is_verified', 'email_verified'])
     try:
         _send_email_verification(user)
     except Exception:
         logger.exception('Could not send verification email to %s', email)
-    return JsonResponse({'username': user.username, 'email': user.email, **_jwt_for_user(user)})
+        return JsonResponse(
+            {'detail': 'Account created, but the verification email could not be sent. Please try again later.'},
+            status=503,
+        )
+    return JsonResponse({'username': user.username, 'email': user.email, 'detail': 'Verification email sent.'})
 
 
 def _json_body(request):
@@ -481,10 +485,19 @@ def api_verify_email(request):
     verification.save(update_fields=['used_at'])
 
     user = verification.user
+    user.is_verified = True
     user.email_verified = True
-    user.save(update_fields=['email_verified'])
+    user.save(update_fields=['is_verified', 'email_verified'])
 
-    return JsonResponse({'success': True, 'detail': 'Email verified successfully.'})
+    return JsonResponse({
+        'success': True,
+        'detail': 'Email verified successfully.',
+        'username': user.username,
+        'email': user.email,
+        'is_staff': user.is_staff,
+        'is_superuser': user.is_superuser,
+        **_jwt_for_user(user),
+    })
 
 
 @api_view(['POST'])

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { auth } from "../services/auth";
 
 export default function VerifyEmail() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const token = searchParams.get("token");
   const [state, setState] = useState("loading");
   const [message, setMessage] = useState("");
@@ -19,14 +20,16 @@ export default function VerifyEmail() {
         return;
       }
       try {
-        await auth.verifyEmail(token);
+        const result = await auth.verifyEmail(token);
+        if (result.access) auth.storeTokens(result);
         setState("success");
+        navigate("/national", { replace: true });
       } catch (err) {
         setState("error");
         setMessage(err.message || "This verification link is invalid or has expired. Please request a new one.");
       }
     })();
-  }, [token]);
+  }, [token, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-[#fdf2f2] via-[#f8f9fa] to-[#eef2f7]">
@@ -47,13 +50,7 @@ export default function VerifyEmail() {
               </svg>
             </div>
             <h1 className="text-2xl font-bold text-black mb-2">Email verified</h1>
-            <p className="text-gray-600 mb-8">Your email address has been verified successfully. You can now send support messages.</p>
-            <Link
-              to="/support"
-              className="inline-block w-full rounded-lg bg-red-600 hover:bg-red-700 p-3 font-semibold text-white"
-            >
-              Go to Support
-            </Link>
+            <p className="text-gray-600 mb-8">Your email address has been verified successfully. Redirecting to the dashboard...</p>
           </>
         )}
 
