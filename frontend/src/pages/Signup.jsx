@@ -37,6 +37,9 @@ export default function Signup() {
   const handleSignup = async (e) => {
     e.preventDefault();
     setFormError("");
+    if (!/[^A-Za-z0-9]/.test(password)) return setFormError("Password must contain at least one special character");
+    if (!/[A-Z]/.test(password)) return setFormError("Password must contain at least one uppercase letter");
+    if (password.length < 8) return setFormError("Password must be at least 8 characters");
     setLoading(true);
     try {
       await auth.signup({ username, email, password, confirm_password: confirm });

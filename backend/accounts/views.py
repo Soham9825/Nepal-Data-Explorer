@@ -31,6 +31,8 @@ from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
+from rest_framework_simplejwt.views import TokenRefreshView
+from .serializers import DeletedUserSafeTokenRefreshSerializer
 import logging
 from analytics.ml.moderation import moderate_message
 
@@ -43,6 +45,15 @@ class OAuthProviderError(Exception):
         self.code = code
         super().__init__(code)
 
+
+def _password_strength_error(password):
+    if not re.search(r'[^A-Za-z0-9]', password):
+        return 'Password must contain at least one special character'
+    if not re.search(r'[A-Z]', password):
+        return 'Password must contain at least one uppercase letter'
+    if len(password) < 8:
+        return 'Password must be at least 8 characters'
+    return None
 
 
 def signup(request):
@@ -68,8 +79,9 @@ def signup(request):
         if CustomUser.objects.filter(email=email).exists():
             return render(request, 'signup.html', {'error': 'Email already exists'})
 
-        if len(password) < 8:
-            return render(request, 'signup.html', {'error': 'Password must be at least 8 characters'})
+        strength_error = _password_strength_error(password)
+        if strength_error:
+            return render(request, 'signup.html', {'error': strength_error})
 
         if password != confirm_password:
             return render(request, 'signup.html', {'error': 'Passwords do not match'})
@@ -231,6 +243,10 @@ def _jwt_for_user(user):
     return {'access': str(refresh.access_token), 'refresh': str(refresh)}
 
 
+class DeletedUserSafeTokenRefreshView(TokenRefreshView):
+    serializer_class = DeletedUserSafeTokenRefreshSerializer
+
+
 @require_POST
 @csrf_protect
 def api_login(request):
@@ -325,8 +341,9 @@ def api_signup(request):
     if CustomUser.objects.filter(email=email).exists():
         return JsonResponse({'detail': 'Email already exists'}, status=400)
 
-    if len(password) < 8:
-        return JsonResponse({'detail': 'Password must be at least 8 characters'}, status=400)
+    strength_error = _password_strength_error(password)
+    if strength_error:
+        return JsonResponse({'detail': strength_error}, status=400)
 
     if password != confirm_password:
         return JsonResponse({'detail': 'Passwords do not match'}, status=400)
@@ -426,6 +443,11 @@ def api_password_reset_confirm(request):
         validate_password(password, user)
     except ValidationError as error:
         return JsonResponse({'detail': error.messages}, status=400)
+    if user.check_password(password):
+        return JsonResponse(
+            {'detail': 'New password cannot be the same as your previous password.'},
+            status=400,
+        )
     user.set_password(password)
     user.save(update_fields=['password'])
     return JsonResponse({'detail': 'Password reset successfully.'})

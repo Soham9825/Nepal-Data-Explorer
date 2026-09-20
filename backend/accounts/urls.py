@@ -1,5 +1,4 @@
 from django.urls import path
-from rest_framework_simplejwt.views import TokenRefreshView
 
 from . import views
 
@@ -19,7 +18,7 @@ urlpatterns = [
     path('api/signup/', views.api_signup, name='api_signup'),
     path('api/me/', views.api_me, name='api_me'),
     path('api/admin/users/', views.api_admin_users, name='api_admin_users'),
-	path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+	path('api/token/refresh/', views.DeletedUserSafeTokenRefreshView.as_view(), name='token_refresh'),
 	path('api/password-reset/request/', views.api_password_reset_request, name='api_password_reset_request'),
 	path('api/password-reset/verify/', views.api_password_reset_verify, name='api_password_reset_verify'),
 	path('api/password-reset/confirm/', views.api_password_reset_confirm, name='api_password_reset_confirm'),

@@ -8,6 +8,7 @@ from rest_framework.test import APIClient
 
 from accounts.models import CustomUser, EmailVerificationToken
 from analytics.ml.moderation import find_profanity
+import re
 
 
 class ModerationTests(TestCase):
@@ -157,7 +158,7 @@ class SignupVerificationFlowTests(TestCase):
 		with patch('accounts.views.send_mail') as mock_send:
 			response = self.client.post(reverse('accounts:api_signup'), data={
 				'username': 'newbie', 'email': 'newbie@gmail.com',
-				'password': 'strong-pass-123', 'confirm_password': 'strong-pass-123',
+				'password': 'Strong-pass-123', 'confirm_password': 'Strong-pass-123',
 			}, content_type='application/json')
 		self.assertEqual(response.status_code, 200)
 		data = response.json()
@@ -299,3 +300,101 @@ class SupportMessageModerationRejectionTests(TestCase):
 		self.assertEqual(data.get('status'), 'blocked')
 		mock_email.assert_not_called()
 		mock_email.return_value.send.assert_not_called()
+
+
+class RefreshTokenDeletedUserTests(TestCase):
+	"""Refresh must reject and blacklist tokens for deleted/inactive users."""
+
+	def setUp(self):
+		self.client = APIClient()
+		self.user = CustomUser.objects.create_user(
+			username='ghostuser', email='ghost@gmail.com', password='Ghost-pass-123'
+		)
+		self.user.email_verified = True
+		self.user.save(update_fields=['email_verified'])
+
+	def _login_tokens(self):
+		response = self.client.post(reverse('accounts:api_login'), data={
+			'username': 'ghostuser', 'password': 'Ghost-pass-123',
+		}, content_type='application/json')
+		self.assertEqual(response.status_code, 200)
+		return response.json()
+
+	def test_refresh_works_for_existing_user(self):
+		tokens = self._login_tokens()
+		response = self.client.post(reverse('accounts:token_refresh'), data={
+			'refresh': tokens['refresh'],
+		}, content_type='application/json')
+		self.assertEqual(response.status_code, 200)
+		self.assertIn('access', response.json())
+		self.assertIn('refresh', response.json())
+
+	def test_refresh_rejected_and_blacklisted_for_deleted_user(self):
+		tokens = self._login_tokens()
+		self.client.force_authenticate(user=None)
+		user_pk = self.user.pk
+		self.user.delete()
+
+		response = self.client.post(reverse('accounts:token_refresh'), data={
+			'refresh': tokens['refresh'],
+		}, content_type='application/json')
+		self.assertEqual(response.status_code, 401)
+		self.assertEqual(response.json().get('detail'), 'The account no longer exists.')
+
+		from rest_framework_simplejwt.tokens import RefreshToken
+		from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
+		refresh = RefreshToken(tokens['refresh'], verify=False)
+		outstanding = OutstandingToken.objects.filter(jti=refresh.payload['jti']).first()
+		self.assertIsNotNone(outstanding)
+		self.assertTrue(BlacklistedToken.objects.filter(token=outstanding).exists(), 'refresh token should be blacklisted')
+
+	def test_refresh_rejected_for_inactive_user(self):
+		tokens = self._login_tokens()
+		CustomUser.objects.filter(pk=self.user.pk).update(is_active=False)
+
+		response = self.client.post(reverse('accounts:token_refresh'), data={
+			'refresh': tokens['refresh'],
+		}, content_type='application/json')
+		self.assertEqual(response.status_code, 401)
+		self.assertEqual(response.json().get('detail'), 'No active account found for the given token.')
+
+
+class PasswordResetReuseTests(TestCase):
+	"""New password must differ from the current one."""
+
+	def setUp(self):
+		self.user = CustomUser.objects.create_user(
+			username='resettester', email='reset@gmail.com', password='Old-pass-123'
+		)
+
+	def _reset_token(self):
+		with patch('accounts.views.send_mail') as mock_send:
+			response = self.client.post(reverse('accounts:api_password_reset_request'), data={
+				'email': 'reset@gmail.com',
+			}, content_type='application/json')
+			self.assertEqual(response.status_code, 200)
+		otp = re.search(r'password reset code is (\d{6})', mock_send.call_args[0][1]).group(1)
+		response = self.client.post(reverse('accounts:api_password_reset_verify'), data={
+			'email': 'reset@gmail.com', 'otp': otp,
+		}, content_type='application/json')
+		self.assertEqual(response.status_code, 200)
+		return response.json()['reset_token']
+
+	def test_same_password_is_rejected(self):
+		token = self._reset_token()
+		response = self.client.post(reverse('accounts:api_password_reset_confirm'), data={
+			'reset_token': token, 'password': 'Old-pass-123',
+		}, content_type='application/json')
+		self.assertEqual(response.status_code, 400)
+		self.assertIn('previous password', response.json()['detail'])
+		self.assertTrue(CustomUser.objects.get(pk=self.user.pk).check_password('Old-pass-123'))
+
+	def test_different_password_is_accepted(self):
+		token = self._reset_token()
+		response = self.client.post(reverse('accounts:api_password_reset_confirm'), data={
+			'reset_token': token, 'password': 'New-pass-456',
+		}, content_type='application/json')
+		self.assertEqual(response.status_code, 200)
+		user = CustomUser.objects.get(pk=self.user.pk)
+		self.assertTrue(user.check_password('New-pass-456'))
+		self.assertFalse(user.check_password('Old-pass-123'))

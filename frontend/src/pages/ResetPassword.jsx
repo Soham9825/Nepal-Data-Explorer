@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { AlertCircle } from "lucide-react";
 import { auth } from "../services/auth";
 
 export default function ResetPassword() {
@@ -40,7 +41,7 @@ export default function ResetPassword() {
       <form onSubmit={handleSubmit} className="bg-white shadow-xl rounded-2xl p-10 w-full max-w-[420px]">
         <h1 className="text-3xl font-bold text-black mb-2">Set a new password</h1>
         <p className="text-gray-600 mb-8">Your code was verified. Choose a new password for your account.</p>
-        {error && <p className="text-red-700 text-sm mb-5 p-3 bg-red-50 rounded-lg" role="alert">{error}</p>}
+        {error && <p className="flex items-center gap-2 text-red-700 text-sm font-medium mb-5 p-3 bg-red-50 rounded-lg border border-red-200" role="alert"><AlertCircle size={16} className="flex-shrink-0" /><span>{error}</span></p>}
         <div className="space-y-4">
           <input type="password" className="w-full border rounded-lg p-3" placeholder="New password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" />
           <input type="password" className="w-full border rounded-lg p-3" placeholder="Confirm new password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} autoComplete="new-password" />
