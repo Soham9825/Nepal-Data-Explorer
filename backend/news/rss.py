@@ -28,16 +28,12 @@ DNS_ERROR_MARKERS = (
 )
 
 def normalize_title(title):
-    # Normalize a news headline for comparison.
     title = title.lower()
 
-    # Remove commas inside numbers:
     title = re.sub(r"(?<=\d),(?=\d)", "", title)
 
-    # Replace remaining punctuation with spaces
     title = re.sub(r"[^a-z0-9\s]", " ", title)
 
-    # Remove extra whitespace
     title = re.sub(r"\s+", " ", title)
 
     return title.strip()
@@ -65,9 +61,6 @@ STOP_WORDS = {
 }
 
 def get_keywords(title):
-    # Extract meaningful words from a news headline.
-
-
     normalized = normalize_title(title)
 
     words = normalized.split()
@@ -81,9 +74,6 @@ def get_keywords(title):
     return keywords
 
 def title_similarity(title1, title2):
-
-    # Calculate similarity between two news headlines based on their important words.
-
     words1 = get_keywords(title1)
     words2 = get_keywords(title2)
 
@@ -133,9 +123,6 @@ def _fetch_feed_payload(feed_url):
 
 
 def fetch_feed(feed_url, source_name):
-    #Fetch articles from a single RSS feed.
-
-
     attempts = 0
     while True:
         attempts += 1
@@ -144,7 +131,6 @@ def fetch_feed(feed_url, source_name):
             payload = _fetch_feed_payload(feed_url)
             break
         except Exception as exc:
-            # DNS lookups can intermittently fail; retry briefly before giving up.
             if attempts >= MAX_FEED_ATTEMPTS or not _is_dns_error(exc):
                 logger.warning("RSS fetch failed for %s: %s", feed_url, exc)
                 return []
@@ -177,8 +163,6 @@ def fetch_feed(feed_url, source_name):
     return articles
 
 def deduplicate_articles(articles):
-    # Remove duplicate or highly similar articles.
-
     seen_urls = set()
     unique_articles = []
 
@@ -225,10 +209,6 @@ def fetch_all_feeds():
     return deduplicate_articles(all_articles)
 
 def parse_published_date(published):
-
-    # Convert an RSS publication date into a Python datetime.
-
-
     if not published:
         return None
 
@@ -238,7 +218,6 @@ def parse_published_date(published):
         return None
 
 def get_top_articles(limit=10):
-    # Fetch and return the latest news articles using Django cache.
     # Headlines are ordered purely by publication recency across all sources.
 
     cache_key = f"news_top_articles_{limit}"
