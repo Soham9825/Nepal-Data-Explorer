@@ -38,9 +38,9 @@ const formatCompact = (value) => {
 
 export default function Economic() {
   const [data, setData] = useState(null);
-  const [indicator, setIndicator] = useState('growth');
+  const [indicator, setIndicator] = useState('sectors');
   const [year, setYear] = useState('All');
-  const [range, setRange] = useState('5');
+  const [range, setRange] = useState('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [provinceGdp, setProvinceGdp] = useState(null);
@@ -341,10 +341,10 @@ export default function Economic() {
         <div className="flex flex-col gap-4 rounded-sm border border-outline-variant bg-surface p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap gap-2">
             {[
-              ['growth', 'World Output Growth'],
-              ['trade', 'Trade'],
               ['sectors', 'Sectoral Growth'],
               ['province', 'Province-wise GDP'],
+              ['trade', 'Trade'],
+              ['growth', 'World Output Growth'],
             ].map(([id, label]) => (
               <button
                 key={id}
@@ -361,9 +361,9 @@ export default function Economic() {
           {(indicator === 'growth' || indicator === 'trade') && (
             <div className="flex shrink-0 items-center gap-1 rounded-sm border border-outline-variant bg-white p-1">
               {[
-                ['5', '5 years'],
-                ['10', '10 years'],
                 ['all', 'All'],
+                ['10', '10 years'],
+                ['5', '5 years'],
               ].map(([id, label]) => (
                 <button
                   key={id}

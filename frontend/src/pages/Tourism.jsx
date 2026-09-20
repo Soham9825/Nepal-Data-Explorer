@@ -46,8 +46,8 @@ const SOURCE_MARKET_COLORS = [
 
 export default function Tourism() {
   const [activeTab, setActiveTab] = useState('arrivals');
-  const [arrivalRange, setArrivalRange] = useState('5');
-  const [revenueRange, setRevenueRange] = useState('5');
+  const [arrivalRange, setArrivalRange] = useState('all');
+  const [revenueRange, setRevenueRange] = useState('all');
   const [showAllSourceMarkets, setShowAllSourceMarkets] = useState(false);
   const { title: chartTitle } = CHART_META[activeTab];
   const [loading, setLoading] = useState(true);
@@ -300,9 +300,9 @@ export default function Tourism() {
               activeTab === 'arrivals' || activeTab === 'revenue' ? (
                 <div className="flex items-center gap-1 rounded-sm border border-outline-variant bg-white p-1">
                   {[
-                    ['5', '5 years'],
+                    ['all', 'All'],
                     ['10', '10 years'],
-                    ['all', 'View all'],
+                    ['5', '5 years'],
                   ].map(([id, label]) => {
                     const selectedRange = activeTab === 'arrivals' ? arrivalRange : revenueRange;
                     return (

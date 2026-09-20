@@ -56,6 +56,7 @@ export default function National() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [news, setNews] = useState([]);
+  const [newsLoading, setNewsLoading] = useState(true);
   const [selectedProvince, setSelectedProvince] = useState(null);
   const [selectedNews, setSelectedNews] = useState(null);
   const [populationTotal, setPopulationTotal] = useState(FALLBACK_NEPAL_POPULATION);
@@ -240,17 +241,24 @@ export default function National() {
         setNews(Array.isArray(data.articles) ? data.articles : []);
       } catch (err) {
         console.error('Failed to load national news:', err);
-        setError(err.message || 'Unable to load national headlines.');
         setNews([]);
       } finally {
-        setLoading(false);
+        setNewsLoading(false);
       }
     };
 
-    fetchPopulation();
-    fetchProvincePopulation();
-    fetchEconomicData();
-    fetchEconomicTrade();
+    // Core metrics below should never be blocked by the (slower) RSS news
+    // fetch. Render the page as soon as the data-driven sections resolve, and
+    // give up waiting after a few seconds so a slow API cannot hang the page.
+    const coreData = Promise.allSettled([
+      fetchPopulation(),
+      fetchProvincePopulation(),
+      fetchEconomicData(),
+      fetchEconomicTrade(),
+    ]);
+    const waitTimeout = new Promise((resolve) => setTimeout(resolve, 5000));
+    Promise.race([coreData, waitTimeout]).finally(() => setLoading(false));
+
     fetchNews();
   }, []);
 
@@ -414,9 +422,13 @@ export default function National() {
               </p>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 max-h-[500px] scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
-              {news.length === 0 ? (
-                <div className="p-4 text-sm text-on-surface-variant">
+<div className="flex-1 overflow-y-auto p-4 space-y-3 max-h-[500px] scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+              {newsLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader size="sm" />
+                </div>
+              ) : news.length === 0 ? (
+                <div className="p-4 text-sm text-onSurface-variant">
                   No recent headlines available right now.
                 </div>
               ) : (

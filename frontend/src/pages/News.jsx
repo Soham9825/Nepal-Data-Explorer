@@ -25,7 +25,7 @@ export default function News() {
         if (!response.ok) throw new Error(`News API error: ${response.status}`);
         return response.json();
       })
-      .then((data) => setNews(Array.isArray(data) ? data : []))
+      .then((data) => setNews(Array.isArray(data) ? data : Array.isArray(data.articles) ? data.articles : []))
       .catch((requestError) => setError(requestError.message))
       .finally(() => setLoading(false));
   }, []);

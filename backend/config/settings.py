@@ -162,6 +162,10 @@ DATABASES = {
     )
 }
 
+# Use a PostgreSQL backend with retry-on-transient-DNS handling so the app
+# does not crash when the Neon hostname intermittently fails to resolve.
+DATABASES["default"]["ENGINE"] = "config.db"
+
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
