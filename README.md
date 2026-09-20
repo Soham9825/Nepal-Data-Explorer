@@ -32,71 +32,45 @@ A national data platform for Nepal's economy, tourism, and demographics, built w
 
 ## Getting Started
 
+All paths below are relative to the project root `nepal-data-explorer/`. You will need **two terminals**: one for the backend (keep it running) and one for the frontend.
+
 ### 1. Backend
 
-#### Create a virtual environment
+#### a) Create and activate a virtual environment
 
-| OS       | Command                                        |
-| -------- | ---------------------------------------------- |
-| macOS/Linux | `python3 -m venv venv`                          |
-| Windows (CMD) | `py -m venv venv`                           |
-| Windows (PowerShell) | `py -m venv venv`                 |
+| OS       | Create                                    | Activate                              |
+| -------- | ----------------------------------------- | ------------------------------------- |
+| macOS/Linux | `python3 -m venv venv`                | `source venv/bin/activate`            |
+| Windows (CMD) | `py -m venv venv`                    | `venv\Scripts\activate.bat`           |
+| Windows (PowerShell) | `py -m venv venv`           | `venv\Scripts\Activate.ps1`           |
 
-Activate it:
+Run the **create** commands from the **project root** (`nepal-data-explorer/`), then activate. The virtual environment folder is created at `nepal-data-explorer/venv` and is used only by the backend.
 
-| OS       | Command                                   |
-| -------- | ------------------------------------------ |
-| macOS/Linux | `source venv/bin/activate`              |
-| Windows (CMD) | `venv\Scripts\activate.bat`            |
-| Windows (PowerShell) | `venv\Scripts\Activate.ps1`       |
-
-#### Install dependencies and configure
+#### b) Install backend dependencies
 
 ```bash
 cd backend
 pip install -r requirements.txt
 ```
 
-Copy the [minimum example](#environment-variables) below into a `.env` file inside `backend/` and adjust the values as needed.
+(When the venv is active, `python` and `pip` refer to the venv's versions.)
 
-Download the toxicity model weights. These are the trained weights for the project's custom DistilBERT toxicity detector (available as the `NepalDataExplorer-ToxicDetectorModel` repository on Hugging Face; override the repo with `TOXICITY_MODEL_ID` if you host a fork). Required for support-message moderation:
+#### c) Create the environment file
 
-```bash
-python scripts/download_toxicity_model.py
-```
-
-Apply migrations, run checks and tests, then start the server:
+The backend reads its configuration from a `.env` file **inside `backend/`**. Create it now — without this file the backend will not start:
 
 ```bash
-python manage.py migrate
-python manage.py check
-python manage.py test
-python manage.py runserver
+cd backend   # if not already there
 ```
 
-The backend is available at `http://localhost:8000`.
+Create an empty `.env` file in `backend/`:
 
-#### Fill the database with the CSV data (also works with a Neon `DATABASE_URL`)
+| OS | Command |
+| --- | ------- |
+| macOS/Linux | `touch .env` |
+| Windows (CMD or PowerShell) | `type nul > .env` |
 
-```bash
-python manage.py import_curated_datasets --set tourism --set population --set economic
-python manage.py import_province_gdp datasets/data/Province_wise_gdp_growth.csv
-python manage.py import_nationality_forecasts
-```
-
-### 2. Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-The frontend runs at `http://localhost:5173` and expects the API at `http://localhost:8000`.
-
-## Environment Variables
-
-Create a `.env` file inside the `backend/` directory with the following minimum example. **The `.env` file is git-ignored — never commit it.** If you do, rotate every credential immediately, as values remain visible in git history even after deletion.
+Then open `backend/.env` and paste the minimum example below, filling in your own values (generate a secret with `python -c "import secrets; print(secrets.token_urlsafe(64))"`):
 
 ```ini
 SECRET_KEY=replace-with-a-long-random-string
@@ -119,31 +93,78 @@ GITHUB_CLIENT_SECRET=
 GITHUB_REDIRECT_URI=http://localhost:8000/accounts/oauth/github/callback/
 ```
 
-### Create the environment file
+#### d) Download the toxicity model (optional)
 
-On macOS/Linux:
-
-```bash
-cd backend
-touch .env
-```
-
-On Windows (CMD or PowerShell):
-
-```
-cd backend
-type nul > .env
-```
-
-Then paste the example above into `.env` and fill in your own values (generate a secret with `python -c "import secrets; print(secrets.token_urlsafe(64))"`).
-
-### Create a superuser
+Only required if you want the support-message toxicity filter. The script lives at `scripts/download_toxicity_model.py` (project root, not `backend/`), so run it from the backend with a `../` path:
 
 ```bash
-cd backend
+python ../scripts/download_toxicity_model.py
+```
+
+#### e) Set up the database and run migrations
+
+Migrations create the tables the import data goes into.
+
+- **Local PostgreSQL**: make sure the database exists first, e.g. `createdb nepal_data_explorer`, then set `DATABASE_URL` in `.env` to match it.
+- **Remote (Neon)**: just set `DATABASE_URL` in `.env` to the connection string.
+
+Then apply migrations:
+
+```bash
+python manage.py migrate
+```
+
+#### f) Import the CSV data
+
+Do this after migrations succeed:
+
+```bash
+python manage.py import_curated_datasets --set tourism --set population --set economic
+python manage.py import_nationality_forecasts
+```
+
+The province GDP CSV is **not bundled** with the repo — use your own file from the CBS series. Replace the path with the exact location of your file:
+
+First, validate the file (this runs a **dry run — nothing is saved**, it only checks the file is readable and matches the expected columns):
+
+```bash
+python manage.py import_province_gdp /absolute/path/to/your/Province_wise_gdp_growth.csv --dry-run
+```
+
+If it passes without errors, drop `--dry-run` and run again — **this is the command that actually imports the data into the database**:
+
+```bash
+python manage.py import_province_gdp /absolute/path/to/your/Province_wise_gdp_growth.csv
+```
+
+#### g) Create a superuser (for the admin panel)
+
+```bash
 python manage.py createsuperuser
 ```
 
 Run it interactively and enter the admin username, email, and password. The superuser grants access to Django's admin interface at `http://localhost:8000/admin/`.
+
+#### h) Verify and run the backend
+
+```bash
+python manage.py check
+python manage.py test
+python manage.py runserver
+```
+
+The backend is available at `http://localhost:8000`. **Keep this terminal open and running.**
+
+### 2. Frontend
+
+Open a **new terminal** (the first one is busy running the backend), navigate to the **same project root** `nepal-data-explorer/`, and run:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The frontend runs at `http://localhost:5173` and expects the API at `http://localhost:8000`.
 
 Private project.
