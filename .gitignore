@@ -60,6 +60,7 @@ credentials.*
 *apikey*
 *api_key*
 *token*
+!backend/**/migrations/*token*.py
 
 # Required lightweight toxicity model metadata
 !/backend/analytics/ml/toxicity_model/
