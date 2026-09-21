@@ -6,6 +6,7 @@ import { SectionCard } from '../components/ui/Card';
 import { BtnPrimary } from '../components/ui/Button';
 import { Icon } from '../components/ui/Icon';
 import LineChart from '../components/charts/LineChart';
+import ScatterChart from '../components/charts/ScatterChart';
 
 function pearsonCorrelation(xs, ys) {
   const n = xs.length;
@@ -35,6 +36,56 @@ function correlationLabel(r) {
   if (abs >= 0.4) return 'moderate';
   if (abs >= 0.2) return 'weak';
   return 'negligible';
+}
+
+function seriesStats(rows, key) {
+  const values = rows.map((d) => Number(d[key])).filter(Number.isFinite);
+  if (!values.length) return null;
+  const first = values[0];
+  const last = values[values.length - 1];
+  const change = first !== 0 ? ((last - first) / Math.abs(first)) * 100 : null;
+  const minIndex = values.indexOf(Math.min(...values));
+  const maxIndex = values.indexOf(Math.max(...values));
+  return {
+    first,
+    last,
+    change,
+    min: values[minIndex],
+    max: values[maxIndex],
+    troughPeriod: rows[minIndex]?.period ?? null,
+    peakPeriod: rows[maxIndex]?.period ?? null,
+  };
+}
+
+function fmt(n) {
+  return Number(n).toLocaleString(undefined, { maximumFractionDigits: 0 });
+}
+
+function SeriesStats({ label, stats, color }) {
+  if (!stats) return null;
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-2 text-xs">
+      <span className="flex items-center gap-1.5 font-bold" style={{ color }}>
+        <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
+        {label}
+      </span>
+      {stats.change != null && (
+        <span className="rounded-sm border border-outline-variant bg-surface-container-highest px-2 py-0.5 font-semibold text-onSurface-variant">
+          {stats.change >= 0 ? '+' : ''}{stats.change.toFixed(1)}% over full range
+        </span>
+      )}
+      {stats.peakPeriod != null && (
+        <span className="rounded-sm border border-outline-variant bg-surface-container-highest px-2 py-0.5 font-semibold text-onSurface-variant">
+          Peak {stats.peakPeriod} · {fmt(stats.max)}
+        </span>
+      )}
+      {stats.troughPeriod != null && (
+        <span className="rounded-sm border border-outline-variant bg-surface-container-highest px-2 py-0.5 font-semibold text-onSurface-variant">
+          Low {stats.troughPeriod} · {fmt(stats.min)}
+        </span>
+      )}
+    </div>
+  );
 }
 
 export default function Compare() {
@@ -103,6 +154,9 @@ export default function Compare() {
     if (max <= 0) return undefined;
     return [0, Math.ceil(max * 1.05)];
   }, [comparison]);
+
+  const statsA = useMemo(() => seriesStats(comparison?.data || [], 'a'), [comparison]);
+  const statsB = useMemo(() => seriesStats(comparison?.data || [], 'b'), [comparison]);
 
   useEffect(() => {
     fetch(`${apiBaseUrl}/api/analytics/compare/catalog/`)
@@ -291,12 +345,14 @@ export default function Compare() {
               </div>
             </div>
 
-            {overlay ? (
+            {overlay && (
               <SectionCard
                 title={`${seriesLabel(a)} vs ${seriesLabel(b)} — normalized overlay`}
                 subtitle="Both series scaled to start = 100 so trends are directly comparable"
                 className="rounded-sm"
               >
+                <SeriesStats label={seriesLabel(a)} stats={statsA} color="#0051d5" />
+                <SeriesStats label={seriesLabel(b)} stats={statsB} color="#b70011" />
                 <div className="h-[520px]">
                   <LineChart
                     data={normalizedData}
@@ -309,7 +365,8 @@ export default function Compare() {
                   />
                 </div>
               </SectionCard>
-            ) : (
+            )}
+            {!overlay && (
               // Both cards share a single Y domain (LineChart honors yDomain)
               // and stretch to equal heights, so the two charts use identical
               // scales and pixel geometry — a period on one chart lands at
@@ -320,6 +377,7 @@ export default function Compare() {
                   subtitle={`${dataset?.period_label} · ${dataset?.value_label}`}
                   className="rounded-sm h-full flex flex-col"
                 >
+                  <SeriesStats label={seriesLabel(a)} stats={statsA} color="#0051d5" />
                   <div className="min-h-[384px] flex-1">
                     <LineChart
                       data={comparison?.data || []}
@@ -335,6 +393,7 @@ export default function Compare() {
                   subtitle={`${dataset?.period_label} · ${dataset?.value_label}`}
                   className="rounded-sm h-full flex flex-col"
                 >
+                  <SeriesStats label={seriesLabel(b)} stats={statsB} color="#b70011" />
                   <div className="min-h-[384px] flex-1">
                     <LineChart
                       data={comparison?.data || []}
@@ -347,6 +406,21 @@ export default function Compare() {
                 </SectionCard>
               </div>
             )}
+
+            <SectionCard
+              title={`Scatter Plot — ${seriesLabel(a)} vs ${seriesLabel(b)}`}
+              subtitle="One dot per shared period · dashed red line is the trend fit · hover a dot for details"
+              className="rounded-sm"
+            >
+              <ScatterChart
+                  data={comparison?.data || []}
+                  xKey="a"
+                  yKey="b"
+                  labelKey="period"
+                  xLabel={seriesLabel(a)}
+                  yLabel={seriesLabel(b)}
+                />
+            </SectionCard>
 
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-6 items-stretch">
               <SectionCard title="Correlation Score" subtitle={`Pearson r · ${comparison?.data?.length || 0} shared periods`} className="rounded-sm h-full flex flex-col">

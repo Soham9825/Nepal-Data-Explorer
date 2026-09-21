@@ -329,7 +329,13 @@ export default function Tourism() {
             }
             className="h-full rounded-sm flex flex-col"
           >
-            <div className="border border-outline-variant rounded-sm bg-surface flex-1 min-h-[256px]">
+            <div
+              className={`border border-outline-variant rounded-sm bg-surface ${
+                activeTab === 'source-markets'
+                  ? 'h-[390px] shrink-0'
+                  : 'flex-1 min-h-[256px]'
+              }`}
+            >
               {activeTab === 'arrivals' && (
                 <LineChart
                   data={visibleArrivalTrend.map((record) => ({
