@@ -471,7 +471,6 @@ export default function Economic() {
                   series={[{ key: 'value', color: COLORS.primary, label: 'Real growth (%)' }]}
                   height="100%"
                   unit="%"
-                  xPadding={48}
                   showZeroLine
                 />
               ) : (
