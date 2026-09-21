@@ -42,13 +42,13 @@ export default function LineChart({
   timeScale = false,
   xDomainStart,
   xDomainEnd,
+  yDomain = [null, null], // Optional fixed [min, max]; null/undefined bounds auto-scale
   zoneStart,
   zoneLabel = "Forecast",
   bands = NO_BANDS, // Shaded min/max range bands: [{ keyMin, keyMax, color, opacity }]
   series = DEFAULT_SERIES,
   height = 380,
   unit = "",
-  xPadding = 70,
   showZeroLine = false,
   fillArea = true,
 }) {
@@ -92,8 +92,12 @@ export default function LineChart({
       ),
     ].map(Number).filter(Number.isFinite);
 
-    const max = allValues.length ? Math.max(...allValues) : 1;
-    const min = allValues.length ? Math.min(...allValues) : 0;
+    // Optional fixed [min, max] bounds override the data-derived domain so
+    // multiple charts can share one scale (used by the Compare page).
+    const domainMin = Number.isFinite(yDomain?.[0]) ? yDomain[0] : null;
+    const domainMax = Number.isFinite(yDomain?.[1]) ? yDomain[1] : null;
+    const max = domainMax ?? (allValues.length ? Math.max(...allValues) : 1);
+    const min = domainMin ?? (allValues.length ? Math.min(...allValues) : 0);
     const range = max - min || 1;
 
     const timeValues = timeScale
@@ -194,7 +198,7 @@ export default function LineChart({
     if (!labelTicks.length) labelTicks.push({ index: 0, label: String(data[0][labelKey]) });
 
     return { min, max, ticks, zoneX, seriesData, xForValue, labelTicks, bandKeys };
-  }, [data, series, xKey, labelKey, timeScale, xDomainStart, xDomainEnd, xPadding, zoneStart, bands, toTimeValue]);
+  }, [data, series, xKey, labelKey, timeScale, xDomainStart, xDomainEnd, yDomain, zoneStart, bands, toTimeValue]);
 
   chartRef.current = chart;
 
@@ -280,10 +284,6 @@ export default function LineChart({
   useLayoutEffect(() => {
     recomputeTooltipPosition();
   }, [recomputeTooltipPosition, data, chart]);
-
-  useLayoutEffect(() => {
-    recomputeTooltipPosition();
-  }, [recomputeTooltipPosition]);
 
   useLayoutEffect(() => {
     if (activeIndex == null) return undefined;
@@ -588,6 +588,7 @@ export default function LineChart({
                   borderRight: "1px solid #e6e8ec",
                   borderBottom: "1px solid #e6e8ec",
                   transform: `translateX(-50%) rotate(${tip.flipBelow ? 225 : 45}deg)`,
+                  transition: "transform 120ms ease",
                 }}
               />
             )}
@@ -595,14 +596,15 @@ export default function LineChart({
         )}
       </div>
 
-      {/* X Labels */}
+      {/* X Labels. The container spans the full chart width (same coordinate
+          space as the SVG plot) so each label's left% lands exactly on its
+          data point; any left/right inset here would shift labels away from
+          the plotted positions. */}
       <div
         className="relative mt-2 h-6 flex-shrink-0 text-xs"
         style={{
           color: "#5A6472",
           fontWeight: 600,
-          marginLeft: `${(xPadding / VB_WIDTH) * 100}%`,
-          marginRight: `${(xPadding / VB_WIDTH) * 100}%`,
         }}
       >
         {chart.labelTicks.map((tick, i) => {

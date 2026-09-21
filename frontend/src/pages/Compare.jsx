@@ -6,7 +6,6 @@ import { SectionCard } from '../components/ui/Card';
 import { BtnPrimary } from '../components/ui/Button';
 import { Icon } from '../components/ui/Icon';
 import LineChart from '../components/charts/LineChart';
-import Loader from '../components/common/Loader';
 
 function pearsonCorrelation(xs, ys) {
   const n = xs.length;
@@ -46,11 +45,16 @@ export default function Compare() {
   const [filters, setFilters] = useState({});
   const [comparison, setComparison] = useState(null);
   const [done, setDone] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [overlay, setOverlay] = useState(false); // Normalized overlay (both series scaled to start = 100).
-  const chartAreaRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Race-guardable request ids so a slow old response never overwrites a
+  // newer selection's results.
+  const requestIdRef = useRef(0);
+  // Only auto-refresh after the user has generated a comparison at least once.
+  const hasGeneratedRef = useRef(false);
+  const refreshTimerRef = useRef(null);
 
   const apiBaseUrl = API_BASE_URL;
   const dataset = catalog.find((item) => item.id === datasetId) || null;
@@ -69,7 +73,6 @@ export default function Compare() {
   const hasCorrelation = correlation !== null && Number.isFinite(correlation);
   const direction = hasCorrelation && correlation >= 0 ? 'positive' : 'inverse';
   const strength = hasCorrelation ? correlationLabel(correlation) : 'unavailable';
-  const barPct = hasCorrelation ? Math.round(((correlation + 1) / 2) * 100) : 0;
   const periodDescription = comparison?.data?.length
     ? `${comparison.data[0].period} to ${comparison.data.at(-1).period}`
     : 'the selected periods';
@@ -86,6 +89,19 @@ export default function Compare() {
       a: (Number(d.a) / baseA) * 100,
       b: (Number(d.b) / baseB) * 100,
     }));
+  }, [comparison]);
+
+  // Shared Y-axis domain for the side-by-side (non-overlay) charts, so line
+  // height is directly comparable between the two cards instead of each
+  // chart silently autoscaling to its own data.
+  const sharedYDomain = useMemo(() => {
+    const rows = comparison?.data || [];
+    if (!rows.length) return undefined;
+    const values = rows.flatMap((d) => [Number(d.a), Number(d.b)]).filter(Number.isFinite);
+    if (!values.length) return undefined;
+    const max = Math.max(...values);
+    if (max <= 0) return undefined;
+    return [0, Math.ceil(max * 1.05)];
   }, [comparison]);
 
   useEffect(() => {
@@ -115,8 +131,6 @@ export default function Compare() {
     setA(next?.series[0] || '');
     setB(next?.series[1] || next?.series[0] || '');
     setFilters(Object.fromEntries((next?.filters || []).map((filter) => [filter.field, filter.options[0] || ''])));
-    setDone(false);
-    setComparison(null);
   };
 
   const Sel = ({ val, onChange }) => (
@@ -136,18 +150,45 @@ export default function Compare() {
 
   const generateComparison = () => {
     if (!dataset || !a || !b) return;
-    const params = new URLSearchParams({ dataset: dataset.id, a, b, ...filters });
+    hasGeneratedRef.current = true;
+    const id = ++requestIdRef.current;
     setLoading(true);
     setError('');
+    const params = new URLSearchParams({ dataset: dataset.id, a, b, ...filters });
     fetch(`${apiBaseUrl}/api/analytics/compare/data/?${params}`)
       .then((response) => {
         if (!response.ok) throw new Error(`Comparison request failed: ${response.status}`);
         return response.json();
       })
-      .then((data) => { setComparison(data); setDone(true); })
-      .catch((requestError) => setError(requestError.message))
-      .finally(() => setLoading(false));
+      .then((data) => {
+        if (id !== requestIdRef.current) return;
+        setComparison(data);
+        setDone(true);
+      })
+      .catch((requestError) => {
+        if (id !== requestIdRef.current) return;
+        setError(requestError.message);
+      })
+      .finally(() => {
+        if (id === requestIdRef.current) setLoading(false);
+      });
   };
+
+  // After the first generation, any change to the dataset/series/filters
+  // refreshes the comparison in place (debounced) rather than tearing the
+  // results down and requiring a manual regenerate.
+  useEffect(() => {
+    if (!hasGeneratedRef.current) return undefined;
+    clearTimeout(refreshTimerRef.current);
+    refreshTimerRef.current = setTimeout(() => {
+      generateComparison();
+    }, 350);
+    return () => clearTimeout(refreshTimerRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [datasetId, a, b, filters]);
+
+  const showResults = Boolean(comparison);
+  const updating = loading && showResults;
 
   return (
     <DashboardLayout pageTitle="Compare Indicators">
@@ -158,7 +199,7 @@ export default function Compare() {
         </div>
 
         <SectionCard title="Select data to compare" subtitle="Choose two series from the same real dataset" className="rounded-sm">
-          <div className="flex items-center gap-5 flex-wrap">
+          <div className="flex items-end gap-5 flex-wrap">
             <div>
               <div className="text-xs font-bold uppercase text-onSurface-variant mb-2">Dataset</div>
               <div className="relative">
@@ -170,12 +211,12 @@ export default function Compare() {
             </div>
             <div>
               <div className="text-xs font-bold uppercase text-onSurface-variant mb-2">Series A</div>
-              <Sel val={a} onChange={(v) => { setA(v); setDone(false); }} />
+              <Sel val={a} onChange={setA} />
             </div>
-            <div className="text-lg text-onSurface-variant font-bold mt-5">vs</div>
+            <div className="text-lg text-onSurface-variant font-bold pb-2">vs</div>
             <div>
               <div className="text-xs font-bold uppercase text-onSurface-variant mb-2">Series B</div>
-              <Sel val={b} onChange={(v) => { setB(v); setDone(false); }} />
+              <Sel val={b} onChange={setB} />
             </div>
             {(dataset?.filters || []).map((filter) => (
               <div key={filter.field}>
@@ -188,35 +229,46 @@ export default function Compare() {
                     setA(nextSeries[0]);
                     setB(nextSeries[1]);
                   }
-                  setDone(false);
                 }} className="px-3 py-2 border border-outline-variant rounded-sm font-sans text-sm font-bold text-onSurface bg-surface cursor-pointer outline-none">
                   {filter.options.map((option) => <option key={option} value={option}>{seriesLabel(option)}</option>)}
                 </select>
               </div>
             ))}
-            <BtnPrimary onClick={generateComparison} disabled={loading || !a || !b} className="mt-5 rounded-sm">
+            <BtnPrimary onClick={generateComparison} disabled={loading || !a || !b} className="rounded-sm">
               <Icon name="compare_arrows" size={16} color="#fff" />
               Generate Comparison
             </BtnPrimary>
           </div>
         </SectionCard>
 
-        {loading && (
-          <SectionCard title="Loading comparison data" className="rounded-sm">
-            <div className="flex min-h-[220px] items-center justify-center">
-              <Loader size="lg" />
-            </div>
-          </SectionCard>
+        {/* Loading skeleton — matches the eventual two-chart grid so the page
+            doesn't jump/reflow once data arrives. */}
+        {loading && !comparison && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {[0, 1].map((i) => (
+              <div key={i} className="bg-surface border border-outline-variant rounded-sm p-5">
+                <div className="animate-pulse h-4 w-32 bg-slate-200/70 rounded-sm mb-2" />
+                <div className="animate-pulse h-3 w-48 bg-slate-200/50 rounded-sm mb-4" />
+                <div className="animate-pulse h-[384px] w-full bg-slate-200/50 rounded-sm" />
+              </div>
+            ))}
+          </div>
         )}
 
-        {done && (
-          <div ref={chartAreaRef} className={isFullscreen ? 'fixed inset-0 z-50 overflow-y-auto bg-background p-6 lg:p-10' : 'space-y-6'}>
-            <div className="mb-4 flex items-center justify-between">
+        {showResults && (
+          <div className="space-y-6">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className="text-xl font-bold text-onSurface">Comparison Visualization</h3>
                 <p className="text-sm text-onSurface-variant">{seriesLabel(a)} vs {seriesLabel(b)}</p>
               </div>
               <div className="flex items-center gap-3">
+                {updating && (
+                  <span className="flex items-center gap-2 text-xs font-semibold text-onSurface-variant">
+                    <span className="h-3.5 w-3.5 rounded-full border-2 border-outline-variant border-t-secondary animate-spin" />
+                    Updating comparison…
+                  </span>
+                )}
                 <button
                   type="button"
                   onClick={() => downloadCSV(comparison?.data || [], `compare-${a}-${b}.csv`)}
@@ -236,65 +288,100 @@ export default function Compare() {
                   <Icon name="show_chart" size={18} color="#0051d5" />
                   {overlay ? 'Separate charts' : 'Overlay (start = 100)'}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setIsFullscreen((value) => !value)}
-                  className="flex items-center gap-2 rounded-sm border border-outline-variant bg-white px-4 py-2 text-sm font-semibold text-onSurface transition-colors hover:bg-surface-container-highest"
-                  aria-label={isFullscreen ? 'Exit fullscreen' : 'View comparison fullscreen'}
-                >
-                  <Icon name={isFullscreen ? 'fullscreen_exit' : 'fullscreen'} size={18} color="#0051d5" />
-                  {isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
-                </button>
               </div>
             </div>
+
             {overlay ? (
               <SectionCard
                 title={`${seriesLabel(a)} vs ${seriesLabel(b)} — normalized overlay`}
                 subtitle="Both series scaled to start = 100 so trends are directly comparable"
                 className="rounded-sm"
               >
-                <LineChart
-                  data={normalizedData}
-                  xKey="period"
-                  series={[
-                    { key: 'a', color: '#0051d5', label: seriesLabel(a) },
-                    { key: 'b', color: '#b70011', label: seriesLabel(b) },
-                  ]}
-                  height={384}
-                />
+                <div className="h-[520px]">
+                  <LineChart
+                    data={normalizedData}
+                    xKey="period"
+                    series={[
+                      { key: 'a', color: '#0051d5', label: seriesLabel(a) },
+                      { key: 'b', color: '#b70011', label: seriesLabel(b) },
+                    ]}
+                    height="100%"
+                  />
+                </div>
               </SectionCard>
             ) : (
-              <div className="grid grid-cols-2 gap-6">
-                <SectionCard title={seriesLabel(a)} subtitle={`${dataset?.period_label} · ${dataset?.value_label}`} className="rounded-sm">
-                  <LineChart data={comparison?.data || []} xKey="period" series={[{ key: 'a', color: '#0051d5', label: seriesLabel(a) }]} height={384} />
+              // Both cards share a single Y domain (LineChart honors yDomain)
+              // and stretch to equal heights, so the two charts use identical
+              // scales and pixel geometry — a period on one chart lands at
+              // exactly the same place as the same period on the other.
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+                <SectionCard
+                  title={seriesLabel(a)}
+                  subtitle={`${dataset?.period_label} · ${dataset?.value_label}`}
+                  className="rounded-sm h-full flex flex-col"
+                >
+                  <div className="min-h-[384px] flex-1">
+                    <LineChart
+                      data={comparison?.data || []}
+                      xKey="period"
+                      series={[{ key: 'a', color: '#0051d5', label: seriesLabel(a) }]}
+                      yDomain={sharedYDomain}
+                      height="100%"
+                    />
+                  </div>
                 </SectionCard>
-                <SectionCard title={seriesLabel(b)} subtitle={`${dataset?.period_label} · ${dataset?.value_label}`} className="rounded-sm">
-                  <LineChart data={comparison?.data || []} xKey="period" series={[{ key: 'b', color: '#b70011', label: seriesLabel(b) }]} height={384} />
+                <SectionCard
+                  title={seriesLabel(b)}
+                  subtitle={`${dataset?.period_label} · ${dataset?.value_label}`}
+                  className="rounded-sm h-full flex flex-col"
+                >
+                  <div className="min-h-[384px] flex-1">
+                    <LineChart
+                      data={comparison?.data || []}
+                      xKey="period"
+                      series={[{ key: 'b', color: '#b70011', label: seriesLabel(b) }]}
+                      yDomain={sharedYDomain}
+                      height="100%"
+                    />
+                  </div>
                 </SectionCard>
               </div>
             )}
 
-            <div className="grid grid-cols-[1fr_2fr] gap-6">
-              <SectionCard title="Correlation Score" subtitle={`Pearson r · ${comparison?.data?.length || 0} shared periods`} className="rounded-sm">
-                <div className="text-center py-4">
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-6 items-stretch">
+              <SectionCard title="Correlation Score" subtitle={`Pearson r · ${comparison?.data?.length || 0} shared periods`} className="rounded-sm h-full flex flex-col">
+                <div className="flex-1 flex flex-col justify-center text-center py-4">
                   <div className="text-6xl font-extrabold text-onSurface">{hasCorrelation ? correlation.toFixed(2) : 'N/A'}</div>
                   <div className="text-sm text-onSurface-variant mb-4 capitalize">
                     {hasCorrelation ? `${strength} ${direction} correlation` : 'insufficient variation for correlation'}
                   </div>
-                  <div className="h-2 bg-surface-highest rounded-full overflow-hidden mx-4">
-                    <div
-                      className="h-full bg-secondary rounded-full transition-all duration-300"
-                      style={{ width: `${barPct}%` }}
-                    />
+
+                  {/* Diverging bar: fills outward from a center zero-point in
+                      either direction, so a weak r visibly stays near center
+                      instead of the old left-fill which made r = 0.1 look
+                      like it filled roughly half the bar. */}
+                  <div className="h-2 bg-surface-highest rounded-full mx-4 relative overflow-hidden">
+                    <div className="absolute inset-y-0 left-1/2 w-px bg-onSurface-variant/40" />
+                    {hasCorrelation && (
+                      <div
+                        className="absolute top-0 h-full bg-secondary rounded-full transition-all duration-300"
+                        style={
+                          correlation >= 0
+                            ? { left: '50%', width: `${Math.abs(correlation) * 50}%` }
+                            : { right: '50%', width: `${Math.abs(correlation) * 50}%` }
+                        }
+                      />
+                    )}
                   </div>
                   <div className="flex justify-between text-xs text-onSurface-variant mt-1 font-bold px-4">
                     <span>−1 (inverse)</span>
+                    <span>0</span>
                     <span>+1 (perfect)</span>
                   </div>
                 </div>
               </SectionCard>
-              <SectionCard title="Correlation Analysis" subtitle="Statistical interpretation" className="rounded-sm">
-                <div className="flex items-start gap-3 p-1">
+              <SectionCard title="Correlation Analysis" subtitle="Statistical interpretation" className="rounded-sm h-full flex flex-col">
+                <div className="flex-1 flex items-start gap-3 p-1">
                   <Icon name="analytics" size={24} color="#0051d5" />
                   <p className="text-sm text-onSurface leading-relaxed">
                     <strong>{seriesLabel(a)}</strong> and <strong>{seriesLabel(b)}</strong>{' '}
