@@ -71,7 +71,8 @@ function SeriesStats({ label, stats, color }) {
       </span>
       {stats.change != null && (
         <span className="rounded-sm border border-outline-variant bg-surface-container-highest px-2 py-0.5 font-semibold text-onSurface-variant">
-          {stats.change >= 0 ? '+' : ''}{stats.change.toFixed(1)}% over full range
+          {stats.change >= 0 ? '+' : ''}
+          {stats.change.toFixed(1)}% over full range
         </span>
       )}
       {stats.peakPeriod != null && (
@@ -110,9 +111,8 @@ export default function Compare() {
   const apiBaseUrl = API_BASE_URL;
   const dataset = catalog.find((item) => item.id === datasetId) || null;
   const seriesLabel = (value) => String(value).replaceAll('_', ' ');
-  const availableSeries = dataset?.series_by_filters?.statistic_type?.[filters.statistic_type]
-    || dataset?.series
-    || [];
+  const availableSeries =
+    dataset?.series_by_filters?.statistic_type?.[filters.statistic_type] || dataset?.series || [];
 
   const correlation = useMemo(() => {
     if (!comparison?.data?.length) return null;
@@ -172,7 +172,11 @@ export default function Compare() {
           setDatasetId(initial.id);
           setA(initial.series[0] || '');
           setB(initial.series[1] || initial.series[0] || '');
-          setFilters(Object.fromEntries((initial.filters || []).map((filter) => [filter.field, filter.options[0] || ''])));
+          setFilters(
+            Object.fromEntries(
+              (initial.filters || []).map((filter) => [filter.field, filter.options[0] || ''])
+            )
+          );
         }
       })
       .catch((requestError) => setError(requestError.message))
@@ -184,7 +188,11 @@ export default function Compare() {
     setDatasetId(value);
     setA(next?.series[0] || '');
     setB(next?.series[1] || next?.series[0] || '');
-    setFilters(Object.fromEntries((next?.filters || []).map((filter) => [filter.field, filter.options[0] || ''])));
+    setFilters(
+      Object.fromEntries(
+        (next?.filters || []).map((filter) => [filter.field, filter.options[0] || ''])
+      )
+    );
   };
 
   const Sel = ({ val, onChange }) => (
@@ -195,10 +203,17 @@ export default function Compare() {
         className="appearance-none px-3 py-2 pr-8 border border-outline-variant rounded-sm font-sans text-sm font-bold text-onSurface bg-surface cursor-pointer outline-none"
       >
         {availableSeries.map((value) => (
-          <option key={value} value={value}>{seriesLabel(value)}</option>
+          <option key={value} value={value}>
+            {seriesLabel(value)}
+          </option>
         ))}
       </select>
-      <Icon name="expand_more" size={14} color="#5c403c" className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+      <Icon
+        name="expand_more"
+        size={14}
+        color="#5c403c"
+        className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none"
+      />
     </div>
   );
 
@@ -249,46 +264,89 @@ export default function Compare() {
       <div className="space-y-6">
         <div>
           <h3 className="text-2xl font-bold text-onSurface">Compare Indicators</h3>
-          <p className="text-onSurface-variant text-sm">Side-by-side comparison with correlation analysis</p>
+          <p className="text-onSurface-variant text-sm">
+            Side-by-side comparison with correlation analysis
+          </p>
         </div>
 
-        <SectionCard title="Select data to compare" subtitle="Choose two series from the same real dataset" className="rounded-sm">
+        <SectionCard
+          title="Select data to compare"
+          subtitle="Choose two series from the same real dataset"
+          className="rounded-sm"
+        >
           <div className="flex items-end gap-5 flex-wrap">
             <div>
               <div className="text-xs font-bold uppercase text-onSurface-variant mb-2">Dataset</div>
               <div className="relative">
-                <select value={datasetId} onChange={(event) => changeDataset(event.target.value)} className="appearance-none px-3 py-2 pr-8 border border-outline-variant rounded-sm font-sans text-sm font-bold text-onSurface bg-surface cursor-pointer outline-none">
-                  {catalog.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+                <select
+                  value={datasetId}
+                  onChange={(event) => changeDataset(event.target.value)}
+                  className="appearance-none px-3 py-2 pr-8 border border-outline-variant rounded-sm font-sans text-sm font-bold text-onSurface bg-surface cursor-pointer outline-none"
+                >
+                  {catalog.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.label}
+                    </option>
+                  ))}
                 </select>
-                <Icon name="expand_more" size={14} color="#5c403c" className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <Icon
+                  name="expand_more"
+                  size={14}
+                  color="#5c403c"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none"
+                />
               </div>
             </div>
             <div>
-              <div className="text-xs font-bold uppercase text-onSurface-variant mb-2">Series A</div>
+              <div className="text-xs font-bold uppercase text-onSurface-variant mb-2">
+                Series A
+              </div>
               <Sel val={a} onChange={setA} />
             </div>
             <div className="text-lg text-onSurface-variant font-bold pb-2">vs</div>
             <div>
-              <div className="text-xs font-bold uppercase text-onSurface-variant mb-2">Series B</div>
+              <div className="text-xs font-bold uppercase text-onSurface-variant mb-2">
+                Series B
+              </div>
               <Sel val={b} onChange={setB} />
             </div>
             {(dataset?.filters || []).map((filter) => (
               <div key={filter.field}>
-                <div className="text-xs font-bold uppercase text-onSurface-variant mb-2">{seriesLabel(filter.field)}</div>
-                <select value={filters[filter.field] || ''} onChange={(event) => {
-                  const nextFilters = { ...filters, [filter.field]: event.target.value };
-                  const nextSeries = dataset?.series_by_filters?.[filter.field]?.[event.target.value] || dataset?.series || [];
-                  setFilters(nextFilters);
-                  if (nextSeries.length > 1 && (!nextSeries.includes(a) || !nextSeries.includes(b))) {
-                    setA(nextSeries[0]);
-                    setB(nextSeries[1]);
-                  }
-                }} className="px-3 py-2 border border-outline-variant rounded-sm font-sans text-sm font-bold text-onSurface bg-surface cursor-pointer outline-none">
-                  {filter.options.map((option) => <option key={option} value={option}>{seriesLabel(option)}</option>)}
+                <div className="text-xs font-bold uppercase text-onSurface-variant mb-2">
+                  {seriesLabel(filter.field)}
+                </div>
+                <select
+                  value={filters[filter.field] || ''}
+                  onChange={(event) => {
+                    const nextFilters = { ...filters, [filter.field]: event.target.value };
+                    const nextSeries =
+                      dataset?.series_by_filters?.[filter.field]?.[event.target.value] ||
+                      dataset?.series ||
+                      [];
+                    setFilters(nextFilters);
+                    if (
+                      nextSeries.length > 1 &&
+                      (!nextSeries.includes(a) || !nextSeries.includes(b))
+                    ) {
+                      setA(nextSeries[0]);
+                      setB(nextSeries[1]);
+                    }
+                  }}
+                  className="px-3 py-2 border border-outline-variant rounded-sm font-sans text-sm font-bold text-onSurface bg-surface cursor-pointer outline-none"
+                >
+                  {filter.options.map((option) => (
+                    <option key={option} value={option}>
+                      {seriesLabel(option)}
+                    </option>
+                  ))}
                 </select>
               </div>
             ))}
-            <BtnPrimary onClick={generateComparison} disabled={loading || !a || !b} className="rounded-sm">
+            <BtnPrimary
+              onClick={generateComparison}
+              disabled={loading || !a || !b}
+              className="rounded-sm"
+            >
               <Icon name="compare_arrows" size={16} color="#fff" />
               Generate Comparison
             </BtnPrimary>
@@ -314,7 +372,9 @@ export default function Compare() {
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className="text-xl font-bold text-onSurface">Comparison Visualization</h3>
-                <p className="text-sm text-onSurface-variant">{seriesLabel(a)} vs {seriesLabel(b)}</p>
+                <p className="text-sm text-onSurface-variant">
+                  {seriesLabel(a)} vs {seriesLabel(b)}
+                </p>
               </div>
               <div className="flex items-center gap-3">
                 {updating && (
@@ -351,8 +411,10 @@ export default function Compare() {
                 subtitle="Both series scaled to start = 100 so trends are directly comparable"
                 className="rounded-sm"
               >
-                <SeriesStats label={seriesLabel(a)} stats={statsA} color="#0051d5" />
-                <SeriesStats label={seriesLabel(b)} stats={statsB} color="#b70011" />
+                <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
+                  <SeriesStats label={seriesLabel(a)} stats={statsA} color="#0051d5" />
+                  <SeriesStats label={seriesLabel(b)} stats={statsB} color="#b70011" />
+                </div>
                 <div className="h-[520px]">
                   <LineChart
                     data={normalizedData}
@@ -413,21 +475,29 @@ export default function Compare() {
               className="rounded-sm"
             >
               <ScatterChart
-                  data={comparison?.data || []}
-                  xKey="a"
-                  yKey="b"
-                  labelKey="period"
-                  xLabel={seriesLabel(a)}
-                  yLabel={seriesLabel(b)}
-                />
+                data={comparison?.data || []}
+                xKey="a"
+                yKey="b"
+                labelKey="period"
+                xLabel={seriesLabel(a)}
+                yLabel={seriesLabel(b)}
+              />
             </SectionCard>
 
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-6 items-stretch">
-              <SectionCard title="Correlation Score" subtitle={`Pearson r · ${comparison?.data?.length || 0} shared periods`} className="rounded-sm h-full flex flex-col">
+              <SectionCard
+                title="Correlation Score"
+                subtitle={`Pearson r · ${comparison?.data?.length || 0} shared periods`}
+                className="rounded-sm h-full flex flex-col"
+              >
                 <div className="flex-1 flex flex-col justify-center text-center py-4">
-                  <div className="text-6xl font-extrabold text-onSurface">{hasCorrelation ? correlation.toFixed(2) : 'N/A'}</div>
+                  <div className="text-6xl font-extrabold text-onSurface">
+                    {hasCorrelation ? correlation.toFixed(2) : 'N/A'}
+                  </div>
                   <div className="text-sm text-onSurface-variant mb-4 capitalize">
-                    {hasCorrelation ? `${strength} ${direction} correlation` : 'insufficient variation for correlation'}
+                    {hasCorrelation
+                      ? `${strength} ${direction} correlation`
+                      : 'insufficient variation for correlation'}
                   </div>
 
                   {/* Diverging bar: fills outward from a center zero-point in
@@ -454,7 +524,11 @@ export default function Compare() {
                   </div>
                 </div>
               </SectionCard>
-              <SectionCard title="Correlation Analysis" subtitle="Statistical interpretation" className="rounded-sm h-full flex flex-col">
+              <SectionCard
+                title="Correlation Analysis"
+                subtitle="Statistical interpretation"
+                className="rounded-sm h-full flex flex-col"
+              >
                 <div className="flex-1 flex items-start gap-3 p-1">
                   <Icon name="analytics" size={24} color="#0051d5" />
                   <p className="text-sm text-onSurface leading-relaxed">
@@ -474,7 +548,9 @@ export default function Compare() {
           </div>
         )}
         {error && <p className="text-sm text-danger">{error}</p>}
-        {!loading && !done && catalog.length === 0 && <p className="text-sm text-onSurface-variant">No comparison datasets are available.</p>}
+        {!loading && !done && catalog.length === 0 && (
+          <p className="text-sm text-onSurface-variant">No comparison datasets are available.</p>
+        )}
       </div>
     </DashboardLayout>
   );
