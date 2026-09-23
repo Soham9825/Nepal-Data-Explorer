@@ -18,13 +18,18 @@ from decimal import Decimal
 from django.db.models import Q
 
 from datasets.models import (
+    AgricultureProducerPriceIndex,
     ForeignTradeStatistic,
     GlobalEconomicSeries,
     PopulationBySex,
     ProvinceGDPStatistic,
+    ProvinceTourismVisit,
+    SalaryIndex,
     SectoralGrowth,
+    TouristArrivalByAgeGroup,
     TouristArrivalByNationality,
     TouristArrivalByPurpose,
+    TouristArrivalBySex,
     TouristArrivalByYear,
     TourismRevenue,
     TourismStatistic,
@@ -285,6 +290,22 @@ def apply_state_filters(dataset, state=None):
             ]
             dataset["latest_trekking_year"] = trekking_year
 
+        sex_year = str(state.get("sex_year") or "").strip()
+        if sex_year:
+            dataset["sex_trend"] = [
+                row for row in dataset.get("sex_trend", [])
+                if str(row.get("year")) == sex_year
+            ]
+            dataset["latest_sex_year"] = sex_year
+
+        age_year = str(state.get("age_year") or "").strip()
+        if age_year:
+            dataset["age_trend"] = [
+                row for row in dataset.get("age_trend", [])
+                if str(row.get("year")) == age_year
+            ]
+            dataset["latest_age_year"] = age_year
+
     # -- Economic -------------------------------------------------------------------
     if "global_growth" in dataset:
         growth = dataset.get("global_growth") or []
@@ -422,6 +443,59 @@ def build_report_dataset(state=None):
     return dataset
 
 
+def _province_tourism_block():
+    """Province-level tourism roll-ups mirroring ``analytics.views``."""
+    rows = list(ProvinceTourismVisit.objects.order_by("province", "year", "destination"))
+    provinces = PROVINCE_GDP_ORDER
+    years = sorted({row.year for row in rows})
+    latest_year = years[-1] if years else None
+
+    by_year_totals = {}
+    by_province_totals = {}
+    for row in rows:
+        by_year_totals[(row.province, row.year)] = by_year_totals.get((row.province, row.year), 0) + (row.visitor_count or 0)
+        by_province_totals.setdefault(row.province, {}).setdefault(row.year, []).append(row)
+
+    latest = []
+    if latest_year:
+        for province in provinces:
+            visitors = by_year_totals.get((province, latest_year), 0)
+            dest_rows = sorted(
+                by_province_totals.get(province, {}).get(latest_year, []),
+                key=lambda row: (row.visitor_count or 0),
+                reverse=True,
+            )
+            dest_total = sum(row.visitor_count or 0 for row in dest_rows)
+            latest.append(
+                {
+                    "province": province,
+                    "visitors": visitors,
+                    "destinations": [
+                        {
+                            "name": row.destination,
+                            "visitors": row.visitor_count or 0,
+                            "share": round((row.visitor_count or 0) / dest_total * 100, 1) if dest_total else 0,
+                        }
+                        for row in dest_rows
+                    ],
+                }
+            )
+        national_total = sum(item["visitors"] for item in latest)
+        for item in latest:
+            item["share"] = round(item["visitors"] / national_total * 100, 1) if national_total else 0
+
+    return {
+        "years": years,
+        "latest_year": latest_year,
+        "by_year": [
+            {"province": province, "year": year, "visitors": by_year_totals.get((province, year), 0)}
+            for province in provinces
+            for year in years
+        ],
+        "latest": latest,
+    }
+
+
 def build_tourism_dataset(state=None):
     """Tourism dashboard data, mirroring `analytics.views.tourism_dashboard`.
 
@@ -498,6 +572,24 @@ def build_tourism_dataset(state=None):
         }
         for item in TrekkerByRegion.objects.order_by("year", "region")
     ]
+    sex_trend = [
+        {
+            "year": item.year,
+            "gender": _clean(item.gender),
+            "value": item.value,
+            "statistic_type": _clean(item.statistic_type),
+        }
+        for item in TouristArrivalBySex.objects.order_by("year", "gender", "statistic_type")
+    ]
+    age_trend = [
+        {
+            "year": item.year,
+            "age_group": _clean(item.age_group),
+            "value": item.value,
+            "total": item.total,
+        }
+        for item in TouristArrivalByAgeGroup.objects.order_by("year", "age_group")
+    ]
 
     report_year = state.get("fiscal_year") or latest_trend_year
     if report_year:
@@ -528,6 +620,11 @@ def build_tourism_dataset(state=None):
         "latest_purpose_year": purpose_trend[-1]["year"] if purpose_trend else None,
         "trekking_trend": trekking_trend,
         "latest_trekking_year": trekking_trend[-1]["year"] if trekking_trend else None,
+        "sex_trend": sex_trend,
+        "latest_sex_year": sex_trend[-1]["year"] if sex_trend else None,
+        "age_trend": age_trend,
+        "latest_age_year": age_trend[-1]["year"] if age_trend else None,
+        "province_tourism": _province_tourism_block(),
         "report_year": report_year or "",
     }
     return apply_state_filters(dataset, state)
@@ -579,6 +676,92 @@ def build_economic_dataset(state=None):
             entry["imports"] = row["value"]
     trade_by_year = sorted(trade_by_year.values(), key=lambda e: e["fiscal_year"])
 
+    # Global economies: real growth per period, latest published value per
+    # context, pivoted so each row holds one value per economy.
+    _economy_years = {}
+    for item in GlobalEconomicSeries.objects.filter(series_type="real").exclude(context="World Output").order_by("period_label", "-published_year"):
+        row = _economy_years.setdefault(item.period_label, {"year": item.period_label})
+        row.setdefault(item.context, _float(item.value))
+    economies_growth = sorted(
+        _economy_years.values(),
+        key=lambda row: int(_FALLBACK_YEAR_RE.search(str(row["year"] or "")).group(0)),
+    )
+
+    # Overall economy: the sector = 'Overall' rows break growth into
+    # agriculture / non-agriculture / industry / service components.
+    _overall = {}
+    for item in SectoralGrowth.objects.filter(sector="Overall").order_by("fiscal_year"):
+        row = _overall.setdefault(item.fiscal_year, {"fiscal_year": _clean(item.fiscal_year)})
+        subgroup = item.subgroup or ""
+        if item.group == "Agriculture sector":
+            row["agriculture"] = _float(item.value)
+        elif subgroup == "Industry sector":
+            row["industry"] = _float(item.value)
+        elif subgroup == "Service sector":
+            row["service"] = _float(item.value)
+        elif item.group == "Non agriculture sector":
+            row["nonagriculture"] = _float(item.value)
+    overall_growth = sorted(
+        list(_overall.values()),
+        key=lambda row: int(_FALLBACK_YEAR_RE.search(str(row["fiscal_year"] or "")).group(0)),
+    )
+
+    # Trade partner breakdown and balance per fiscal year.
+    _partner_label = {
+        "To India": "India", "To China": "China", "To Other Countries": "Other Countries",
+        "From India": "India", "From China": "China", "From Other Countries": "Other Countries",
+    }
+    exports_by_partner = {}
+    imports_by_partner = {}
+    trade_balance = {}
+    for item in ForeignTradeStatistic.objects.order_by("fiscal_year", "group", "subgroup"):
+        year = _clean(item.fiscal_year)
+        partner = _partner_label.get(item.subgroup)
+        if item.group in ("Export", "Import") and partner:
+            bucket = exports_by_partner if item.group == "Export" else imports_by_partner
+            entry = bucket.setdefault(
+                year,
+                {"fiscal_year": year, "India": None, "China": None, "Other Countries": None},
+            )
+            entry[partner] = _float(item.value)
+        elif item.group == "Trade Balance" and item.subgroup == "TOTAL TRADE BALANCE":
+            trade_balance[year] = {"fiscal_year": year, "value": _float(item.value)}
+    exports_by_partner = sorted(
+        exports_by_partner.values(), key=lambda row: int(_FALLBACK_YEAR_RE.search(str(row["fiscal_year"] or "")).group(0))
+    )
+    imports_by_partner = sorted(
+        imports_by_partner.values(), key=lambda row: int(_FALLBACK_YEAR_RE.search(str(row["fiscal_year"] or "")).group(0))
+    )
+    trade_balance = sorted(
+        trade_balance.values(), key=lambda row: int(_FALLBACK_YEAR_RE.search(str(row["fiscal_year"] or "")).group(0))
+    )
+
+    # Salary index: one value per fiscal year and group (the most aggregate
+    # row, index_name '0', is kept when several rows share a year + group).
+    _salary = {}
+    for item in SalaryIndex.objects.order_by("year", "index_name", "group"):
+        key = (item.year, item.group)
+        if key in _salary:
+            continue
+        _salary[key] = {
+            "year": _clean(item.year),
+            "group": _clean(item.group),
+            "value": _float(item.value),
+        }
+    salary_index = sorted(_salary.values(), key=lambda row: (row["year"], row["group"]))
+
+    appi_rows = [
+        {
+            "product": _clean(item.product_name),
+            "base_year": _clean(item.base_year),
+            "quarter": _clean(item.quarter),
+            "value": _float(item.price_index),
+            "weight": _float(item.weight),
+            "unit": _clean(item.unit),
+        }
+        for item in AgricultureProducerPriceIndex.objects.exclude(price_index=None).order_by("base_year", "quarter", "product_name")
+    ]
+
     sector_rows = [
         {
             "fiscal_year": _clean(item.fiscal_year),
@@ -603,6 +786,13 @@ def build_economic_dataset(state=None):
         "latest_trade_year": trade_by_year[-1]["fiscal_year"] if trade_by_year else None,
         "sectoral_growth": sector_rows,
         "latest_sectoral_year": latest_sector_year,
+        "economies_growth": economies_growth,
+        "overall_growth": overall_growth,
+        "exports_by_partner": exports_by_partner,
+        "imports_by_partner": imports_by_partner,
+        "trade_balance": trade_balance,
+        "salary_index": salary_index,
+        "appi": appi_rows,
         "province_gdp": get_province_gdp(),
         "report_year": report_year or "",
     }
@@ -681,6 +871,58 @@ def build_economic_csv_rows(state=None):
         unit = pair.get("unit") or "As recorded"
         rows.append(_csv_row("Foreign Trade", "Total exports", pair.get("fiscal_year"), pair.get("exports"), unit))
         rows.append(_csv_row("Foreign Trade", "Total imports", pair.get("fiscal_year"), pair.get("imports"), unit))
+
+    for row in dataset.get("economies_growth") or []:
+        year = str(row.get("year", "")).replace("Real_", "")
+        for context, value in row.items():
+            if context == "year" or value is None:
+                continue
+            rows.append(_csv_row("Global Economies Growth", context, year, value, "%"))
+
+    for row in dataset.get("overall_growth") or []:
+        year = row.get("fiscal_year")
+        for key, label in (
+            ("agriculture", "GDP growth (agriculture)"),
+            ("nonagriculture", "GDP growth (non-agriculture)"),
+            ("industry", "GDP growth (industry)"),
+            ("service", "GDP growth (service)"),
+        ):
+            value = row.get(key)
+            if value is not None:
+                rows.append(_csv_row("Economy-wide Growth", label, year, value, "%"))
+
+    for row in dataset.get("exports_by_partner") or []:
+        for partner in ("India", "China", "Other Countries"):
+            value = row.get(partner)
+            if value is not None:
+                rows.append(_csv_row("Foreign Trade by Partner", "Exports", f"{partner} · {row['fiscal_year']}", value, "As recorded"))
+
+    for row in dataset.get("imports_by_partner") or []:
+        for partner in ("India", "China", "Other Countries"):
+            value = row.get(partner)
+            if value is not None:
+                rows.append(_csv_row("Foreign Trade by Partner", "Imports", f"{partner} · {row['fiscal_year']}", value, "As recorded"))
+
+    for row in dataset.get("trade_balance") or []:
+        rows.append(_csv_row("Foreign Trade by Partner", "Trade balance", row.get("fiscal_year"), row.get("value"), "As recorded"))
+
+    for row in dataset.get("salary_index") or []:
+        rows.append(_csv_row(
+            "Salary & Wage Rate Index",
+            row.get("group"),
+            row.get("year"),
+            row.get("value"),
+            "Index",
+        ))
+
+    for row in dataset.get("appi") or []:
+        rows.append(_csv_row(
+            "Agriculture Producer Price Index",
+            row.get("product"),
+            f"{row.get('base_year')} · {row.get('quarter')}",
+            row.get("value"),
+            "Index",
+        ))
 
     for sector in dataset.get("sectoral_growth") or []:
         rows.append(_csv_row("Sectoral Growth", sector.get("sector"), sector.get("fiscal_year"), sector.get("value"), "%"))
@@ -769,5 +1011,43 @@ def build_tourism_csv_rows(state=None):
             row.get("trekkers"),
             "trekkers",
         ))
+
+    for row in dataset.get("sex_trend") or []:
+        is_share = (row.get("statistic_type") or "").strip().lower() == "percent"
+        rows.append(_csv_row(
+            "Arrivals by Sex",
+            f"{row.get('gender')} share" if is_share else f"{row.get('gender')} arrivals",
+            row.get("year"),
+            row.get("value"),
+            "%" if is_share else "arrivals",
+        ))
+
+    for row in dataset.get("age_trend") or []:
+        rows.append(_csv_row(
+            "Arrivals by Age Group",
+            f"{row.get('age_group')} arrivals",
+            row.get("year"),
+            row.get("value"),
+            "arrivals",
+        ))
+
+    province_tourism = dataset.get("province_tourism") or {}
+    for point in province_tourism.get("by_year") or []:
+        rows.append(_csv_row(
+            "Provincial Tourism",
+            f"{point.get('province')} visits",
+            point.get("year"),
+            point.get("visitors"),
+            "visitors",
+        ))
+    for province in province_tourism.get("latest") or []:
+        for dest in province.get("destinations") or []:
+            rows.append(_csv_row(
+                "Provincial Tourism",
+                f"{province.get('province')} - {dest.get('name')} visits",
+                province_tourism.get("latest_year"),
+                dest.get("visitors"),
+                "visitors",
+            ))
 
     return rows

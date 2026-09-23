@@ -11,14 +11,19 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 
 from datasets.models import (
+    AgricultureProducerPriceIndex,
     ForeignTradeStatistic,
     GlobalEconomicSeries,
     PopulationBySex,
+    ProvinceTourismVisit,
+    SalaryIndex,
     SectoralGrowth,
     TourismRevenue,
     TourismStatistic,
+    TouristArrivalByAgeGroup,
     TouristArrivalByNationality,
     TouristArrivalByPurpose,
+    TouristArrivalBySex,
     TouristArrivalByYear,
     TrekkerByRegion,
 )
@@ -62,6 +67,68 @@ def seed_models():
         fiscal_year="2022/23", sector="Industry", value=Decimal("-1.20"), unit="%",
     )
 
+    for context, value in (("India", Decimal("7.5")), ("China", Decimal("5.0"))):
+        for year in (2021, 2022, 2023):
+            GlobalEconomicSeries.objects.create(
+                context=context, period_label=f"Real_{year}", value=value,
+                series_type="real", published_year=year,
+            )
+
+    for subgroup, value in (
+        ("To India", Decimal("1000000.00")),
+        ("To China", Decimal("300000.00")),
+        ("To Other Countries", Decimal("700000.00")),
+    ):
+        ForeignTradeStatistic.objects.create(
+            group="Export", subgroup=subgroup, value=value,
+            fiscal_year="2022/23", unit="Thousand Rs",
+        )
+    for subgroup, value in (
+        ("From India", Decimal("2500000.00")),
+        ("From China", Decimal("1200000.00")),
+        ("From Other Countries", Decimal("1300000.00")),
+    ):
+        ForeignTradeStatistic.objects.create(
+            group="Import", subgroup=subgroup, value=value,
+            fiscal_year="2022/23", unit="Thousand Rs",
+        )
+    ForeignTradeStatistic.objects.create(
+        group="Trade Balance", subgroup="TOTAL TRADE BALANCE", value=Decimal("-3000000.00"),
+        fiscal_year="2022/23", unit="Thousand Rs",
+    )
+
+    for subgroup, value in (
+        ("NA", Decimal("3.10")),
+        ("Industry sector", Decimal("2.20")),
+        ("Service sector", Decimal("4.40")),
+    ):
+        SectoralGrowth.objects.create(
+            fiscal_year="2022/23", sector="Overall", group="Non agriculture sector",
+            subgroup=subgroup, value=value, unit="%",
+        )
+    SectoralGrowth.objects.create(
+        fiscal_year="2022/23", sector="Overall", group="Agriculture sector",
+        subgroup="NA", value=Decimal("2.10"), unit="%",
+    )
+
+    for year, group, index_name, value in (
+        ("2021/22", "Overall Index", "0", Decimal("280.00")),
+        ("2022/23", "Overall Index", "0", Decimal("300.00")),
+        ("2022/23", "Wage Rate Index", "2", Decimal("320.00")),
+    ):
+        SalaryIndex.objects.create(
+            index_name=index_name, group=group, subgroup="", year=year, value=value,
+        )
+
+    AgricultureProducerPriceIndex.objects.create(
+        product_name="Cereals", base_year="2079/80", quarter="ANN",
+        price_index=Decimal("166.50"), weight=Decimal("35.81"), unit="Kg",
+    )
+    AgricultureProducerPriceIndex.objects.create(
+        product_name="Fish", base_year="2079/80", quarter="ANN",
+        price_index=Decimal("169.50"), weight=Decimal("0.91"), unit="Kg",
+    )
+
     TouristArrivalByYear.objects.create(
         year=2022, third_country_arrivals=200000, indian_arrivals=100000, percent_change=Decimal("10.5"),
     )
@@ -85,6 +152,30 @@ def seed_models():
     TouristArrivalByPurpose.objects.create(year=2023, category="Total", value=956110)
     TrekkerByRegion.objects.create(year=2023, region="Mustang", trekkers=1198)
     TrekkerByRegion.objects.create(year=2023, region="Manaslu", trekkers=3094)
+    TouristArrivalBySex.objects.create(year=2023, gender="Female", value=430000, statistic_type="Number")
+    TouristArrivalBySex.objects.create(year=2023, gender="Male", value=520000, statistic_type="Number")
+    TouristArrivalBySex.objects.create(year=2023, gender="Female", value=Decimal("45.3"), statistic_type="Percent")
+    TouristArrivalBySex.objects.create(year=2023, gender="Male", value=Decimal("54.7"), statistic_type="Percent")
+    for group, value in (("16-30", 120000), ("31-45", 180000), ("46-60", 90000), ("60+", 50000)):
+        TouristArrivalByAgeGroup.objects.create(year=2023, age_group=group, value=value, total=440000)
+    ProvinceTourismVisit.objects.create(
+        province="Koshi", year=2023, destination="Sagarmatha National Park",
+        district="Solukhumbu", destination_type="National Park",
+        visitor_count=120, visitor_scope="foreign_visitors_to_protected_area",
+        national_total_arrivals=1000000, national_arrival_pct_change=Decimal("10.00"),
+    )
+    ProvinceTourismVisit.objects.create(
+        province="Koshi", year=2024, destination="Sagarmatha National Park",
+        district="Solukhumbu", destination_type="National Park",
+        visitor_count=150, visitor_scope="foreign_visitors_to_protected_area",
+        national_total_arrivals=1200000, national_arrival_pct_change=Decimal("20.00"),
+    )
+    ProvinceTourismVisit.objects.create(
+        province="Bagmati", year=2024, destination="Kathmandu Durbar Square",
+        district="Kathmandu", destination_type="Cultural Heritage Site",
+        visitor_count=90, visitor_scope="ticketed_visitors",
+        national_total_arrivals=1200000, national_arrival_pct_change=Decimal("20.00"),
+    )
 
 
 class ReportDataTests(TestCase):
@@ -114,6 +205,16 @@ class ReportDataTests(TestCase):
         self.assertEqual(dataset["latest_purpose_year"], 2023)
         self.assertEqual(len(dataset["trekking_trend"]), 2)
         self.assertEqual(dataset["latest_trekking_year"], 2023)
+        self.assertEqual(len(dataset["sex_trend"]), 4)
+        self.assertEqual(dataset["latest_sex_year"], 2023)
+        self.assertEqual(len(dataset["age_trend"]), 4)
+        self.assertEqual(dataset["latest_age_year"], 2023)
+        province_tourism = dataset["province_tourism"]
+        self.assertEqual(province_tourism["latest_year"], 2024)
+        self.assertEqual(len(province_tourism["latest"]), 7)
+        koshi = next(item for item in province_tourism["latest"] if item["province"] == "Koshi")
+        self.assertEqual(koshi["visitors"], 150)
+        self.assertEqual(koshi["destinations"][0]["name"], "Sagarmatha National Park")
 
     def test_tourism_purpose_year_filter_narrows_series(self):
         dataset = report_data.build_tourism_dataset({"purpose_year": "2023"})
@@ -122,6 +223,12 @@ class ReportDataTests(TestCase):
         trekking = report_data.build_tourism_dataset({"trekking_year": "2023"})
         self.assertEqual(trekking["latest_trekking_year"], "2023")
         self.assertEqual(len(trekking["trekking_trend"]), 2)
+        sex = report_data.build_tourism_dataset({"sex_year": "2023"})
+        self.assertEqual(sex["latest_sex_year"], "2023")
+        self.assertEqual(len(sex["sex_trend"]), 4)
+        age = report_data.build_tourism_dataset({"age_year": "2023"})
+        self.assertEqual(age["latest_age_year"], "2023")
+        self.assertEqual(len(age["age_trend"]), 4)
 
     def test_tourism_analyze_covers_new_datasets(self):
         from .services import trend_analyzer
@@ -131,6 +238,9 @@ class ReportDataTests(TestCase):
         self.assertIn("average length of stay", joined)
         self.assertIn("purpose of visit", joined)
         self.assertIn("trekking areas", joined)
+        self.assertIn("arrivals by sex", joined)
+        self.assertIn("age group", joined)
+        self.assertIn("provincial official visits", joined)
 
     def test_economic_year_filter_narrows_sectors(self):
         dataset = report_data.build_economic_dataset({"year": "2022/23"})
@@ -160,8 +270,19 @@ class ReportDataTests(TestCase):
         self.assertIn("Average Length of Stay", groups)
         self.assertIn("Purpose of Visit", groups)
         self.assertIn("Trekking Areas", groups)
+        self.assertIn("Arrivals by Sex", groups)
+        self.assertIn("Arrivals by Age Group", groups)
+        self.assertIn("Provincial Tourism", groups)
+        province_rows = [row for row in rows if row["Dataset"] == "Provincial Tourism"]
+        self.assertIn("Koshi visits", [row["Indicator"] for row in province_rows])
+        self.assertTrue(any("- Sagarmatha National Park visits" in row["Indicator"] for row in province_rows))
         purpose = [row for row in rows if row["Dataset"] == "Purpose of Visit"]
         self.assertNotIn("Total arrivals", [row["Indicator"] for row in purpose])
+        sex_shares = [
+            row for row in rows
+            if row["Dataset"] == "Arrivals by Sex" and "share" in row["Indicator"].lower()
+        ]
+        self.assertEqual(len(sex_shares), 2)
 
     def test_economic_csv_rows_cover_all_indicators(self):
         rows = report_data.build_economic_csv_rows({})
@@ -169,6 +290,48 @@ class ReportDataTests(TestCase):
         self.assertIn("Global Growth (World Output)", groups)
         self.assertIn("Foreign Trade", groups)
         self.assertIn("Sectoral Growth", groups)
+
+    def test_economic_dataset_includes_new_series(self):
+        dataset = report_data.build_economic_dataset({})
+        self.assertTrue(dataset["economies_growth"])
+        self.assertIn("India", dataset["economies_growth"][-1])
+        overall = dataset["overall_growth"][-1]
+        self.assertEqual(overall["fiscal_year"], "2022/23")
+        self.assertEqual(overall["agriculture"], 2.1)
+        self.assertEqual(overall["nonagriculture"], 3.1)
+        self.assertEqual(overall["service"], 4.4)
+        self.assertEqual(dataset["exports_by_partner"][-1]["India"], 1000000.0)
+        self.assertEqual(dataset["trade_balance"][-1]["value"], -3000000.0)
+        salary_by_group = {
+            row["group"]: row
+            for row in dataset["salary_index"]
+            if row["year"] == "2022/23"
+        }
+        self.assertEqual(salary_by_group["Overall Index"]["value"], 300.0)
+        self.assertEqual(salary_by_group["Wage Rate Index"]["value"], 320.0)
+        appi = [
+            row for row in dataset["appi"]
+            if row["base_year"] == "2079/80" and row["quarter"] == "ANN"
+        ]
+        self.assertEqual({row["product"] for row in appi}, {"Cereals", "Fish"})
+
+    def test_economic_csv_rows_include_new_datasets(self):
+        rows = report_data.build_economic_csv_rows({})
+        groups = {row["Dataset"] for row in rows}
+        self.assertIn("Global Economies Growth", groups)
+        self.assertIn("Economy-wide Growth", groups)
+        self.assertIn("Foreign Trade by Partner", groups)
+        self.assertIn("Salary & Wage Rate Index", groups)
+        self.assertIn("Agriculture Producer Price Index", groups)
+        self.assertTrue(any(
+            row["Dataset"] == "Global Economies Growth" and row["Indicator"] == "India"
+            for row in rows
+        ))
+        self.assertTrue(any(row["Indicator"] == "GDP growth (service)" for row in rows))
+        self.assertTrue(any(
+            row["Dataset"] == "Foreign Trade by Partner" and row["Indicator"] == "Exports"
+            for row in rows
+        ))
 
 
 class ReportEndpointTests(TestCase):

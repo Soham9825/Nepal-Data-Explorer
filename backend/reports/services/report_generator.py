@@ -6,6 +6,7 @@ embedded matplotlib charts.
 """
 
 import io
+import re
 from datetime import datetime
 
 from reportlab.lib import colors
@@ -41,6 +42,8 @@ BORDER = colors.HexColor("#e3dedc")
 PAGE_W, PAGE_H = A4
 MARGIN = 50
 CONTENT_W = PAGE_W - 2 * MARGIN
+
+_NUM_RE = re.compile(r"[-+]?(?:\d*\.\d+|\d+\.?)(?:[eE][-+]?\d+)?")
 
 _TITLE = "National Dashboard Report"
 _SUBTITLE = "Nepal Data Explorer"
@@ -672,7 +675,7 @@ def build_tourism_story(dataset, charts, trends, state):
         "title": "Tourism Dashboard Report",
         "subtitle": "Nepal Data Explorer",
         "tagline": "Comprehensive Report",
-        "descriptor": "Tourist arrivals, source markets, revenue, length of stay, purpose of visit and trekking activity for the tourism dashboard",
+        "descriptor": "Tourist arrivals, source markets, revenue, length of stay, purpose of visit, trekking activity, arrivals by sex, arrivals by age group and provincial tourism for the tourism dashboard",
         "accent": ACCENT,
         "accent_dark": ACCENT_DARK,
     }
@@ -907,13 +910,170 @@ def build_tourism_story(dataset, charts, trends, state):
                 trek_style,
             )
 
+    # Arrivals by sex ------------------------------------------------------------------
+    sex_trend = dataset.get("sex_trend") or []
+    if sex_trend:
+        sex_year = dataset.get("latest_sex_year")
+        number_rows = [
+            row for row in sex_trend
+            if (row.get("statistic_type") or "").strip().lower() == "number"
+        ]
+        sex_rows = [
+            row for row in number_rows if row.get("year") == sex_year
+        ] or number_rows
+        female = next((row for row in sex_rows if "female" in str(row.get("gender")).lower()), None)
+        male = next((row for row in sex_rows if "male" in str(row.get("gender")).lower()), None)
+        female_count = (female or {}).get("value") or 0
+        male_count = (male or {}).get("value") or 0
+        total_sex = female_count + male_count
+        _section(story, styles, "9. Arrivals by Sex")
+        story.append(
+            Paragraph(
+                f"Annual tourist arrivals split by gender for {sex_year}. Female visitors "
+                f"accounted for {_p(round(female_count / total_sex * 100, 1) if total_sex else 0)}% "
+                f"of the recorded total in this year.",
+                styles["body"],
+            )
+        )
+        fig = charts.get("tourism_sex")
+        if fig:
+            story.append(_image(fig, max_width=CONTENT_W * 0.7, max_height=230))
+        if female is not None or male is not None:
+            sex_table_rows = [["Gender", "Arrivals", "Share (%)"]]
+            for label, count in (("Female", female_count), ("Male", male_count)):
+                sex_table_rows.append([
+                    _cell(label),
+                    _p(count),
+                    _p(round(count / total_sex * 100, 1) if total_sex else 0),
+                ])
+            sex_style = _table_style()
+            sex_style.add("ALIGN", (0, 0), (0, -1), "LEFT")
+            _table(
+                story,
+                sex_table_rows,
+                [CONTENT_W * 0.4, CONTENT_W * 0.3, CONTENT_W * 0.3],
+                sex_style,
+            )
+
+    # Arrivals by age group ------------------------------------------------------------
+    age_trend = dataset.get("age_trend") or []
+    if age_trend:
+        age_year = dataset.get("latest_age_year")
+        age_rows = [
+            row for row in age_trend if row.get("year") == age_year
+        ] or age_trend
+        age_rows = sorted(age_rows, key=lambda row: row.get("value") or 0, reverse=True)
+        total_age = sum(row.get("value") or 0 for row in age_rows)
+        _section(story, styles, "10. Arrivals by Age Group")
+        story.append(
+            Paragraph(
+                f"Annual tourist arrivals grouped by age band for {age_year}, ordered by volume.",
+                styles["body"],
+            )
+        )
+        fig = charts.get("tourism_age")
+        if fig:
+            story.append(_image(fig, max_width=CONTENT_W * 0.9, max_height=230))
+        if age_rows:
+            age_table_rows = [["Age group", "Arrivals", "Share (%)"]]
+            age_table_rows += [
+                [
+                    _cell(row.get("age_group")),
+                    _p(row.get("value")),
+                    _p(round((row.get("value") or 0) / total_age * 100, 1) if total_age else 0),
+                ]
+                for row in age_rows
+            ]
+            age_style = _table_style()
+            age_style.add("ALIGN", (0, 0), (0, -1), "LEFT")
+            _table(
+                story,
+                age_table_rows,
+                [CONTENT_W * 0.4, CONTENT_W * 0.3, CONTENT_W * 0.3],
+                age_style,
+            )
+
+    # Tourism by province --------------------------------------------------------------
+    province_tourism = dataset.get("province_tourism") or {}
+    province_rows = province_tourism.get("latest") or []
+    if province_rows:
+        province_year = province_tourism.get("latest_year")
+        _section(story, styles, "11. Tourism by Province")
+        story.append(
+            Paragraph(
+                f"Official destination visits grouped by province for {province_year}, "
+                "from the Nepal Tourism Statistics provincial dataset.",
+                styles["body"],
+            )
+        )
+        fig = charts.get("tourism_province")
+        if fig:
+            story.append(_image(fig, max_width=CONTENT_W * 0.9, max_height=230))
+        province_table_rows = [["Province", "Visitors", "Share (%)"]]
+        province_table_rows += [
+            [
+                _cell(row.get("province")),
+                _p(row.get("visitors")),
+                _p(row.get("share")),
+            ]
+            for row in province_rows
+        ]
+        province_style = _table_style()
+        province_style.add("ALIGN", (0, 0), (0, -1), "LEFT")
+        _table(
+            story,
+            province_table_rows,
+            [CONTENT_W * 0.4, CONTENT_W * 0.3, CONTENT_W * 0.3],
+            province_style,
+        )
+        all_destinations = [
+            (item.get("province"), dest)
+            for item in province_rows
+            for dest in item.get("destinations") or []
+            if dest.get("visitors")
+        ]
+        if all_destinations:
+            dest_style = _table_style()
+            dest_style.add("ALIGN", (0, 0), (0, -1), "LEFT")
+            for item in province_rows:
+                province_dests = [
+                    d for d in (item.get("destinations") or []) if d.get("visitors")
+                ]
+                if not province_dests:
+                    continue
+                province_dests = sorted(
+                    province_dests, key=lambda d: d.get("visitors") or 0, reverse=True
+                )[:8]
+                provincial_total = sum(d.get("visitors") or 0 for d in province_dests)
+                story.append(
+                    Paragraph(
+                        f"<b>{_name(item.get('province'))}</b> ({province_year})",
+                        styles["body"],
+                    )
+                )
+                dest_table_rows = [["Destination", "Visitors", "Share (%)"]]
+                dest_table_rows += [
+                    [
+                        _cell(dest.get("name")),
+                        _p(dest.get("visitors")),
+                        _p(round((dest.get("visitors") or 0) / provincial_total * 100, 1) if provincial_total else 0),
+                    ]
+                    for dest in province_dests
+                ]
+                _table(
+                    story,
+                    dest_table_rows,
+                    [CONTENT_W * 0.6, CONTENT_W * 0.2, CONTENT_W * 0.2],
+                    dest_style,
+                )
+
     # Key trends ------------------------------------------------------------------------
-    _section(story, styles, "9. Key Trends & Observations")
+    _section(story, styles, "12. Key Trends & Observations")
     for i, observation in enumerate(trends, start=1):
         story.append(Paragraph(f"<b>{i}.</b> {observation}", styles["bullet"]))
 
     # Data sources ----------------------------------------------------------------------
-    _section(story, styles, "10. Data Sources")
+    _section(story, styles, "13. Data Sources")
     sources_rows = [
         ["Dataset", "Fields", "Reference"],
         ["Tourist Arrivals (annual)", "Total, third-country and Indian arrivals, change", "TouristArrivalByYear"],
@@ -922,6 +1082,9 @@ def build_tourism_story(dataset, charts, trends, state):
         ["Average Length of Stay", "Year, average stay", "TourismStatistic (Avg_Stay)"],
         ["Purpose of Visit", "Year, purpose category, arrivals", "TouristArrivalByPurpose"],
         ["Trekking Areas", "Year, trekking area, trekkers", "TrekkerByRegion"],
+        ["Arrivals by Sex", "Year, gender, arrivals, share", "TouristArrivalBySex"],
+        ["Arrivals by Age Group", "Year, age group, arrivals", "TouristArrivalByAgeGroup"],
+        ["Provincial Tourism", "Province, destination, year, visits", "ProvinceTourismVisit"],
     ]
     sources_style = _table_style()
     sources_style.add("ALIGN", (1, 0), (2, -1), "LEFT")
@@ -933,7 +1096,7 @@ def build_tourism_story(dataset, charts, trends, state):
     )
 
     # Methodology -----------------------------------------------------------------------
-    _section(story, styles, "11. Methodology")
+    _section(story, styles, "14. Methodology")
     story.append(
         Paragraph(
             "All figures are queried directly from the backend database that also powers the "
@@ -941,8 +1104,10 @@ def build_tourism_story(dataset, charts, trends, state):
             "Arrival totals are the sum of third-country and Indian visitor records. Source "
             "market shares are percentages of the reference year's total arrivals. Revenue "
             "figures use the US$ million series only, matching the dashboard revenue trend. "
-            "Purpose-of-visit and trekking figures are shown for the latest year with recorded "
-            "data, while the average length of stay is reported for the full recorded series. "
+            "Purpose-of-visit, trekking, arrivals-by-sex and arrivals-by-age-group figures are "
+            "shown for the latest year with recorded data, while the average length of stay is "
+            "reported for the full recorded series. Provincial tourism figures show official "
+            "destination visits per province for the latest published year. "
             "Charts are rendered from the same retrieved data.",
             styles["body"],
         )
@@ -956,7 +1121,7 @@ def build_tourism_story(dataset, charts, trends, state):
     )
 
     # Data dictionary -------------------------------------------------------------------
-    _section(story, styles, "12. Data Dictionary")
+    _section(story, styles, "15. Data Dictionary")
     dictionary = [
         ["Variable", "Description", "Unit"],
         ["Total arrivals", "Recorded annual tourist arrivals", "Persons"],
@@ -966,6 +1131,9 @@ def build_tourism_story(dataset, charts, trends, state):
         ["Average stay", "Average length of stay per visitor", "Days"],
         ["Purpose of visit", "Arrivals grouped by travel purpose", "Persons"],
         ["Trekkers", "Trekkers recorded per trekking area", "Persons"],
+        ["Arrivals by sex", "Arrivals split by visitor gender", "Persons"],
+        ["Arrival age group", "Arrivals grouped by age band", "Persons"],
+        ["Provincial visits", "Official visits per province / destination", "Visitors"],
     ]
     _table(
         story,
@@ -974,7 +1142,7 @@ def build_tourism_story(dataset, charts, trends, state):
     )
 
     # Appendix --------------------------------------------------------------------------
-    _section(story, styles, "13. Appendix: Report Parameters")
+    _section(story, styles, "16. Appendix: Report Parameters")
     params = [
         ["Parameter", "Value"],
         ["Report period", report_period],
@@ -983,6 +1151,8 @@ def build_tourism_story(dataset, charts, trends, state):
         ["Revenue range", state.get("revenue_range") or "5"],
         ["Purpose year", state.get("purpose_year") or "Latest available"],
         ["Trekking year", state.get("trekking_year") or "Latest available"],
+        ["Sex year", state.get("sex_year") or "Latest available"],
+        ["Age group year", state.get("age_year") or "Latest available"],
         ["Dashboard filters", ", ".join(f"{k}: {v}" for k, v in (state.get("filters") or {}).items()) or "None"],
         ["Generated at", generated_label],
     ]
@@ -1035,7 +1205,7 @@ def build_economic_story(dataset, charts, trends, state):
         "title": "Economic Dashboard Report",
         "subtitle": "Nepal Data Explorer",
         "tagline": "Comprehensive Report",
-        "descriptor": "World output, foreign trade, sectoral and province-level GDP growth for the economic dashboard",
+        "descriptor": "World output, global economies, foreign trade, sectoral, economy-wide, salary, agricultural prices and province-level GDP growth for the economic dashboard",
         "accent": ACCENT,
         "accent_dark": ACCENT_DARK,
     }
@@ -1136,8 +1306,37 @@ def build_economic_story(dataset, charts, trends, state):
         growth_style.add("ALIGN", (0, 1), (1, -1), "CENTER")
         _table(story, growth_rows, [CONTENT_W * 0.3, CONTENT_W * 0.3], growth_style)
 
+    # Global economies ----------------------------------------------------------------
+    _section(story, styles, "4. Global Economies Growth")
+    economies = dataset.get("economies_growth") or []
+    story.append(
+        Paragraph(
+            "Real growth for the major global economies and economic blocs covered by the "
+            "GlobalEconomicSeries dataset, de-duplicated to the most recently published value "
+            "per calendar year, matching the dashboard economies chart.",
+            styles["body"],
+        )
+    )
+    fig = charts.get("economic_economies")
+    if fig:
+        story.append(_image(fig, max_width=CONTENT_W * 0.94, max_height=240))
+    if economies:
+        latest_economy_year = economies[-1]
+        year_label = str(latest_economy_year.get("year", "")).replace("Real_", "")
+        economy_rows = [["Economy", f"Real growth (%) — {year_label}"]]
+        ordered_contexts = sorted(
+            [(k, v) for k, v in latest_economy_year.items() if k != "year" and v is not None],
+            key=lambda pair: pair[1],
+            reverse=True,
+        )
+        economy_rows += [[_cell(context), f"{_p(value)}%"] for context, value in ordered_contexts]
+        if len(economy_rows) > 1:
+            economy_style = _table_style()
+            economy_style.add("ALIGN", (0, 1), (0, -1), "LEFT")
+            _table(story, economy_rows, [CONTENT_W * 0.7, CONTENT_W * 0.3], economy_style)
+
     # Foreign trade ---------------------------------------------------------------------
-    _section(story, styles, "4. Foreign Trade (Exports vs Imports)")
+    _section(story, styles, "5. Foreign Trade (Exports vs Imports)")
     story.append(
         Paragraph(
             "Total exports and imports by fiscal year from the foreign trade dataset used by "
@@ -1169,8 +1368,77 @@ def build_economic_story(dataset, charts, trends, state):
             trade_style,
         )
 
+    # Trade by partner & balance -----------------------------------------------------------
+    _section(story, styles, "6. Trade by Partner & Balance")
+    exports_partner = dataset.get("exports_by_partner") or []
+    imports_partner = dataset.get("imports_by_partner") or []
+    balance_rows = dataset.get("trade_balance") or []
+    story.append(
+        Paragraph(
+            "Bilateral trade flows split by major partner (India, China and other countries) "
+            "and the resulting annual trade balance, from the foreign-trade statistic rows "
+            "recorded per fiscal year.",
+            styles["body"],
+        )
+    )
+    fig_exports = charts.get("economic_export_partners")
+    if fig_exports:
+        story.append(_image(fig_exports, max_width=CONTENT_W * 0.9, max_height=210))
+    fig_imports = charts.get("economic_import_partners")
+    if fig_imports:
+        story.append(_image(fig_imports, max_width=CONTENT_W * 0.9, max_height=210))
+    fig_balance = charts.get("economic_balance")
+    if fig_balance:
+        story.append(_image(fig_balance, max_width=CONTENT_W * 0.9, max_height=200))
+    if exports_partner:
+        latest_partner_year = exports_partner[-1]["fiscal_year"]
+        partner_rows = [["Partner", f"Exports — {latest_partner_year}", f"Imports — {latest_partner_year}"]]
+        imports_latest = imports_partner[-1] if imports_partner else {}
+        for partner in ("India", "China", "Other Countries"):
+            partner_rows.append([
+                _cell(partner),
+                _p(exports_partner[-1].get(partner)),
+                _p(imports_latest.get(partner)),
+            ])
+        if len(partner_rows) > 1:
+            partner_style = _table_style()
+            partner_style.add("ALIGN", (0, 1), (0, -1), "LEFT")
+            _table(story, partner_rows, [CONTENT_W * 0.3, CONTENT_W * 0.35, CONTENT_W * 0.35], partner_style)
+
+    # Economy-wide growth -------------------------------------------------------------------
+    _section(story, styles, "7. Economy-wide Growth")
+    overall_growth = dataset.get("overall_growth") or []
+    story.append(
+        Paragraph(
+            "Growth decomposed into agriculture, non-agriculture, industry and service "
+            "components from the SectoralGrowth 'Overall' sector records per fiscal year.",
+            styles["body"],
+        )
+    )
+    fig = charts.get("economic_overall")
+    if fig:
+        story.append(_image(fig, max_width=CONTENT_W * 0.9, max_height=210))
+    if overall_growth:
+        overview_rows = [["Fiscal year", "Agriculture (%)", "Non-agriculture (%)", "Industry (%)", "Service (%)"]]
+        for pair in overall_growth:
+            overview_rows.append([
+                _cell(pair["fiscal_year"]),
+                _p(pair.get("agriculture")),
+                _p(pair.get("nonagriculture")),
+                _p(pair.get("industry")),
+                _p(pair.get("service")),
+            ])
+        overview_style = _table_style()
+        overview_style.add("ALIGN", (0, 1), (0, -1), "LEFT")
+        _table(
+            story,
+            overview_rows,
+            [CONTENT_W * 0.2, CONTENT_W * 0.2, CONTENT_W * 0.22, CONTENT_W * 0.18, CONTENT_W * 0.2],
+            overview_style,
+        )
+
     # Sectoral growth -------------------------------------------------------------------
-    _section(story, styles, "5. Sectoral Growth")
+    _section(story, styles, "8. Sectoral Growth")
     story.append(
         Paragraph(
             f"Sector-level annual growth for the most recent fiscal year "
@@ -1190,7 +1458,7 @@ def build_economic_story(dataset, charts, trends, state):
         _table(story, sector_rows, [CONTENT_W * 0.7, CONTENT_W * 0.3], sector_style)
 
     # Province-level GDP ---------------------------------------------------------------
-    _section(story, styles, "6. Province-level GDP Growth")
+    _section(story, styles, "9. Province-level GDP Growth")
     story.append(
         Paragraph(
             f"GDP growth at basic prices for each province in the most recent fiscal year "
@@ -1222,18 +1490,81 @@ def build_economic_story(dataset, charts, trends, state):
             province_style,
         )
 
+    # Salary & wage rate index -------------------------------------------------------------
+    _section(story, styles, "10. Salary & Wage Rate Index")
+    salary_index = dataset.get("salary_index") or []
+    story.append(
+        Paragraph(
+            "The salary and wage rate index series by category, one aggregate value per fiscal "
+            "year and group from the SalaryIndex dataset.",
+            styles["body"],
+        )
+    )
+    fig = charts.get("economic_salary")
+    if fig:
+        story.append(_image(fig, max_width=CONTENT_W * 0.94, max_height=240))
+    salary_years = sorted({row["year"] for row in salary_index})
+    latest_salary_year = salary_years[-1] if salary_years else None
+    if latest_salary_year:
+        salary_rows = [["Category", f"Index — {latest_salary_year}"]]
+        for row in sorted(
+            [item for item in salary_index if item["year"] == latest_salary_year],
+            key=lambda item: item["value"] or 0,
+            reverse=True,
+        ):
+            salary_rows.append([_cell(row["group"]), _p(row["value"])])
+        salary_style = _table_style()
+        salary_style.add("ALIGN", (0, 1), (0, -1), "LEFT")
+        _table(story, salary_rows, [CONTENT_W * 0.7, CONTENT_W * 0.3], salary_style)
+
+    # Agriculture producer price index ------------------------------------------------------
+    _section(story, styles, "11. Agriculture Producer Price Index")
+    appi_rows = dataset.get("appi") or []
+    story.append(
+        Paragraph(
+            "Agricultural producer price indices by product, quarter and base year from the "
+            "AgricultureProducerPriceIndex dataset. The chart shows the annual index for the "
+            "most recent recorded base year.",
+            styles["body"],
+        )
+    )
+    fig = charts.get("economic_appi")
+    if fig:
+        story.append(_image(fig, max_width=CONTENT_W * 0.94, max_height=280))
+    if appi_rows:
+        appi_years = sorted(
+            {row["base_year"] for row in appi_rows},
+            key=lambda year: int(_NUM_RE.search(str(year)).group(0)) if _NUM_RE.search(str(year)) else 0,
+        )
+        latest_appi_year = appi_years[-1] if appi_years else None
+        latest_base = [row for row in appi_rows if row["base_year"] == latest_appi_year]
+        if latest_base:
+            ordered_products = sorted(latest_base, key=lambda row: row["value"] or 0, reverse=True)[:15]
+            appi_table = [["Product", "Index"]]
+            appi_table += [
+                [_cell(row["product"]), _p(row["value"])]
+                for row in ordered_products
+            ]
+            appi_style = _table_style()
+            appi_style.add("ALIGN", (0, 1), (0, -1), "LEFT")
+            _table(story, appi_table, [CONTENT_W * 0.7, CONTENT_W * 0.3], appi_style)
+
     # Key trends ------------------------------------------------------------------------
-    _section(story, styles, "7. Key Trends & Observations")
+    _section(story, styles, "12. Key Trends & Observations")
     for i, observation in enumerate(trends, start=1):
         story.append(Paragraph(f"<b>{i}.</b> {observation}", styles["bullet"]))
 
     # Data sources ----------------------------------------------------------------------
-    _section(story, styles, "8. Data Sources")
+    _section(story, styles, "13. Data Sources")
     sources_rows = [
         ["Dataset", "Fields", "Reference"],
         ["Global Economics", "Context, real growth values, published year", "GlobalEconomicSeries"],
         ["Foreign Trade", "Total exports / imports per fiscal year", "ForeignTradeStatistic"],
+        ["Trade by Partner & Balance", "Bilateral flows by partner and trade balance", "ForeignTradeStatistic"],
         ["Sectoral Growth", "Sector-level annual growth", "SectoralGrowth"],
+        ["Economy-wide Growth", "Agriculture / non-agriculture / industry / service growth", "SectoralGrowth"],
+        ["Salary & Wage Rate Index", "Index values by category per fiscal year", "SalaryIndex"],
+        ["Agriculture Producer Price Index", "Producer price indices by product, quarter and base year", "AgricultureProducerPriceIndex"],
         ["Province GDP Growth", "GDP growth at basic / purchaser prices by province", "ProvinceGDPStatistic"],
     ]
     sources_style = _table_style()
@@ -1246,13 +1577,20 @@ def build_economic_story(dataset, charts, trends, state):
     )
 
     # Methodology -----------------------------------------------------------------------
-    _section(story, styles, "9. Methodology")
+    _section(story, styles, "14. Methodology")
     story.append(
         Paragraph(
             "All figures are queried directly from the backend database that also powers the "
             "economic dashboard APIs, so this report is consistent with the on-screen dashboard. "
             "World Output real growth is deduplicated to the most recently published value per "
-            "calendar year. Foreign trade uses the total exports and total imports series only. "
+            "calendar year, as are the global economies series (one value per economy and year). "
+            "Foreign trade uses the total exports and total imports series only, with partner "
+            "flows limited to India, China and other countries and the trade balance taken from "
+            "the recorded balance series. "
+            "Economy-wide growth decomposes the 'Overall' sector records into agriculture, "
+            "non-agriculture, industry and service. Salary index values are one aggregate row "
+            "per category and fiscal year, preferring the broadest index when several rows "
+            "share a category. "
             "Sectoral performance shows the sectors recorded for the most recent fiscal year. "
             "Province-level GDP growth is taken one record per province and fiscal year, "
             "preferring the most recently published status. "
@@ -1269,13 +1607,18 @@ def build_economic_story(dataset, charts, trends, state):
     )
 
     # Data dictionary -------------------------------------------------------------------
-    _section(story, styles, "10. Data Dictionary")
+    _section(story, styles, "15. Data Dictionary")
     dictionary = [
         ["Variable", "Description", "Unit"],
         ["World Output real growth", "Real growth of global output", "%"],
+        ["Global economies growth", "Real growth by economy / economic bloc", "%"],
         ["Exports / Imports", "Total value traded per fiscal year", "As recorded"],
-        ["Balance", "Exports minus imports", "As recorded"],
+        ["Trade by partner", "Exports / imports with India, China, other countries", "As recorded"],
+        ["Trade balance", "Exports minus imports per fiscal year", "As recorded"],
+        ["Economy-wide growth", "Agriculture / non-agriculture / industry / service growth", "%"],
         ["Sectoral growth", "Growth by economic sector", "%"],
+        ["Salary & Wage Rate Index", "Index by category and fiscal year", "Index"],
+        ["Agriculture producer price index", "Price index by product, quarter and base year", "Index"],
         ["Province GDP growth", "Growth at basic / purchaser prices by province", "%"],
     ]
     _table(
@@ -1285,7 +1628,7 @@ def build_economic_story(dataset, charts, trends, state):
     )
 
     # Appendix --------------------------------------------------------------------------
-    _section(story, styles, "11. Appendix: Report Parameters")
+    _section(story, styles, "16. Appendix: Report Parameters")
     params = [
         ["Parameter", "Value"],
         ["Report period", report_period],

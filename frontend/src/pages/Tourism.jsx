@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { SectionCard } from '../components/ui/Card';
 import { Icon } from '../components/ui/Icon';
 import { ProgressBar } from '../components/ui/ProgressBar';
-import { Tag } from '../components/ui/Tag';
 import { BtnOutline } from '../components/ui/Button';
 import LineChart from '../components/charts/LineChart';
 import BarChart from '../components/charts/BarChart';
@@ -20,28 +19,18 @@ const TABS = [
   { id: 'stay', label: 'Avg. Length of Stay' },
   { id: 'purpose', label: 'Purpose of Visit' },
   { id: 'trekking', label: 'Trekking Areas & Trekkers' },
+  { id: 'sex', label: 'Arrivals by Sex' },
+  { id: 'age', label: 'Arrivals by Age Group' },
+  { id: 'province', label: 'Tourism by Province' },
 ];
-
-const CHART_META = {
-  arrivals: {
-    title: 'Tourist Arrivals Trend',
-  },
-  'source-markets': {
-    title: 'Top Source Markets',
-  },
-  revenue: {
-    title: 'Tourism Revenue Trend',
-  },
-  stay: {
-    title: 'Average Length of Stay',
-  },
-  purpose: {
-    title: 'Purpose of Visit',
-  },
-  trekking: {
-    title: 'Trekking Areas & Trekkers',
-  },
-};
+const SECTION_ROWS = [
+  ['arrivals', 'revenue'],
+  ['source-markets'],
+  ['stay', 'purpose'],
+  ['trekking', 'sex'],
+  ['age'],
+  ['province'],
+];
 const SOURCE_MARKET_COLORS = [
   '#7a5100',
   '#0051d5',
@@ -54,6 +43,77 @@ const SOURCE_MARKET_COLORS = [
   '#2563eb',
   '#15803d',
 ];
+const PROVINCE_COLORS = [
+  '#7a5100',
+  '#0051d5',
+  '#0f7a3d',
+  '#b70011',
+  '#6a1b9a',
+  '#007c91',
+  '#c2410c',
+];
+const CHART_HEIGHT = 'h-80';
+
+function ChartBox({ children }) {
+  return (
+    <div
+      className={`${CHART_HEIGHT} min-h-0 rounded-sm border border-outline-variant bg-surface p-1`}
+    >
+      {children}
+    </div>
+  );
+}
+
+function SideList({ title, count, items }) {
+  return (
+    <div
+      className={`${CHART_HEIGHT} flex flex-col rounded-sm border border-outline-variant bg-surface`}
+    >
+      <div className="flex items-center justify-between border-b border-outline-variant px-4 py-3">
+        <h4 className="text-sm font-bold text-onSurface font-hanken">{title}</h4>
+        {count != null && (
+          <span className="rounded-sm bg-surface-container-highest px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-onSurface-variant font-hanken">
+            {count}
+          </span>
+        )}
+      </div>
+      <div className="flex-1 overflow-y-auto px-4 py-3 scrollbar-thin">
+        <div className="space-y-3">
+          {items.map((item, index) => (
+            <div
+              key={`${item.label}-${index}`}
+              className="flex items-center justify-between gap-3"
+            >
+              <div className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-bold text-onSurface font-hanken">
+                  {item.label}
+                </span>
+                <div className="mt-1">
+                  <ProgressBar value={item.pct} color={item.color} total={100} />
+                </div>
+              </div>
+              <span className="text-sm font-bold tabular-nums text-onSurface font-hanken">
+                {item.value}
+              </span>
+              <span className="w-14 text-right text-xs font-bold tabular-nums text-onSurface-variant">
+                {item.pct.toFixed(1)}%
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TwoColumn({ left, right }) {
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+      <div className="lg:col-span-2 min-h-0">{left}</div>
+      <div className="lg:col-span-1 min-h-0">{right}</div>
+    </div>
+  );
+}
 
 export default function Tourism() {
   const [activeTab, setActiveTab] = useState('arrivals');
@@ -62,8 +122,9 @@ export default function Tourism() {
   const [stayRange, setStayRange] = useState('all');
   const [purposeYear, setPurposeYear] = useState('');
   const [trekkingYear, setTrekkingYear] = useState('');
+  const [ageYear, setAgeYear] = useState('');
+  const [selectedProvince, setSelectedProvince] = useState('');
   const [showAllSourceMarkets, setShowAllSourceMarkets] = useState(false);
-  const { title: chartTitle } = CHART_META[activeTab];
   const [loading, setLoading] = useState(true);
   const [tourismData, setTourismData] = useState(null);
   const [error, setError] = useState('');
@@ -85,6 +146,12 @@ export default function Tourism() {
     })();
     return () => (mounted = false);
   }, []);
+
+  const scrollToSection = (id) => {
+    setActiveTab(id);
+    const element = document.getElementById(`tourism-${id}`);
+    if (element) element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   const arrivalTrend = tourismData?.arrival_trend || [];
   const visibleArrivalTrend =
@@ -128,32 +195,409 @@ export default function Tourism() {
   const visibleTrekking = trekkingTrend
     .filter((row) => String(row.year) === selectedTrekkingYear && Number(row.trekkers) > 0)
     .sort((a, b) => Number(b.trekkers) - Number(a.trekkers));
+  const allSexTrend = tourismData?.sex_trend || [];
+  const sexTrend = allSexTrend.filter(
+    (record) => (record.statistic_type || '').toLowerCase() === 'number'
+  );
+  const sexDataByYear = {};
+  sexTrend.forEach((record) => {
+    if (!sexDataByYear[record.year]) sexDataByYear[record.year] = { year: record.year };
+    const genderKey = (record.gender || '').toLowerCase() === 'female' ? 'female' : 'male';
+    sexDataByYear[record.year][genderKey] = Number(record.value);
+  });
+  const visibleSex = Object.values(sexDataByYear).sort((a, b) => a.year - b.year);
+  const sexYears = visibleSex.map((record) => String(record.year));
+  const selectedSexYear = sexYears.at(-1) || '';
+  const ageTrend = tourismData?.age_trend || [];
+  const ageYears = [...new Set(ageTrend.map((row) => String(row.year)))].sort(
+    (a, b) => Number(a) - Number(b)
+  );
+  const selectedAgeYear = ageYears.includes(ageYear) ? ageYear : ageYears.at(-1) || '';
+  const visibleAge = ageTrend
+    .filter((row) => String(row.year) === selectedAgeYear && Number(row.value) > 0)
+    .sort((a, b) => Number(b.value) - Number(a.value));
   const kpis = tourismData?.kpis;
-  const arrivalYears = arrivalTrend.map((record) => record.year).filter(Boolean);
-  const revenuePeriods = revenueTrend.map((record) => record.fiscal_year).filter(Boolean);
   const latestRevenue = revenueTrend.at(-1);
-  const chartSubtitle =
-    activeTab === 'arrivals'
-      ? `Annual arrivals${arrivalYears.length ? ` (${Math.min(...arrivalYears)}–${Math.max(...arrivalYears)})` : ''}`
-      : activeTab === 'revenue'
-        ? `Tourism revenue (US$ millions)${revenuePeriods.length ? ` (${revenuePeriods[0]}–${revenuePeriods.at(-1)})` : ''}`
-        : activeTab === 'stay' && visibleAvgStay.length > 0
-          ? `Average length of stay in days (${visibleAvgStay[0].year}–${visibleAvgStay.at(-1).year})`
-          : activeTab === 'purpose' && visiblePurpose.length > 0
-            ? `Arrivals by purpose of visit (${selectedPurposeYear})`
-            : activeTab === 'trekking' && visibleTrekking.length > 0
-              ? `Trekkers by trekking area (${selectedTrekkingYear})`
-              : 'Annual visitor counts by site';
   const maxSourceArrivals = Math.max(...sourceMarkets.map((market) => market.arrivals), 0);
-  const sourceMarketItems = sourceMarkets.map((market, index) => ({
-    label: market.nationality,
-    arrivals: market.arrivals,
-    color: SOURCE_MARKET_COLORS[index % SOURCE_MARKET_COLORS.length],
-    province: 'Source market',
-    pct: market.percent ?? (maxSourceArrivals ? (market.arrivals / maxSourceArrivals) * 100 : 0),
-    trendUp: true,
-    trend: '',
-  }));
+
+  const provinceTourism = tourismData?.province_tourism || {};
+  const provinceLatestYear = provinceTourism.latest_year;
+  const provinces = (provinceTourism.latest || []).map((item) => item.province);
+  const activeProvince = provinces.includes(selectedProvince)
+    ? selectedProvince
+    : provinces[0] || '';
+  const provinceByYear = (provinceTourism.by_year || []).filter(
+    (record) => record.province === activeProvince
+  );
+  const activeProvinceLatest = (provinceTourism.latest || []).find(
+    (item) => item.province === activeProvince
+  );
+  const activeDestinations = (activeProvinceLatest?.destinations || [])
+    .slice()
+    .sort((a, b) => Number(b.visitors) - Number(a.visitors));
+
+  const sectionSubtitle = (id) => {
+    if (id === 'arrivals' && visibleArrivalTrend.length)
+      return `Annual arrivals (${visibleArrivalTrend[0].year}–${visibleArrivalTrend.at(-1).year})`;
+    if (id === 'source-markets')
+      return sourceMarketYear ? `Annual arrivals by nationality (${sourceMarketYear})` : 'Annual arrivals by nationality';
+    if (id === 'revenue' && visibleRevenueTrend.length)
+      return `Tourism revenue (US$ millions) (${visibleRevenueTrend[0].fiscal_year}–${visibleRevenueTrend.at(-1).fiscal_year})`;
+    if (id === 'stay' && visibleAvgStay.length)
+      return `Average length of stay in days (${visibleAvgStay[0].year}–${visibleAvgStay.at(-1).year})`;
+    if (id === 'purpose' && visiblePurpose.length)
+      return `Arrivals by purpose of visit (${selectedPurposeYear})`;
+    if (id === 'trekking' && visibleTrekking.length)
+      return `Trekkers by trekking area (${selectedTrekkingYear})`;
+    if (id === 'sex' && visibleSex.length)
+      return `Arrivals by gender (${visibleSex[0].year}–${visibleSex.at(-1).year})`;
+    if (id === 'age' && visibleAge.length) return `Arrivals by age group (${selectedAgeYear})`;
+    if (id === 'province')
+      return provinceLatestYear
+        ? `Official visits by province (${provinceLatestYear}) · Nepal Tourism Statistics`
+        : 'Official destination visits by province';
+    return 'Tourism statistics';
+  };
+
+  const sectionAction = (id) => {
+    if (id === 'arrivals' || id === 'revenue' || id === 'stay') {
+      const selectedRange =
+        id === 'arrivals' ? arrivalRange : id === 'stay' ? stayRange : revenueRange;
+      const applyRange =
+        id === 'arrivals' ? setArrivalRange : id === 'stay' ? setStayRange : setRevenueRange;
+      return (
+        <div className="flex items-center gap-1 rounded-sm border border-outline-variant bg-white p-1">
+          {[
+            ['all', 'All'],
+            ['10', '10 years'],
+            ['5', '5 years'],
+          ].map(([rangeId, label]) => (
+            <button
+              key={rangeId}
+              onClick={() => applyRange(rangeId)}
+              className={`rounded-sm px-3 py-1.5 text-xs font-semibold transition-colors ${selectedRange === rangeId ? 'bg-primary text-white' : 'text-onSurface-variant hover:bg-surface-container-highest'}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      );
+    }
+    if (id === 'purpose' && purposeYears.length > 1) {
+      return (
+        <select
+          value={selectedPurposeYear}
+          onChange={(event) => setPurposeYear(event.target.value)}
+          className="rounded-sm border border-outline-variant bg-white px-3 py-1.5 text-xs font-semibold text-onSurface"
+        >
+          {purposeYears.map((year) => (
+            <option key={year} value={year}>
+              {year}
+            </option>
+          ))}
+        </select>
+      );
+    }
+    if (id === 'trekking' && trekkingYears.length > 1) {
+      return (
+        <select
+          value={selectedTrekkingYear}
+          onChange={(event) => setTrekkingYear(event.target.value)}
+          className="rounded-sm border border-outline-variant bg-white px-3 py-1.5 text-xs font-semibold text-onSurface"
+        >
+          {trekkingYears.map((year) => (
+            <option key={year} value={year}>
+              {year}
+            </option>
+          ))}
+        </select>
+      );
+    }
+    if (id === 'age' && ageYears.length > 1) {
+      return (
+        <select
+          value={selectedAgeYear}
+          onChange={(event) => setAgeYear(event.target.value)}
+          className="rounded-sm border border-outline-variant bg-white px-3 py-1.5 text-xs font-semibold text-onSurface"
+        >
+          {ageYears.map((year) => (
+            <option key={year} value={year}>
+              {year}
+            </option>
+          ))}
+        </select>
+      );
+    }
+    if (id === 'province' && provinces.length > 1) {
+      return (
+        <select
+          value={activeProvince}
+          onChange={(event) => setSelectedProvince(event.target.value)}
+          className="rounded-sm border border-outline-variant bg-white px-3 py-1.5 text-xs font-semibold text-onSurface"
+        >
+          {provinces.map((province) => (
+            <option key={province} value={province}>
+              {province}
+            </option>
+          ))}
+        </select>
+      );
+    }
+    if (id === 'source-markets') {
+      return (
+        <BtnOutline
+          onClick={() => setShowAllSourceMarkets((value) => !value)}
+          className="text-xs px-4 py-1.5 rounded-sm font-hanken"
+        >
+          {showAllSourceMarkets ? 'Show top 10' : `View all (${sourceMarkets.length})`}
+        </BtnOutline>
+      );
+    }
+    return null;
+  };
+
+  const renderSectionContent = (id) => {
+    if (id === 'arrivals') {
+      return (
+        <ChartBox>
+          <LineChart
+            data={visibleArrivalTrend.map((record) => ({
+              year: record.year,
+              tourism: record.total_arrivals,
+            }))}
+            xKey="year"
+            series={[{ key: 'tourism', color: '#7a5100', label: 'Arrivals' }]}
+            height="100%"
+          />
+        </ChartBox>
+      );
+    }
+    if (id === 'source-markets') {
+      return (
+        <TwoColumn
+          left={
+            <ChartBox>
+              <BarChart
+                data={visibleSourceMarkets.map((market, index) => ({
+                  name: market.nationality,
+                  arrivals: market.arrivals,
+                  color: SOURCE_MARKET_COLORS[index % SOURCE_MARKET_COLORS.length],
+                }))}
+                labelKey="name"
+                valueKey="arrivals"
+                tooltipFormatter={formatCountryName}
+                height="100%"
+                bordered={false}
+              />
+            </ChartBox>
+          }
+          right={
+            <SideList
+              title="Top source markets"
+              count={sourceMarkets.length}
+              items={sourceMarkets.map((market, index) => ({
+                label: `${getCountryFlag(market.nationality)} ${formatCountryName(
+                  market.nationality
+                )}`,
+                value: Number(market.arrivals).toLocaleString(),
+                pct:
+                  market.percent ??
+                  (maxSourceArrivals ? (market.arrivals / maxSourceArrivals) * 100 : 0),
+                color: SOURCE_MARKET_COLORS[index % SOURCE_MARKET_COLORS.length],
+              }))}
+            />
+          }
+        />
+      );
+    }
+    if (id === 'revenue') {
+      return (
+        <ChartBox>
+          <LineChart
+            data={visibleRevenueTrend.map((record) => ({
+              year: record.fiscal_year,
+              revenue: record.value,
+            }))}
+            xKey="year"
+            series={[{ key: 'revenue', color: '#b70011', label: 'Revenue (US$ millions)' }]}
+            height="100%"
+          />
+        </ChartBox>
+      );
+    }
+    if (id === 'stay') {
+      return (
+        <ChartBox>
+          <LineChart
+            data={visibleAvgStay.map((record) => ({
+              year: record.year,
+              stay: record.value,
+            }))}
+            xKey="year"
+            series={[{ key: 'stay', color: '#0f7a3d', label: 'Avg. stay (days)' }]}
+            height="100%"
+          />
+        </ChartBox>
+      );
+    }
+    if (id === 'purpose') {
+      return (
+        <ChartBox>
+          <BarChart
+            data={visiblePurpose.map((record, index) => ({
+              name: record.category,
+              arrivals: record.value,
+              color: SOURCE_MARKET_COLORS[index % SOURCE_MARKET_COLORS.length],
+            }))}
+            labelKey="name"
+            valueKey="arrivals"
+            height="100%"
+            bordered={false}
+          />
+        </ChartBox>
+      );
+    }
+    if (id === 'trekking') {
+      return (
+        <ChartBox>
+          <BarChart
+            data={visibleTrekking.map((record, index) => ({
+              name: record.region,
+              trekkers: record.trekkers,
+              color: SOURCE_MARKET_COLORS[index % SOURCE_MARKET_COLORS.length],
+            }))}
+            labelKey="name"
+            valueKey="trekkers"
+            height="100%"
+            bordered={false}
+          />
+        </ChartBox>
+      );
+    }
+    if (id === 'sex') {
+      return (
+        <ChartBox>
+          <LineChart
+            data={visibleSex}
+            xKey="year"
+            series={[
+              { key: 'female', color: '#b70011', label: 'Female' },
+              { key: 'male', color: '#0051d5', label: 'Male' },
+            ]}
+            height="100%"
+          />
+        </ChartBox>
+      );
+    }
+    if (id === 'age') {
+      const ageTotal = visibleAge.reduce(
+        (sum, record) => sum + (Number(record.value) || 0),
+        0
+      );
+      return (
+        <TwoColumn
+          left={
+            <ChartBox>
+              <BarChart
+                data={visibleAge.map((record, index) => ({
+                  name: record.age_group,
+                  arrivals: record.value,
+                  color: SOURCE_MARKET_COLORS[index % SOURCE_MARKET_COLORS.length],
+                }))}
+                labelKey="name"
+                valueKey="arrivals"
+                height="100%"
+                bordered={false}
+              />
+            </ChartBox>
+          }
+          right={
+            <SideList
+              title={`Age group breakdown · ${selectedAgeYear}`}
+              count={visibleAge.length}
+              items={visibleAge.map((record, index) => ({
+                label: record.age_group,
+                value: Number(record.value || 0).toLocaleString(),
+                pct: ageTotal ? (Number(record.value) / ageTotal) * 100 : 0,
+                color: SOURCE_MARKET_COLORS[index % SOURCE_MARKET_COLORS.length],
+              }))}
+            />
+          }
+        />
+      );
+    }
+    if (id === 'province') {
+      return (
+        <div className="space-y-5">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div className="flex h-72 flex-col">
+              <div className="mb-2 shrink-0 text-[11px] font-bold uppercase tracking-wider text-onSurface-variant">
+                Official visits by province {provinceLatestYear ? `(${provinceLatestYear})` : ''}
+              </div>
+              <div className="min-h-0 flex-1 rounded-sm border border-outline-variant bg-surface p-1">
+                <BarChart
+                  data={(provinceTourism.latest || []).map((item, index) => ({
+                    name: item.province,
+                    visitors: item.visitors,
+                    color: PROVINCE_COLORS[index % PROVINCE_COLORS.length],
+                  }))}
+                  labelKey="name"
+                  valueKey="visitors"
+                  height="100%"
+                  bordered={false}
+                />
+              </div>
+            </div>
+            <div className="flex h-72 flex-col">
+              <div className="mb-2 shrink-0 text-[11px] font-bold uppercase tracking-wider text-onSurface-variant">
+                {activeProvince} visits by year
+              </div>
+              <div className="min-h-0 flex-1 rounded-sm border border-outline-variant bg-surface p-1">
+                <LineChart
+                  data={provinceByYear.map((record) => ({ year: record.year, visitors: record.visitors }))}
+                  xKey="year"
+                  series={[{ key: 'visitors', color: '#6a1b9a', label: 'Visitors' }]}
+                  height="100%"
+                />
+              </div>
+            </div>
+          </div>
+          {activeDestinations.length > 0 && (
+            <div className="mt-3 rounded-sm border border-outline-variant bg-surface-lowest p-4">
+              <h4 className="mb-3 text-sm font-bold text-onSurface font-hanken">
+                Official destinations · {activeProvince}{' '}
+                {provinceLatestYear ? `(${provinceLatestYear})` : ''}
+              </h4>
+              <div className="max-h-72 overflow-y-auto pr-1 scrollbar-thin">
+                <div className="space-y-3">
+                  {activeDestinations.map((dest) => (
+                    <div key={dest.name} className="flex items-center justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <span className="text-sm font-semibold text-onSurface font-hanken truncate">
+                          {dest.name}
+                        </span>
+                        <div className="mt-1">
+                          <ProgressBar value={dest.share} color="#6a1b9a" total={100} />
+                        </div>
+                      </div>
+                      <span className="text-sm font-bold text-onSurface font-hanken">
+                        {dest.visitors}
+                      </span>
+                      <span className="w-16 text-right text-xs font-bold tabular-nums text-onSurface-variant">
+                        {dest.share.toFixed(1)}%
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+    return null;
+  };
+
   const csvData = [
     {
       Dataset: 'Key indicators',
@@ -218,6 +662,35 @@ export default function Tourism() {
       Region: record.region,
       Trekkers: record.trekkers,
     })),
+    ...allSexTrend.map((record) => ({
+      Dataset: 'Arrivals by Sex',
+      Year: record.year,
+      Gender: record.gender,
+      Arrivals: record.value,
+      'Statistic type': record.statistic_type,
+    })),
+    ...ageTrend.map((record) => ({
+      Dataset: 'Arrivals by Age Group',
+      Year: record.year,
+      'Age group': record.age_group,
+      Arrivals: record.value,
+    })),
+    ...(provinceTourism.by_year || []).map((record) => ({
+      Dataset: 'Provincial Tourism',
+      Year: record.year,
+      Province: record.province,
+      Visitors: record.visitors,
+    })),
+    ...(provinceTourism.latest || []).flatMap((item) =>
+      (item.destinations || []).map((dest) => ({
+        Dataset: 'Provincial Tourism Destinations',
+        Year: provinceLatestYear || '',
+        Province: item.province,
+        Destination: dest.name,
+        Visitors: dest.visitors,
+        'Share (%)': dest.share,
+      }))
+    ),
   ];
 
   const reportFiscalYear =
@@ -237,6 +710,9 @@ export default function Tourism() {
         'stay',
         'purpose',
         'trekking',
+        'sex',
+        'age',
+        'province',
       ],
       active_tab: activeTab,
       arrival_range: arrivalRange,
@@ -245,6 +721,8 @@ export default function Tourism() {
       include_all_source_markets: showAllSourceMarkets,
       purpose_year: selectedPurposeYear,
       trekking_year: selectedTrekkingYear,
+      sex_year: selectedSexYear,
+      age_year: selectedAgeYear,
       filters: {},
     });
 
@@ -334,255 +812,49 @@ export default function Tourism() {
           ))}
         </div>
 
-        {/* Tabs */}
-        <div className="flex border-b border-outline-variant">
-          {TABS.map(({ id, label }) => (
-            <button
-              key={id}
-              onClick={() => setActiveTab(id)}
-              className={`px-6 py-3 text-sm font-medium font-hanken transition-colors duration-200 border-b-2 ${
-                activeTab === id
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-onSurface-variant hover:text-onSurface'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        {/* Sticky section navigator — underline tab strip (line format) */}
+        <nav className="sticky top-0 z-20 -mx-1 border-b border-outline-variant bg-white/95 backdrop-blur">
+          <div className="flex items-stretch overflow-x-auto">
+            {TABS.map(({ id, label }) => (
+              <button
+                key={id}
+                onClick={() => scrollToSection(id)}
+                className={`whitespace-nowrap px-6 py-3 text-sm font-medium font-hanken transition-colors duration-200 border-b-2 ${
+                  activeTab === id
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-onSurface-variant hover:text-onSurface'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </nav>
 
-        {/* Charts and source-market list */}
-        <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-6">
-          {/* Chart Section */}
-
-          <SectionCard
-            title={chartTitle}
-            subtitle={
-              activeTab === 'arrivals' && visibleArrivalTrend.length
-                ? `Annual arrivals (${visibleArrivalTrend[0].year}–${visibleArrivalTrend.at(-1).year})`
-                : activeTab === 'revenue' && visibleRevenueTrend.length
-                  ? `Tourism revenue (US$ millions) (${visibleRevenueTrend[0].fiscal_year}–${visibleRevenueTrend.at(-1).fiscal_year})`
-                  : activeTab === 'stay' && visibleAvgStay.length
-                    ? `Average length of stay in days (${visibleAvgStay[0].year}–${visibleAvgStay.at(-1).year})`
-                    : activeTab === 'purpose' && visiblePurpose.length
-                      ? `Arrivals by purpose of visit (${selectedPurposeYear})`
-                      : activeTab === 'trekking' && visibleTrekking.length
-                        ? `Trekkers by trekking area (${selectedTrekkingYear})`
-                        : chartSubtitle
-            }
-            action={
-              activeTab === 'arrivals' || activeTab === 'revenue' || activeTab === 'stay' ? (
-                <div className="flex items-center gap-1 rounded-sm border border-outline-variant bg-white p-1">
-                  {[
-                    ['all', 'All'],
-                    ['10', '10 years'],
-                    ['5', '5 years'],
-                  ].map(([id, label]) => {
-                    const selectedRange =
-                      activeTab === 'arrivals'
-                        ? arrivalRange
-                        : activeTab === 'stay'
-                          ? stayRange
-                          : revenueRange;
-                    const applyRange =
-                      activeTab === 'arrivals'
-                        ? setArrivalRange
-                        : activeTab === 'stay'
-                          ? setStayRange
-                          : setRevenueRange;
-                    return (
-                      <button
-                        key={id}
-                        onClick={() => applyRange(id)}
-                        className={`rounded-sm px-3 py-1.5 text-xs font-semibold transition-colors ${selectedRange === id ? 'bg-primary text-white' : 'text-onSurface-variant hover:bg-surface-container-highest'}`}
-                      >
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : activeTab === 'purpose' ? (
-                purposeYears.length > 1 ? (
-                  <select
-                    value={selectedPurposeYear}
-                    onChange={(event) => setPurposeYear(event.target.value)}
-                    className="rounded-sm border border-outline-variant bg-white px-3 py-1.5 text-xs font-semibold text-onSurface"
-                  >
-                    {purposeYears.map((year) => (
-                      <option key={year} value={year}>
-                        {year}
-                      </option>
-                    ))}
-                  </select>
-                ) : null
-              ) : activeTab === 'trekking' ? (
-                trekkingYears.length > 1 ? (
-                  <select
-                    value={selectedTrekkingYear}
-                    onChange={(event) => setTrekkingYear(event.target.value)}
-                    className="rounded-sm border border-outline-variant bg-white px-3 py-1.5 text-xs font-semibold text-onSurface"
-                  >
-                    {trekkingYears.map((year) => (
-                      <option key={year} value={year}>
-                        {year}
-                      </option>
-                    ))}
-                  </select>
-                ) : null
-              ) : activeTab === 'source-markets' ? (
-                <BtnOutline
-                  onClick={() => setShowAllSourceMarkets((value) => !value)}
-                  className="text-xs px-4 py-1.5 rounded-sm font-hanken"
-                >
-                  {showAllSourceMarkets ? 'Show top 10' : `View all (${sourceMarkets.length})`}
-                </BtnOutline>
-              ) : null
-            }
-            className="h-full rounded-sm flex flex-col"
-          >
+        {/* Scrollable stacked sections — paired charts side by side */}
+        <div className="space-y-6">
+          {SECTION_ROWS.map((row, rowIndex) => (
             <div
-              className={`border border-outline-variant rounded-sm bg-surface ${
-                activeTab === 'source-markets'
-                  ? 'h-[390px] shrink-0'
-                  : 'flex-1 min-h-[256px]'
-              }`}
+              key={rowIndex}
+              className={`grid grid-cols-1 gap-6 ${row.length > 1 ? 'lg:grid-cols-2' : ''}`}
             >
-              {activeTab === 'arrivals' && (
-                <LineChart
-                  data={visibleArrivalTrend.map((record) => ({
-                    year: record.year,
-                    tourism: record.total_arrivals,
-                  }))}
-                  xKey="year"
-                  series={[{ key: 'tourism', color: '#7a5100', label: 'Arrivals' }]}
-                  height="100%"
-                />
-              )}
-
-              {activeTab === 'source-markets' && (
-                <BarChart
-                  data={visibleSourceMarkets.map((market, index) => ({
-                    name: market.nationality,
-                    arrivals: market.arrivals,
-                    color: SOURCE_MARKET_COLORS[index % SOURCE_MARKET_COLORS.length],
-                  }))}
-                  labelKey="name"
-                  valueKey="arrivals"
-                  tooltipFormatter={formatCountryName}
-                  height="100%"
-                  bordered={false}
-                />
-              )}
-
-              {activeTab === 'revenue' && (
-                <LineChart
-                  data={visibleRevenueTrend.map((record) => ({
-                    year: record.fiscal_year,
-                    revenue: record.value,
-                  }))}
-                  xKey="year"
-                  series={[{ key: 'revenue', color: '#b70011', label: 'Revenue (US$ millions)' }]}
-                  height="100%"
-                />
-              )}
-
-              {activeTab === 'stay' && (
-                <LineChart
-                  data={visibleAvgStay.map((record) => ({
-                    year: record.year,
-                    stay: record.value,
-                  }))}
-                  xKey="year"
-                  series={[{ key: 'stay', color: '#0f7a3d', label: 'Avg. stay (days)' }]}
-                  height="100%"
-                />
-              )}
-
-              {activeTab === 'purpose' && (
-                <BarChart
-                  data={visiblePurpose.map((record, index) => ({
-                    name: record.category,
-                    arrivals: record.value,
-                    color: SOURCE_MARKET_COLORS[index % SOURCE_MARKET_COLORS.length],
-                  }))}
-                  labelKey="name"
-                  valueKey="arrivals"
-                  height="100%"
-                  bordered={false}
-                />
-              )}
-
-              {activeTab === 'trekking' && (
-                <BarChart
-                  data={visibleTrekking.map((record, index) => ({
-                    name: record.region,
-                    trekkers: record.trekkers,
-                    color: SOURCE_MARKET_COLORS[index % SOURCE_MARKET_COLORS.length],
-                  }))}
-                  labelKey="name"
-                  valueKey="trekkers"
-                  height="100%"
-                  bordered={false}
-                />
-              )}
-            </div>
-          </SectionCard>
-
-          {/* Top Source Markets */}
-          <SectionCard
-            title="Top Source Markets"
-            subtitle={
-              sourceMarketYear
-                ? `Annual arrivals by nationality (${sourceMarketYear})`
-                : 'Annual arrivals by nationality'
-            }
-            className="h-full rounded-sm flex flex-col"
-          >
-            <div className="h-[390px] min-h-0 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
-              <div className="space-y-3">
-                {sourceMarketItems.map((item, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between p-3 bg-surface-lowest rounded-sm border border-outline-variant hover:border-tertiary transition-colors"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-lg leading-none" aria-hidden="true">
-                          {getCountryFlag(item.label)}
-                        </span>
-                        <span className="text-sm font-bold text-onSurface font-hanken truncate">
-                          {item.label}
-                        </span>
-                        <Tag
-                          label={item.province || 'Province'}
-                          color={item.color}
-                          bg={`${item.color}1A`}
-                          className="text-[10px] px-2 py-0.5 rounded-sm font-hanken whitespace-nowrap"
-                        />
-                      </div>
-                      <div className="flex items-center gap-3 mt-1">
-                        <span className="text-lg font-bold text-onSurface font-hanken">
-                          {item.arrivals}
-                        </span>
-                        <span
-                          className="text-xs font-semibold font-hanken"
-                          style={{ color: item.trendUp ? '#0f7a3d' : '#b70011' }}
-                        >
-                          {item.trend}
-                        </span>
-                      </div>
-                      <div className="mt-1.5">
-                        <ProgressBar value={item.pct} color={item.color} total={100} />
-                      </div>
-                    </div>
-                    <div className="ml-3 flex-shrink-0">
-                      <Icon name="chevron_right" size={20} color="#916f6b" />
-                    </div>
+              {row.map((id) => {
+                const meta = TABS.find((tab) => tab.id === id);
+                return (
+                  <div key={id} id={`tourism-${id}`} className="scroll-mt-20">
+                    <SectionCard
+                      title={meta.label}
+                      subtitle={sectionSubtitle(id)}
+                      action={sectionAction(id)}
+                      className="rounded-sm"
+                    >
+                      {renderSectionContent(id)}
+                    </SectionCard>
                   </div>
-                ))}
-              </div>
+                );
+              })}
             </div>
-          </SectionCard>
+          ))}
         </div>
 
         <DataFooter
@@ -595,7 +867,7 @@ export default function Tourism() {
             fiscalYear: reportFiscalYear,
             selectedProvince: '',
             indicators:
-              'Tourist Arrivals Trend, Top Source Markets, Revenue Trend, Average Length of Stay, Purpose of Visit, Trekking Areas',
+              'Tourist Arrivals Trend, Top Source Markets, Revenue Trend, Average Length of Stay, Purpose of Visit, Trekking Areas, Arrivals by Sex, Arrivals by Age Group, Tourism by Province',
             periodRange: [
               arrivalRange === 'all' ? 'All arrival years' : `${arrivalRange} arrival years`,
               showAllSourceMarkets ? 'All source markets' : 'Top 10 source markets',
@@ -603,6 +875,10 @@ export default function Tourism() {
               stayRange === 'all' ? 'All stay years' : `${stayRange} stay years`,
               selectedPurposeYear ? `Purpose year ${selectedPurposeYear}` : '',
               selectedTrekkingYear ? `Trekking year ${selectedTrekkingYear}` : '',
+              selectedSexYear ? `Sex year ${selectedSexYear}` : '',
+              selectedAgeYear ? `Age group year ${selectedAgeYear}` : '',
+              provinceLatestYear ? `Province year ${provinceLatestYear}` : '',
+              activeProvince ? `Province ${activeProvince}` : '',
             ]
               .filter(Boolean)
               .join(' | '),

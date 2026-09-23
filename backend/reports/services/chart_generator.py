@@ -337,13 +337,24 @@ def _fmt_compact(value):
     return f"{value:,.0f}"
 
 
+def _decimate_indices(n, max_labels=12):
+    if n <= max_labels:
+        return list(range(n))
+    indices = {round(i * (n - 1) / (max_labels - 1)) for i in range(max_labels)}
+    indices.add(0)
+    indices.add(n - 1)
+    return sorted(indices)
+
+
 def _line_chart(ax, x, values, color, label_fmt="{value:,.1f}"):
     ax.plot(x, values, color=color, marker="o", linewidth=2.4, markersize=6, zorder=3)
     ax.fill_between(x, values, min(0, min(values)) if values else 0, color=color, alpha=0.10, zorder=1)
-    for i, value in enumerate(values):
+    n = len(values)
+    dense = n > 12
+    for i in _decimate_indices(n, 12):
         ax.annotate(
-            label_fmt.format(value=value), (x[i], value), textcoords="offset points",
-            xytext=(0, 9), ha="center", fontsize=8.5, color=TEXT, zorder=4,
+            label_fmt.format(value=values[i]), (x[i], values[i]), textcoords="offset points",
+            xytext=(0, 9), ha="center", fontsize=7.5 if dense else 8.5, color=TEXT, zorder=4,
         )
 
 
@@ -558,7 +569,8 @@ def tourism_revenue_chart(dataset):
 
     fig, ax = plt.subplots(figsize=(6.8, 3.4))
     _line_chart(ax, x, values, "#5a3f00", "{value:,.0f}")
-    ax.set_xticks(x, labels, rotation=28, ha="right", fontsize=8)
+    tick_indices = _decimate_indices(len(values), 9)
+    ax.set_xticks([x[i] for i in tick_indices], [labels[i] for i in tick_indices], rotation=28, ha="right", fontsize=8)
     ax.set_xlabel("Fiscal year")
     ax.set_ylabel("Revenue (US$ million)", fontsize=9)
     _style_axes(ax)
@@ -569,17 +581,17 @@ def tourism_revenue_chart(dataset):
 
 def tourism_stay_chart(dataset):
     stay = dataset.get("avg_stay_trend") or []
-    if not stay:
+    pairs = [(str(p["year"]), p.get("value")) for p in stay if p.get("value") is not None]
+    if not pairs:
         return None
-    years = [str(p["year"]) for p in stay]
-    values = [p.get("value") for p in stay]
-    if not any(v is not None for v in values):
-        return None
+    years = [year for year, _ in pairs]
+    values = [value for _, value in pairs]
     x = list(range(len(values)))
 
     fig, ax = plt.subplots(figsize=(6.8, 3.4))
     _line_chart(ax, x, values, ACCENT, "{value:,.1f}")
-    ax.set_xticks(x, years, fontsize=8.5)
+    tick_indices = _decimate_indices(len(values), 10)
+    ax.set_xticks([x[i] for i in tick_indices], [years[i] for i in tick_indices], fontsize=8)
     ax.set_xlabel("Year")
     ax.set_ylabel("Average length of stay (days)", fontsize=9)
     _style_axes(ax)
@@ -631,6 +643,82 @@ def tourism_trekking_chart(dataset):
     bars = ax.barh(names, values, color="#0f7a3d", alpha=0.92, height=0.62)
     _label_bars(ax, bars, "{value:,.0f}")
     ax.set_xlabel(f"Trekkers ({year})" if year else "Trekkers", fontsize=9)
+    ax.set_xlim(0, max(values) * 1.18)
+    _style_axes(ax, grid_axis="y")
+    ax.grid(axis="y", visible=False)
+    fig.tight_layout()
+    return _clean_bytes(fig)
+
+
+def tourism_sex_chart(dataset):
+    rows = [
+        roster for roster in dataset.get("sex_trend") or []
+        if (roster.get("statistic_type") or "").strip().lower() == "number"
+        and roster.get("value")
+    ]
+    year = dataset.get("latest_sex_year")
+    if year is not None:
+        rows = [roster for roster in rows if roster.get("year") == year]
+    rows = sorted(rows, key=lambda roster: roster.get("value") or 0)
+    names = [roster["gender"] for roster in rows]
+    values = [roster.get("value") or 0 for roster in rows]
+    if not names:
+        return None
+
+    colors_list = ["#0051d5" if "female" in str(n).lower() else "#b70011" for n in names]
+    fig, ax = plt.subplots(figsize=(6.8, 2.6))
+    bars = ax.barh(names, values, color=colors_list, alpha=0.92, height=0.5)
+    _label_bars(ax, bars, "{value:,.0f}")
+    ax.set_xlabel(f"Arrivals ({year})" if year else "Arrivals", fontsize=9)
+    ax.set_xlim(0, max(values) * 1.18)
+    _style_axes(ax, grid_axis="y")
+    ax.grid(axis="y", visible=False)
+    fig.tight_layout()
+    return _clean_bytes(fig)
+
+
+def tourism_age_chart(dataset):
+    rows = [
+        roster for roster in dataset.get("age_trend") or []
+        if roster.get("value")
+    ]
+    year = dataset.get("latest_age_year")
+    if year is not None:
+        rows = [roster for roster in rows if roster.get("year") == year]
+    rows = sorted(rows, key=lambda roster: roster.get("value") or 0)
+    names = [roster["age_group"] for roster in rows]
+    values = [roster.get("value") or 0 for roster in rows]
+    if not names:
+        return None
+
+    fig, ax = plt.subplots(figsize=(6.8, 4.0))
+    bars = ax.barh(names, values, color="#6a1b9a", alpha=0.92, height=0.62)
+    _label_bars(ax, bars, "{value:,.0f}")
+    ax.set_xlabel(f"Arrivals ({year})" if year else "Arrivals", fontsize=9)
+    ax.set_xlim(0, max(values) * 1.18)
+    _style_axes(ax, grid_axis="y")
+    ax.grid(axis="y", visible=False)
+    fig.tight_layout()
+    return _clean_bytes(fig)
+
+
+def tourism_province_chart(dataset):
+    province_tourism = dataset.get("province_tourism") or {}
+    rows = [
+        item for item in province_tourism.get("latest") or []
+        if item.get("visitors")
+    ]
+    if not rows:
+        return None
+    rows = sorted(rows, key=lambda item: item.get("visitors") or 0)
+    names = [item["province"] for item in rows]
+    values = [item.get("visitors") or 0 for item in rows]
+    year = province_tourism.get("latest_year")
+
+    fig, ax = plt.subplots(figsize=(6.8, 4.0))
+    bars = ax.barh(names, values, color=ACCENT, alpha=0.92, height=0.62)
+    _label_bars(ax, bars, "{value:,.0f}")
+    ax.set_xlabel(f"Official visits ({year})" if year else "Official visits", fontsize=9)
     ax.set_xlim(0, max(values) * 1.18)
     _style_axes(ax, grid_axis="y")
     ax.grid(axis="y", visible=False)
@@ -737,6 +825,163 @@ def economic_province_gdp_chart(dataset):
     return _clean_bytes(fig)
 
 
+def economic_economies_chart(dataset):
+    rows = (dataset.get("economies_growth") or [])[-15:]
+    if not rows:
+        return None
+    years = [str(row["year"]).replace("Real_", "") for row in rows]
+    contexts = sorted({key for row in rows for key in row if key != "year"})
+    palette = [PRIMARY, SUCCESS, ACCENT, "#e6a700", "#7c4dff", "#009688", "#d81b60", "#455a64"]
+    colors = dict(zip(contexts, palette))
+
+    fig, ax = plt.subplots(figsize=(6.8, 3.8))
+    _style_axes(ax, grid_axis="y")
+    tick_indices = _decimate_indices(len(years), 8)
+    for context in contexts:
+        values = [row.get(context) for row in rows]
+        ax.plot(list(range(len(values))), values, color=colors[context], linewidth=2, markersize=4, marker="o", label=context, zorder=3)
+    ax.set_xticks([x for x in tick_indices], [years[i] for i in tick_indices], fontsize=7.5)
+    ax.legend(fontsize=7, frameon=False, loc="upper left", ncol=2)
+    ax.set_ylabel("Real growth (%)", fontsize=9)
+    fig.tight_layout()
+    return _clean_bytes(fig)
+
+
+def economic_overall_chart(dataset):
+    rows = (dataset.get("overall_growth") or [])[-8:]
+    if not rows:
+        return None
+    labels = [row["fiscal_year"] for row in rows]
+    categories = [
+        ("agriculture", "Agriculture", SUCCESS),
+        ("nonagriculture", "Non-agriculture", PRIMARY),
+        ("industry", "Industry", ACCENT),
+        ("service", "Service", "#e6a700"),
+    ]
+    x = list(range(len(labels)))
+    n = len(categories)
+
+    fig, ax = plt.subplots(figsize=(6.8, 3.6))
+    width = 0.72 / n
+    for offset, (key, label, color) in enumerate(categories):
+        values = [row.get(key) for row in rows]
+        ax.bar([i + (offset - n / 2) * width for i in x], values, width, color=color, alpha=0.92, label=label)
+    ax.axhline(0, color="#c9c1bf", linewidth=0.8, zorder=1)
+    ax.set_xticks(x, labels, rotation=28, ha="right", fontsize=8)
+    ax.legend(fontsize=8, frameon=False, loc="upper left")
+    _style_axes(ax, grid_axis="y")
+    ax.set_ylabel("Growth (%)", fontsize=9)
+    fig.tight_layout()
+    return _clean_bytes(fig)
+
+
+def economic_partners_chart(dataset, direction):
+    key = "exports_by_partner" if direction == "exports" else "imports_by_partner"
+    rows = (dataset.get(key) or [])[-6:]
+    if not rows:
+        return None
+    labels = [row["fiscal_year"] for row in rows]
+    partners = [
+        ("India", "India", PRIMARY),
+        ("China", "China", ACCENT),
+        ("Other Countries", "Other countries", SUCCESS),
+    ]
+    x = list(range(len(labels)))
+    n = len(partners)
+
+    fig, ax = plt.subplots(figsize=(6.8, 3.6))
+    width = 0.72 / n
+    for offset, (key, label, color) in enumerate(partners):
+        values = [row.get(key) for row in rows]
+        ax.bar([i + (offset - n / 2) * width for i in x], values, width, color=color, alpha=0.92, label=label)
+    ax.axhline(0, color="#c9c1bf", linewidth=0.8, zorder=1)
+    ax.set_xticks(x, labels, rotation=28, ha="right", fontsize=8)
+    ax.legend(fontsize=8, frameon=False, loc="upper left")
+    _style_axes(ax, grid_axis="y")
+    ax.set_ylabel(f"{direction.capitalize()} (units as recorded)", fontsize=9)
+    fig.tight_layout()
+    return _clean_bytes(fig)
+
+
+def economic_balance_chart(dataset):
+    rows = (dataset.get("trade_balance") or [])[-10:]
+    if not rows:
+        return None
+    labels = [row["fiscal_year"] for row in rows]
+    values = [row["value"] for row in rows]
+    x = list(range(len(values)))
+
+    fig, ax = plt.subplots(figsize=(6.8, 3.4))
+    ax.axhline(0, color="#bdb5b3", linewidth=1, zorder=1)
+    _line_chart(ax, x, values, SUCCESS, "{value:,.0f}")
+    ax.set_xticks(x, labels, rotation=28, ha="right", fontsize=8)
+    ax.set_ylabel("Trade balance (units as recorded)", fontsize=9)
+    _style_axes(ax)
+    ax.xaxis.grid(False)
+    fig.tight_layout()
+    return _clean_bytes(fig)
+
+
+def economic_salary_chart(dataset):
+    rows = dataset.get("salary_index") or []
+    groups = ["Overall Index", "Wage Rate Index", "Government Service", "Education", "Bank & Financial Institutions"]
+    palette = [PRIMARY, ACCENT, SUCCESS, "#e6a700", "#7c4dff"]
+    series = []
+    for group, color in zip(groups, palette):
+        points = [row for row in rows if row.get("group") == group]
+        if points:
+            series.append((group, points, color))
+    if not series:
+        return None
+    years = sorted({row["year"] for row in rows})
+    x = list(range(len(years)))
+
+    fig, ax = plt.subplots(figsize=(6.8, 3.8))
+    _style_axes(ax, grid_axis="y")
+    for group, points, color in series:
+        values = [
+            next((row["value"] for row in points if row["year"] == year), None)
+            for year in years
+        ]
+        ax.plot(x, values, color=color, linewidth=2, markersize=4, marker="o", label=group, zorder=3)
+    ax.set_xticks([x[i] for i in _decimate_indices(len(years), 9)], [years[i] for i in _decimate_indices(len(years), 9)], rotation=28, ha="right", fontsize=7.5)
+    ax.legend(fontsize=7.5, frameon=False, loc="upper left", ncol=2)
+    ax.set_ylabel("Index", fontsize=9)
+    fig.tight_layout()
+    return _clean_bytes(fig)
+
+
+def economic_appi_chart(dataset):
+    rows = dataset.get("appi") or []
+    if not rows:
+        return None
+    by_year = {}
+    for row in rows:
+        by_year.setdefault(row["base_year"], []).append(row)
+    candidates = sorted(
+        (year for year, items in by_year.items() if any(i.get("quarter") == "ANN" for i in items)),
+        key=lambda year: int(_NUM_RE.search(str(year)).group(0)) if _NUM_RE.search(str(year)) else 0,
+    )
+    selected_rows = by_year[candidates[-1]] if candidates else rows[-len(rows):]
+    annual = [row for row in selected_rows if row.get("quarter") == "ANN"]
+    chart_rows = annual if annual else selected_rows
+    ordered = sorted(chart_rows, key=lambda row: row["value"])[::-1]
+    names = [row["product"] for row in ordered]
+    values = [row["value"] for row in ordered]
+    base_year = ordered[0]["base_year"] if ordered else ""
+    quarter = ordered[0]["quarter"] if ordered else ""
+
+    fig, ax = plt.subplots(figsize=(6.8, 5.6))
+    bars = ax.barh(names, values, color=PRIMARY, alpha=0.92, height=0.62)
+    _label_bars(ax, bars, "{value:,.1f}")
+    ax.set_xlabel(f"Producer price index — {base_year} ({quarter})" if base_year else "Producer price index", fontsize=9)
+    ax.set_xlim(0, max(values) * 1.18)
+    _style_axes(ax, grid_axis="y")
+    ax.grid(axis="y", visible=False)
+    fig.tight_layout()
+    return _clean_bytes(fig)
+
+
 def build_tourism(dataset):
     """PNG bytes for every chart used by the tourism report."""
     return {
@@ -746,6 +991,9 @@ def build_tourism(dataset):
         "tourism_stay": tourism_stay_chart(dataset),
         "tourism_purpose": tourism_purpose_chart(dataset),
         "tourism_trekking": tourism_trekking_chart(dataset),
+        "tourism_sex": tourism_sex_chart(dataset),
+        "tourism_age": tourism_age_chart(dataset),
+        "tourism_province": tourism_province_chart(dataset),
     }
 
 
@@ -756,4 +1004,11 @@ def build_economic(dataset):
         "economic_trade": economic_trade_chart(dataset),
         "economic_sectoral": economic_sectoral_chart(dataset),
         "economic_province_gdp": economic_province_gdp_chart(dataset),
+        "economic_economies": economic_economies_chart(dataset),
+        "economic_overall": economic_overall_chart(dataset),
+        "economic_export_partners": economic_partners_chart(dataset, "exports"),
+        "economic_import_partners": economic_partners_chart(dataset, "imports"),
+        "economic_balance": economic_balance_chart(dataset),
+        "economic_salary": economic_salary_chart(dataset),
+        "economic_appi": economic_appi_chart(dataset),
     }

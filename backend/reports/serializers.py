@@ -30,5 +30,7 @@ class DashboardStateSerializer(serializers.Serializer):
     include_all_source_markets = serializers.BooleanField(required=False, default=False)
     purpose_year = serializers.CharField(required=False, allow_blank=True, allow_null=True, default="")
     trekking_year = serializers.CharField(required=False, allow_blank=True, allow_null=True, default="")
+    sex_year = serializers.CharField(required=False, allow_blank=True, allow_null=True, default="")
+    age_year = serializers.CharField(required=False, allow_blank=True, allow_null=True, default="")
     range = serializers.CharField(required=False, allow_blank=True, allow_null=True, default="")
     year = serializers.CharField(required=False, allow_blank=True, allow_null=True, default="")

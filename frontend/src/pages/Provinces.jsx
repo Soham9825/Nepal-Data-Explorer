@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { SectionCard } from '../components/ui/Card';
 import { Icon } from '../components/ui/Icon';
@@ -44,14 +44,20 @@ const FactRow = ({ icon, label, value, color = '#0051d5' }) => (
 );
 
 const DestinationCarousel = ({ destinations = [], shape }) => {
-  const slides = destinations.filter((d) => d.image_url);
-  const count = slides.length;
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
+  const [failed, setFailed] = useState([]);
+  const [remountKey, setRemountKey] = useState(0);
+  const attemptsRef = useRef({});
+
+  const slides = destinations.filter(
+    (d) => d.image_url && !failed.includes(d.image_url)
+  );
+  const count = slides.length;
 
   useEffect(() => {
     setIndex(0);
-  }, [destinations.length, shape?.id]);
+  }, [destinations.length, shape?.id, failed.length]);
 
   useEffect(() => {
     if (count < 2 || paused) return undefined;
@@ -59,7 +65,23 @@ const DestinationCarousel = ({ destinations = [], shape }) => {
     return () => clearInterval(timer);
   }, [count, paused]);
 
-  const current = slides[index] || destinations[0] || null;
+  // Wikimedia's Special:FilePath endpoint is occasionally throttled (503) and
+  // answers fine on a retry, so try each image twice before giving up. Failed
+  // slides are dropped and the carousel falls back to the placeholder instead
+  // of ever showing a broken image.
+  const markImageFailed = (d) => {
+    const url = d.image_url;
+    const attempts = (attemptsRef.current[url] || 0) + 1;
+    attemptsRef.current[url] = attempts;
+    if (attempts >= 2) {
+      setFailed((prev) => (prev.includes(url) ? prev : [...prev, url]));
+    } else {
+      setRemountKey((key) => key + 1);
+    }
+  };
+
+  const safeIndex = count ? index % count : 0;
+  const current = slides[safeIndex] || destinations[0] || null;
 
   return (
     <SectionCard
@@ -70,7 +92,7 @@ const DestinationCarousel = ({ destinations = [], shape }) => {
       action={
         <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1.5 text-xs font-bold text-primary">
           <Icon name="photo_library" size={14} color="#b70011" />
-          {count ? `${index + 1} / ${count}` : 'No photos'}
+          {count ? `${safeIndex + 1} / ${count}` : 'No photos'}
         </span>
       }
     >
@@ -79,34 +101,35 @@ const DestinationCarousel = ({ destinations = [], shape }) => {
         onMouseEnter={() => setPaused(true)}
         onMouseLeave={() => setPaused(false)}
       >
-        {count === 0 ? (
-          <div
-            className="flex h-full w-full flex-col items-center justify-center gap-2 text-center"
-            style={{
-              background: `linear-gradient(135deg, ${shape?.fill || '#b70011'}26, ${shape?.fill || '#b70011'}59)`,
-            }}
-          >
-            <Icon name="photo_camera" size={44} color={shape?.fill || '#b70011'} />
-            <span className="px-4 text-sm font-semibold text-onSurface">
-              {destinations[0]?.name || 'No destination photos yet'}
-            </span>
-          </div>
-        ) : (
-          <div
-            className="flex h-full w-full"
-            style={{ transform: `translateX(-${index * 100}%)`, transition: 'transform 500ms ease-in-out' }}
-          >
-            {slides.map((d) => (
-              <img
-                key={d.image_url}
-                src={d.image_url}
-                alt={d.name}
-                loading="lazy"
-                className="h-full w-full shrink-0 object-cover"
-              />
-            ))}
-          </div>
-        )}
+{count === 0 ? (
+            <div
+              className="flex h-full w-full flex-col items-center justify-center gap-2 text-center"
+              style={{
+                background: `linear-gradient(135deg, ${shape?.fill || '#b70011'}26, ${shape?.fill || '#b70011'}59)`,
+              }}
+            >
+              <Icon name="photo_camera" size={44} color={shape?.fill || '#b70011'} />
+              <span className="px-4 text-sm font-semibold text-onSurface">
+                {destinations[0]?.name || 'No destination photos yet'}
+              </span>
+            </div>
+          ) : (
+            <div
+              className="flex h-full w-full"
+              style={{ transform: `translateX(-${safeIndex * 100}%)`, transition: 'transform 500ms ease-in-out' }}
+            >
+              {slides.map((d) => (
+                <img
+                  key={`${d.image_url}-${remountKey}`}
+                  src={d.image_url}
+                  alt={d.name}
+                  loading="lazy"
+                  onError={() => markImageFailed(d)}
+                  className="h-full w-full shrink-0 object-cover"
+                />
+              ))}
+            </div>
+          )}
 
         <span className="absolute bottom-2 right-2 z-10 rounded-sm bg-black/45 px-1.5 py-0.5 text-[10px] font-medium text-white/90 backdrop-blur-sm">
           Photo: Wikimedia Commons
@@ -316,6 +339,29 @@ export default function Provinces() {
 
   return (
     <div className="space-y-6">
+        {/* Province nav */}
+        <nav className="sticky top-0 z-20 -mx-1 border-b border-outline-variant bg-white/95 backdrop-blur">
+          <div className="flex items-stretch overflow-x-auto">
+            {PROVINCE_ORDER.map((name) => (
+              <button
+                key={name}
+                type="button"
+                onClick={() => {
+                  const shape = PROVINCE_PATHS.find((p) => p.name === name);
+                  if (shape) handleSelect(shape.id);
+                }}
+                className={`whitespace-nowrap px-6 py-3 text-sm font-medium font-hanken transition-colors duration-200 border-b-2 ${
+                  name === selectedName
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-onSurface-variant hover:text-onSurface'
+                }`}
+              >
+                {name}
+              </button>
+            ))}
+          </div>
+        </nav>
+
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -325,30 +371,6 @@ export default function Provinces() {
             <p className="mt-1 max-w-3xl text-sm text-onSurface-variant font-hanken">
               A look at the province’s signature destinations, economy, tourism and population.
             </p>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <span className="mr-1 text-xs font-bold uppercase tracking-wide text-onSurface-variant">
-                Explore:
-              </span>
-              {PROVINCE_ORDER.map((name) => {
-                const shape = PROVINCE_PATHS.find((p) => p.name === name);
-                const isActive = name === selectedName;
-                return (
-                  <button
-                    key={name}
-                    type="button"
-                    onClick={() => shape && handleSelect(shape.id)}
-                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
-                      isActive
-                        ? 'border-primary bg-primary text-white shadow-sm'
-                        : 'border-outline-variant bg-surface text-onSurface hover:bg-surface-container-highest'
-                    }`}
-                  >
-                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: shape?.fill || '#b70011' }} />
-                    {name}
-                  </button>
-                );
-              })}
-            </div>
           </div>
           <span className="inline-flex items-center gap-1.5 rounded-sm border border-outline-variant bg-surface px-3 py-1.5 text-sm font-bold text-onSurface">
             <Icon name="map" size={16} color="#b70011" />
@@ -474,6 +496,13 @@ export default function Provinces() {
                   </>
                 )}
               </div>
+              {destinationShare.items.length === 1 && (
+                <p className="mt-1 px-1 text-xs text-onSurface-variant">
+                  {selectedName} has a single recorded official destination (
+                  {destinationShare.items[0].destination}), so it accounts for 100% of this
+                  year's visitors.
+                </p>
+              )}
             </SectionCard>
           </section>
         )}

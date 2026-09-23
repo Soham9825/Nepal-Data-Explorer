@@ -200,25 +200,42 @@ export default function LineChart({
     } else {
       // Evenly spread labels across the whole axis including both endpoints.
       // The category axis is ordinal, so points sit at equal x positions and
-      // the readout is cleanest when every point is labeled (all 8 fiscal years
-      // fit comfortably here). We estimate label width from the longest label so
-      // dense series fall back to a smooth, uniform sub-sampling.
+      // the readout is cleanest when every point is labeled when it fits. We
+      // estimate label width from the longest label to cap the count, and
+      // enforce a minimum index gap of 2 when sub-sampling so rounded tick
+      // positions never land two labels on neighbouring points (which collided
+      // on dense series such as the salary index).
       const maxLabelLength = Math.max(
         ...data.map((item) => String(item[labelKey]).length),
         1
       );
       const plotWidthPx = plotWidth || 760;
-      const labelPx = maxLabelLength * 6.2 + 3; // ~45px for "2018/19" at 12px semibold
+      const labelPx = maxLabelLength * 7.1 + 6; // ~56px for "2012/13" at 12px semibold
       const spanPx = plotWidthPx * (1 - (2 * PADDING_X) / VB_WIDTH);
       const maxLabels = Math.max(
         3,
         Math.min(10, Math.floor(spanPx / labelPx) + 1)
       );
-      const count = Math.min(maxLabels, data.length);
-      for (let i = 0; i < count; i++) {
-        const index = Math.round((i * (data.length - 1)) / Math.max(count - 1, 1));
-        if (!labelTicks.some((tick) => tick.index === index)) {
-          labelTicks.push({ index, label: String(data[index][labelKey]) });
+      if (data.length <= maxLabels) {
+        for (let i = 0; i < data.length; i++) {
+          labelTicks.push({ index: i, label: String(data[i][labelKey]) });
+        }
+      } else {
+        const lastIndex = data.length - 1;
+        let previous = 0;
+        labelTicks.push({ index: 0, label: String(data[0][labelKey]) });
+        for (let i = 1; i <= maxLabels - 1; i++) {
+          const index = Math.round((i * lastIndex) / (maxLabels - 1));
+          if (index - previous >= 2) {
+            labelTicks.push({ index, label: String(data[index][labelKey]) });
+            previous = index;
+          }
+        }
+        if (labelTicks[labelTicks.length - 1].index !== lastIndex) {
+          labelTicks[labelTicks.length - 1] = {
+            index: lastIndex,
+            label: String(data[lastIndex][labelKey]),
+          };
         }
       }
       if (!labelTicks.length) labelTicks.push({ index: 0, label: String(data[0][labelKey]) });
@@ -510,10 +527,14 @@ export default function LineChart({
             });
           })}
 
-          {/* Areas + lines (faint series first so bold ones sit on top) */}
+          {/* Areas + lines (faint series first so bold ones sit on top). Area
+              fills are only drawn for single-series charts: stacked fills on
+              multi-line charts turn the plot muddy and hide the other lines. */}
           {[...chart.seriesData.filter((s) => s.faint), ...chart.seriesData.filter((s) => !s.faint)].map((s) => (
             <g key={s.key}>
-              {s.area && !s.faint && fillArea && <path d={s.area} fill={`url(#fill-${s.key})`} />}
+              {s.area && !s.faint && fillArea && chart.seriesData.length === 1 && (
+                <path d={s.area} fill={`url(#fill-${s.key})`} />
+              )}
               <path
                 d={s.path}
                 fill="none"

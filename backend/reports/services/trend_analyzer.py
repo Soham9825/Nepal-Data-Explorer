@@ -197,6 +197,52 @@ def analyze_tourism(dataset):
             f"{_fmt_int(busiest.get('trekkers'))}."
         )
 
+    sex = dataset.get("sex_trend") or []
+    if sex:
+        sex_year = dataset.get("latest_sex_year")
+        number_rows = [row for row in sex if (row.get("statistic_type") or "").strip().lower() == "number"]
+        year_rows = [row for row in number_rows if row.get("year") == sex_year] or number_rows
+        female = next((row for row in year_rows if "female" in str(row.get("gender")).lower()), None)
+        male = next((row for row in year_rows if "male" in str(row.get("gender")).lower()), None)
+        if female is not None and male is not None:
+            female_count = female.get("value") or 0
+            male_count = male.get("value") or 0
+            total_sex = female_count + male_count
+            share_label = f"a {_pct(female_count / total_sex * 100) if total_sex else 0}% female share"
+            if female_count > male_count:
+                group_note = "making female visitors the larger group"
+            elif male_count > female_count:
+                group_note = "making male visitors the larger group"
+            else:
+                group_note = "with male and female arrivals equal"
+            observations.append(
+                f"For {sex_year}, arrivals by sex were {_fmt_int(female_count)} female and "
+                f"{_fmt_int(male_count)} male ({share_label}), {group_note}."
+            )
+
+    age = dataset.get("age_trend") or []
+    if age:
+        age_year = dataset.get("latest_age_year")
+        year_rows = [row for row in age if row.get("year") == age_year] or age
+        ranked = sorted(year_rows, key=lambda row: row.get("value") or 0, reverse=True)
+        if ranked:
+            top_age = ranked[0]
+            observations.append(
+                f"In {age_year}, the largest arrival age group was {top_age.get('age_group')} at "
+                f"{_fmt_int(top_age.get('value'))} visitors."
+            )
+
+    province_tourism = dataset.get("province_tourism") or {}
+    latest_provinces = province_tourism.get("latest") or []
+    if latest_provinces:
+        ranked_provinces = sorted(latest_provinces, key=lambda item: item.get("visitors") or 0, reverse=True)
+        top_province = ranked_provinces[0]
+        observations.append(
+            f"For {province_tourism.get('latest_year')}, provincial official visits were led by "
+            f"<b>{top_province.get('province')}</b> with {_fmt_int(top_province.get('visitors'))} "
+            f"visitors ({_pct(top_province.get('share'))}% of the national total)."
+        )
+
     if not observations:
         return ["No tourism data observations could be derived from the current dataset."]
     return observations
@@ -275,6 +321,76 @@ def analyze_economic(dataset):
                 f"{_pct(weakest[1])}% in {weakest[0]} ({_pct(sum(v for _, v in total) / len(total))}% "
                 f"unweighted average across the {len(total)} provinces)."
             )
+
+    economies = dataset.get("economies_growth") or []
+    if economies:
+        latest = economies[-1]
+        pairs = [(context, value) for context, value in latest.items() if context != "year" and value is not None]
+        if len(pairs) >= 2:
+            strongest = max(pairs, key=lambda pair: pair[1])
+            weakest = min(pairs, key=lambda pair: pair[1])
+            observations.append(
+                f"In {str(latest['year']).replace('Real_', '')}, real growth across the tracked "
+                f"economies ranged from {_pct(strongest[1])}% ({strongest[0]}) to "
+                f"{_pct(weakest[1])}% ({weakest[0]})."
+            )
+
+    exports_partner = dataset.get("exports_by_partner") or []
+    imports_partner = dataset.get("imports_by_partner") or []
+    if exports_partner and imports_partner:
+        last_exports = exports_partner[-1]
+        last_imports = imports_partner[-1]
+        export_pairs = [
+            (partner, last_exports.get(partner))
+            for partner in ("India", "China", "Other Countries")
+            if last_exports.get(partner) is not None
+        ]
+        import_pairs = [
+            (partner, last_imports.get(partner))
+            for partner in ("India", "China", "Other Countries")
+            if last_imports.get(partner) is not None
+        ]
+        if export_pairs and import_pairs:
+            top_export = max(export_pairs, key=lambda pair: pair[1])
+            top_import = max(import_pairs, key=lambda pair: pair[1])
+            observations.append(
+                f"For fiscal year {last_exports['fiscal_year']}, the largest partner flow by value "
+                f"was {_fmt_int(top_import[1])} of imports from {top_import[0]}, while exports "
+                f"were led by {top_export[0]} at {_fmt_int(top_export[1])}."
+            )
+
+    overall = dataset.get("overall_growth") or []
+    if overall:
+        item = overall[-1]
+        components = [
+            (label, item.get(key))
+            for key, label in (
+                ("agriculture", "agriculture"),
+                ("nonagriculture", "non-agriculture"),
+                ("industry", "industry"),
+                ("service", "services"),
+            )
+            if item.get(key) is not None
+        ]
+        if components:
+            details = ", ".join(f"{label} {_pct(value)}%" for label, value in components)
+            observations.append(
+                f"Economy-wide growth for fiscal year {item['fiscal_year']} recorded: {details}."
+            )
+
+    salary = dataset.get("salary_index") or []
+    overall_salary = sorted(
+        (row for row in salary if row.get("group") == "Overall Index"),
+        key=lambda row: row["year"],
+    )
+    if len(overall_salary) >= 2:
+        first, last = overall_salary[0], overall_salary[-1]
+        delta = last["value"] - first["value"]
+        direction = "rose" if delta > 0 else ("fell" if delta < 0 else "was unchanged at")
+        observations.append(
+            f"The overall salary index {direction} from {_pct(first['value'])} in {first['year']} "
+            f"to {_pct(last['value'])} in {last['year']}, a net change of {_pct(abs(delta))} points."
+        )
 
     if not observations:
         return ["No economic data observations could be derived from the current dataset."]

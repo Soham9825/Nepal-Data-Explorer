@@ -115,7 +115,7 @@ OFFICIAL_DESTINATION_MAP = {
 	},
 	"Pashupatinath": {
 		"name": "Pashupatinath Temple",
-		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Pashupatinath.jpg?width=1280",
+		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Shree%20Pashupatinath%20Temple%200.jpg?width=1280",
 	},
 	"ShivapuriNagarjun  National Park": {
 		"name": "Shivapuri Nagarjun National Park",
@@ -131,15 +131,15 @@ OFFICIAL_DESTINATION_MAP = {
 	},
 	"Gorkha T.Valley": {
 		"name": "Gorkha Tsum Valley",
-		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Manaslu%20range.jpg?width=1280",
+		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/TsumValleyGorkha.jpg?width=1280",
 	},
 	"Manaslu": {
 		"name": "Manaslu Region",
-		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Manaslu%20range.jpg?width=1280",
+		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Mt%20Manaslu.jpg?width=1280",
 	},
 	"Manaslu Conservation Area": {
 		"name": "Manaslu Conservation Area",
-		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Manaslu%20range.jpg?width=1280",
+		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Manaslu%2C%20from%20base%20camp%20trip.jpg?width=1280",
 	},
 	"Mustang": {
 		"name": "Mustang (Upper Mustang)",
@@ -155,11 +155,11 @@ OFFICIAL_DESTINATION_MAP = {
 	},
 	"Lower Dolpa": {
 		"name": "Lower Dolpa",
-		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Shey-Phoksundo%20Lake%20in%20Dolpa.jpg?width=1280",
+		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Dolpa%2C%20Dunai%20Buddha%20Stupa%20(Nepal).jpg?width=1280",
 	},
 	"Upper Dolpa": {
 		"name": "Upper Dolpa",
-		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Shey-Phoksundo%20Lake%20in%20Dolpa.jpg?width=1280",
+		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/The%20road%20to%20Upper%20Dolpa%20near%20Chharka%20Bhot.%20-%20panoramio.jpg?width=1280",
 	},
 	"Rara National Park": {
 		"name": "Rara National Park",
@@ -175,7 +175,7 @@ OFFICIAL_DESTINATION_MAP = {
 	},
 	"Kanchanjunga Conservation Area": {
 		"name": "Kanchenjunga Conservation Area",
-		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Kangchenjunga.jpg?width=1280",
+		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Mountain%20seen%20from%20Kanchenjunga%20Conservation%20Area.jpg?width=1280",
 	},
 	"KoshiTappu Wildlife Reserve": {
 		"name": "Koshi Tappu Wildlife Reserve",
@@ -568,10 +568,71 @@ def dashboard_overview(request):
 	)
 
 
+def _province_tourism_block():
+	"""Province-level tourism roll-ups from `ProvinceTourismVisit`.
+
+	Mirrors the structure consumed by `report_data.build_tourism_dataset` so the
+	report and the dashboard agree.
+	"""
+	rows = list(ProvinceTourismVisit.objects.order_by("province", "year", "destination"))
+	provinces = PROVINCE_GDP_ORDER
+	years = sorted({row.year for row in rows})
+	latest_year = years[-1] if years else None
+
+	by_year_totals = {}
+	for row in rows:
+		key = (row.province, row.year)
+		by_year_totals[key] = by_year_totals.get(key, 0) + (row.visitor_count or 0)
+	by_province_totals = {}
+	for row in rows:
+		key = (row.province, row.year)
+		by_province_totals.setdefault(row.province, {})
+		by_province_totals[row.province].setdefault(row.year, []).append(row)
+
+	latest = []
+	if latest_year:
+		for province in provinces:
+			visitors = by_year_totals.get((province, latest_year), 0)
+			dest_rows = sorted(
+				by_province_totals.get(province, {}).get(latest_year, []),
+				key=lambda row: (row.visitor_count or 0),
+				reverse=True,
+			)
+			dest_total = sum(row.visitor_count or 0 for row in dest_rows)
+			latest.append(
+				{
+					"province": province,
+					"visitors": visitors,
+					"destinations": [
+						{
+							"name": row.destination,
+							"visitors": row.visitor_count or 0,
+							"share": round((row.visitor_count or 0) / dest_total * 100, 1) if dest_total else 0,
+						}
+						for row in dest_rows
+					],
+				}
+			)
+		national_total = sum(item["visitors"] for item in latest)
+		for item in latest:
+			item["share"] = round(item["visitors"] / national_total * 100, 1) if national_total else 0
+
+	return {
+		"years": years,
+		"latest_year": latest_year,
+		"by_year": [
+			{"province": province, "year": year, "visitors": by_year_totals.get((province, year), 0)}
+			for province in provinces
+			for year in years
+		],
+		"latest": latest,
+	}
+
+
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def tourism_dashboard(request):
-	cached_tourism = cache.get("analytics-tourism-dashboard-v4")
+	cached_tourism = cache.get("analytics-tourism-dashboard-v6")
 	if cached_tourism is not None:
 		return Response(cached_tourism)
 
@@ -647,9 +708,28 @@ def tourism_dashboard(request):
 				}
 				for item in TrekkerByRegion.objects.order_by("year", "region")
 			],
+			"sex_trend": [
+				{
+					"year": item.year,
+					"gender": item.gender,
+					"value": item.value,
+					"statistic_type": item.statistic_type,
+				}
+				for item in TouristArrivalBySex.objects.order_by("year", "gender", "statistic_type")
+			],
+			"age_trend": [
+				{
+					"year": item.year,
+					"age_group": item.age_group,
+					"value": item.value,
+					"total": item.total,
+				}
+				for item in TouristArrivalByAgeGroup.objects.order_by("year", "age_group")
+			],
+			"province_tourism": _province_tourism_block(),
 			"popular_destinations": [],
 	}
-	cache.set("analytics-tourism-dashboard-v4", payload, timeout=60)
+	cache.set("analytics-tourism-dashboard-v6", payload, timeout=60)
 	return Response(payload)
 
 
@@ -678,6 +758,89 @@ def economic_dashboard(request):
 				item.period_label,
 				{"year": item.period_label, "value": _decimal(item.value), "published_year": item.published_year},
 			)
+
+		# Global economies: real growth per period, latest published value per
+		# context, pivoted so each row holds one value per economy.
+		_economy_years = {}
+		for item in GlobalEconomicSeries.objects.filter(series_type="real").exclude(context="World Output").order_by("period_label", "-published_year"):
+			_ey = _economy_years.setdefault(item.period_label, {"year": item.period_label})
+			_ey.setdefault(item.context, _decimal(item.value))
+		economies_growth = sorted(
+			_economy_years.values(),
+			key=lambda row: int(str(row["year"]).replace("Real_", "")),
+		)
+
+		# Overall economy: the sector = 'Overall' rows break growth into
+		# agriculture / non-agriculture / industry / service components.
+		_overall = {}
+		for item in SectoralGrowth.objects.filter(sector="Overall").order_by("fiscal_year"):
+			_ov = _overall.setdefault(item.fiscal_year, {"fiscal_year": item.fiscal_year})
+			subgroup = item.subgroup or ""
+			if item.group == "Agriculture sector":
+				_ov["agriculture"] = _decimal(item.value)
+			elif subgroup == "Industry sector":
+				_ov["industry"] = _decimal(item.value)
+			elif subgroup == "Service sector":
+				_ov["service"] = _decimal(item.value)
+			elif item.group == "Non agriculture sector":
+				_ov["nonagriculture"] = _decimal(item.value)
+		overall_growth = sorted(_overall.values(), key=lambda row: _fiscal_year_sort_key(row["fiscal_year"]))
+
+		# Trade: total flow, partner breakdown and balance per fiscal year.
+		trade_details = [
+			{
+				"fiscal_year": item.fiscal_year,
+				"group": item.group,
+				"subgroup": item.subgroup,
+				"value": _decimal(item.value),
+			}
+			for item in ForeignTradeStatistic.objects.order_by("fiscal_year", "group", "subgroup")
+		]
+		_partner_label = {
+			"To India": "India", "To China": "China", "To Other Countries": "Other Countries",
+			"From India": "India", "From China": "China", "From Other Countries": "Other Countries",
+		}
+		exports_by_partner = {}
+		imports_by_partner = {}
+		trade_balance = {}
+		for row in trade_details:
+			year = row["fiscal_year"]
+			partner = _partner_label.get(row["subgroup"])
+			if row["group"] in ("Export", "Import") and partner:
+				bucket = exports_by_partner if row["group"] == "Export" else imports_by_partner
+				entry = bucket.setdefault(
+					year,
+					{"fiscal_year": year, "India": None, "China": None, "Other Countries": None},
+				)
+				entry[partner] = row["value"]
+			elif row["group"] == "Trade Balance" and row["subgroup"] == "TOTAL TRADE BALANCE":
+				trade_balance[year] = {"fiscal_year": year, "value": row["value"]}
+		exports_by_partner = sorted(exports_by_partner.values(), key=lambda row: _fiscal_year_sort_key(row["fiscal_year"]))
+		imports_by_partner = sorted(imports_by_partner.values(), key=lambda row: _fiscal_year_sort_key(row["fiscal_year"]))
+		trade_balance = sorted(trade_balance.values(), key=lambda row: _fiscal_year_sort_key(row["fiscal_year"]))
+
+		# Salary index: one value per fiscal year and group (the most aggregate
+		# row, index_name '0', is kept when several rows share a year + group).
+		_salary = {}
+		for item in SalaryIndex.objects.order_by("year", "index_name", "group"):
+			key = (item.year, item.group)
+			if key in _salary:
+				continue
+			_salary[key] = {"year": item.year, "group": item.group, "value": _decimal(item.value)}
+		salary_index = sorted(_salary.values(), key=lambda row: (row["year"], row["group"]))
+
+		appi_rows = [
+			{
+				"product": item.product_name,
+				"base_year": item.base_year,
+				"quarter": item.quarter,
+				"value": _decimal(item.price_index),
+				"weight": _decimal(item.weight),
+				"unit": item.unit,
+			}
+			for item in AgricultureProducerPriceIndex.objects.exclude(price_index=None).order_by("base_year", "quarter", "product_name")
+		]
+
 		return Response(
 			{
 				"global_growth": list(global_growth.values()),
@@ -692,6 +855,13 @@ def economic_dashboard(request):
 					{"year": item.fiscal_year, "sector": item.sector, "value": _decimal(item.value)}
 					for item in SectoralGrowth.objects.exclude(sector="Overall").order_by("fiscal_year", "sector")
 				],
+				"economies_growth": economies_growth,
+				"overall_growth": overall_growth,
+				"exports_by_partner": exports_by_partner,
+				"imports_by_partner": imports_by_partner,
+				"trade_balance": trade_balance,
+				"salary_index": salary_index,
+				"appi": appi_rows,
 			}
 		)
 	resp = dashboard_overview.__wrapped__(request._request)

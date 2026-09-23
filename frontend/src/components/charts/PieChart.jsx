@@ -8,7 +8,10 @@ export default function PieChart({ data }) {
       <svg className="w-full h-full" viewBox="0 0 100 100">
         {data.map((item, index) => {
           const percentage = (item.value / total) * 100;
-          const angle = (percentage / 100) * 360;
+          // Clamp each slice to just under 360°: an SVG arc whose start and
+          // end points coincide is dropped entirely (degenerate), so a 100%
+          // single slice would draw as a broken sliver instead of a circle.
+          const angle = Math.min((percentage / 100) * 360, 359.999);
           const startAngle = currentAngle;
           const endAngle = startAngle + angle;
           currentAngle = endAngle;
