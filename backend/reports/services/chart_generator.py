@@ -297,7 +297,7 @@ def _style_axes(ax, grid_axis="y", legend_font=8):
 def _label_bars(ax, bars, template="{value:,.1f}", pad=5, textsize=8.5):
     for bar in bars:
         width = bar.get_width()
-        if width is None:
+        if width is None or not _finite_value(width):
             continue
         ax.annotate(
             template.format(value=width),
@@ -312,7 +312,7 @@ def _label_bars(ax, bars, template="{value:,.1f}", pad=5, textsize=8.5):
 def _label_vertical_bars(ax, bars, template="{value:,.1f}", pad=3, textsize=8.5):
     for bar in bars:
         height = bar.get_height()
-        if height is None:
+        if height is None or not _finite_value(height):
             continue
         ax.annotate(
             template.format(value=height),
@@ -322,6 +322,20 @@ def _label_vertical_bars(ax, bars, template="{value:,.1f}", pad=3, textsize=8.5)
             va="bottom", ha="center",
             fontsize=textsize, color=TEXT,
         )
+
+
+def _finite_value(value):
+    """True for values matplotlib can place (None / NaN / inf short-circuits)."""
+    try:
+        check = float(value)
+    except (TypeError, ValueError):
+        return False
+    return not (math.isnan(check) or math.isinf(check))
+
+
+def _draw_value(value):
+    """Return a value matplotlib can draw, turning missing entries into NaN gaps."""
+    return value if _finite_value(value) else float("nan")
 
 
 _bar_style = _style_axes
@@ -347,13 +361,29 @@ def _decimate_indices(n, max_labels=12):
 
 
 def _line_chart(ax, x, values, color, label_fmt="{value:,.1f}"):
-    ax.plot(x, values, color=color, marker="o", linewidth=2.4, markersize=6, zorder=3)
-    ax.fill_between(x, values, min(0, min(values)) if values else 0, color=color, alpha=0.10, zorder=1)
+    # Missing records (None / NaN / inf) are drawn as gaps: matplotlib skips
+    # non-finite points when plotting, and we only ever label finite values,
+    # so a missing year can never crash the chart.
+    def _finite(v):
+        try:
+            return not math.isnan(float(v)) and not math.isinf(float(v))
+        except (TypeError, ValueError):
+            return False
+
+    xs = list(x)
+    ys = [float(v) if _finite(v) else float("nan") for v in values]
+    ax.plot(xs, ys, color=color, marker="o", linewidth=2.4, markersize=6, zorder=3)
+    finite = [v for v in ys if not math.isnan(v)]
+    baseline = min(0, min(finite)) if finite else 0
+    ax.fill_between(xs, ys, baseline, color=color, alpha=0.10, zorder=1)
     n = len(values)
     dense = n > 12
     for i in _decimate_indices(n, 12):
+        value = ys[i]
+        if math.isnan(value) or math.isinf(value):
+            continue
         ax.annotate(
-            label_fmt.format(value=values[i]), (x[i], values[i]), textcoords="offset points",
+            label_fmt.format(value=value), (xs[i], ys[i]), textcoords="offset points",
             xytext=(0, 9), ha="center", fontsize=7.5 if dense else 8.5, color=TEXT, zorder=4,
         )
 
@@ -752,8 +782,8 @@ def economic_trade_chart(dataset):
     if not pairs:
         return None
     labels = [p["fiscal_year"] for p in pairs]
-    exports = [p.get("exports") for p in pairs]
-    imports = [p.get("imports") for p in pairs]
+    exports = [_draw_value(p.get("exports")) for p in pairs]
+    imports = [_draw_value(p.get("imports")) for p in pairs]
     x = list(range(len(labels)))
     width = 0.36
 
@@ -864,7 +894,7 @@ def economic_overall_chart(dataset):
     fig, ax = plt.subplots(figsize=(6.8, 3.6))
     width = 0.72 / n
     for offset, (key, label, color) in enumerate(categories):
-        values = [row.get(key) for row in rows]
+        values = [_draw_value(row.get(key)) for row in rows]
         ax.bar([i + (offset - n / 2) * width for i in x], values, width, color=color, alpha=0.92, label=label)
     ax.axhline(0, color="#c9c1bf", linewidth=0.8, zorder=1)
     ax.set_xticks(x, labels, rotation=28, ha="right", fontsize=8)
@@ -892,7 +922,7 @@ def economic_partners_chart(dataset, direction):
     fig, ax = plt.subplots(figsize=(6.8, 3.6))
     width = 0.72 / n
     for offset, (key, label, color) in enumerate(partners):
-        values = [row.get(key) for row in rows]
+        values = [_draw_value(row.get(key)) for row in rows]
         ax.bar([i + (offset - n / 2) * width for i in x], values, width, color=color, alpha=0.92, label=label)
     ax.axhline(0, color="#c9c1bf", linewidth=0.8, zorder=1)
     ax.set_xticks(x, labels, rotation=28, ha="right", fontsize=8)

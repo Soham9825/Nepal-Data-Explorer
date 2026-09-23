@@ -1,20 +1,32 @@
-import React from 'react';
 import CSVPreviewTable from './CSVPreviewTable';
 import CSVColumnTypes from './CSVColumnTypes';
+import CSVMissingStrategy from './CSVMissingStrategy';
 import { BtnOutline, BtnPrimary } from '../ui/Button';
 import { Icon } from '../ui/Icon';
 
 export default function CSVValidateStep({
-  fileName, headers, rows, totalRowCount, isSampled, warning,
-  columns, overrides, onOverride, onBack, onNext,
+  fileName, headers, rows, totalRowCount, isSampled, warning, error,
+  columns, overrides, missingStrategies, onOverride, onStrategy,
+  onBack, onNext, nextLoading,
 }) {
   return (
     <div className="space-y-6">
+      {error && (
+        <p className="flex items-center gap-2 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700" role="alert">
+          <Icon name="error" size={17} />
+          {error}
+        </p>
+      )}
       <CSVColumnTypes
         columns={columns}
         overrides={overrides}
         onOverride={onOverride}
         warning={warning}
+      />
+      <CSVMissingStrategy
+        columns={columns}
+        strategies={missingStrategies}
+        onStrategy={onStrategy}
       />
       <CSVPreviewTable
         fileName={fileName}
@@ -29,9 +41,9 @@ export default function CSVValidateStep({
           <Icon name="arrow_back" size={16} />
           Change file
         </BtnOutline>
-        <BtnPrimary onClick={onNext}>
-          Looks good — Build chart
-          <Icon name="arrow_forward" size={16} />
+        <BtnPrimary onClick={onNext} disabled={nextLoading}>
+          {nextLoading ? 'Preparing data…' : 'Looks good — Build chart'}
+          {!nextLoading && <Icon name="arrow_forward" size={16} />}
         </BtnPrimary>
       </div>
     </div>

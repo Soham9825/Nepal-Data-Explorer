@@ -74,3 +74,94 @@ class CSVValidationTests(TestCase):
 		self.client.logout()
 		response = self.upload('year,value\n2024,10\n')
 		self.assertIn(response.status_code, (401, 403))
+
+
+class CSVPreprocessTests(TestCase):
+	def setUp(self):
+		self.client = APIClient()
+		user = CustomUser.objects.create_user(
+			username='csvprep', email='prep.user@gmail.com', password='test-password'
+		)
+		self.client.force_authenticate(user=user)
+
+	def prepare(self, content, **post):
+		data = {'file': SimpleUploadedFile('dataset.csv', content.encode(), content_type='text/csv')}
+		for name, value in post.items():
+			data[name] = value
+		return self.client.post(
+			reverse('datasets:prepare_uploaded_csv'),
+			data,
+			format='multipart',
+		)
+
+	def test_typed_rows_with_missing_values(self):
+		response = self.prepare('year,province,value\n2024,Koshi,"1,000"\n2025,Koshi,\n2026,Lumbini,"$2.5M"\n')
+		self.assertEqual(response.status_code, 200)
+		payload = response.json()
+		self.assertTrue(payload['valid'])
+		self.assertEqual([row['value'] for row in payload['rows']], [1000.0, None, 2500000.0])
+		self.assertEqual(payload['columns'][2]['missing'], 1)
+		self.assertEqual(payload['types']['value'], 'numeric')
+		self.assertEqual(payload['types']['province'], 'categorical')
+
+	def test_percentage_and_negative_parentheses_are_cleaned(self):
+		response = self.prepare('name,growth\nA,12.5%\nB,(3)\nC,n/a\n')
+		payload = response.json()
+		self.assertEqual([row['growth'] for row in payload['rows']], [12.5, -3.0, None])
+
+	def test_forward_fill_transform(self):
+		content = 'year,value\n2020,10\n2021,\n2022,\n2023,40\n'
+		response = self.prepare(content, transforms='{"value": "forward"}')
+		payload = response.json()
+		self.assertEqual([row['value'] for row in payload['rows']], [10.0, 10.0, 10.0, 40.0])
+		self.assertEqual(payload['cleaning']['transforms']['value']['filled'], 2)
+
+	def test_mean_and_drop_transforms(self):
+		content = 'year,value\n2020,10\n2021,\n2022,30\n'
+		payload = self.prepare(content, transforms='{"value": "mean"}').json()
+		self.assertEqual([row['value'] for row in payload['rows']], [10.0, 20.0, 30.0])
+		payload = self.prepare(content, transforms='{"value": "drop"}').json()
+		self.assertEqual([row['value'] for row in payload['rows']], [10.0, 30.0])
+		self.assertEqual(payload['cleaning']['transforms']['value']['rows_dropped'], 1)
+
+	def test_all_empty_rows_are_dropped_and_reported(self):
+		response = self.prepare('a,b\n1,x\n,\n2,y\n')
+		payload = response.json()
+		self.assertEqual(len(payload['rows']), 2)
+		self.assertEqual(payload['cleaning']['rows_kept'], 2)
+		self.assertEqual(payload['cleaning']['rows_dropped_all_missing'], 1)
+		self.assertIn('all-empty', payload['warnings'][-1])
+		self.assertEqual(payload['row_count'], 2)
+
+	def test_typed_parser_drops_all_missing_rows(self):
+		from .csv_preprocess import parse_typed_rows
+		headers = ['a', 'b']
+		rows, errors, dropped = parse_typed_rows(headers, [
+			{'a': '1', 'b': 'x'},
+			{'a': '', 'b': 'n/a'},
+			{'a': '2', 'b': 'y'},
+		], {'a': 'numeric', 'b': 'categorical'})
+		self.assertEqual(len(rows), 2)
+		self.assertEqual(dropped, 1)
+
+	def test_type_override_relabels_numeric_text(self):
+		response = self.prepare('code,label\nA01,First\nB02,\n', types='{"code": "text"}')
+		payload = response.json()
+		self.assertEqual(payload['types']['code'], 'text')
+		self.assertEqual(payload['columns'][0]['type'], 'text')
+
+	def test_boolean_column_typing(self):
+		response = self.prepare('name,active\nA,yes\nB,false\nC,\n')
+		payload = response.json()
+		self.assertEqual(payload['types']['active'], 'boolean')
+		self.assertEqual([row['active'] for row in payload['rows']], [True, False, None])
+
+	def test_invalid_transform_is_rejected(self):
+		response = self.prepare('a,b\n1,2\n', transforms='{bad json')
+		self.assertEqual(response.status_code, 400)
+		self.assertFalse(response.json()['valid'])
+
+	def test_prepare_requires_authentication(self):
+		self.client.logout()
+		response = self.prepare('year,value\n2024,10\n')
+		self.assertIn(response.status_code, (401, 403))

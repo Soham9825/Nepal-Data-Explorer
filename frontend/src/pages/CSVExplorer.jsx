@@ -1,14 +1,11 @@
 import { useRef, useState } from 'react';
-import CSVUploadCard, { validateCSVOnServer } from '../components/csv/CSVUploadCard';
+import CSVUploadCard, { prepareCSV } from '../components/csv/CSVUploadCard';
 import CSVValidateStep from '../components/csv/CSVValidateStep';
 import CSVChartEngine from '../components/csv/CSVChartEngine';
 import { SectionCard } from '../components/ui/Card';
 import { BtnPrimary } from '../components/ui/Button';
 import { Icon } from '../components/ui/Icon';
-import { validateCSV } from '../components/csv/CSVUploadCard';
-import {
-  profileDataset, recommendVisualization,
-} from '../components/csv/chartData';
+import { recommendVisualization } from '../components/csv/chartData';
 
 const EMPTY_DATASET = {
   fileName: '',
@@ -20,6 +17,22 @@ const EMPTY_DATASET = {
   profile: null,
   warning: null,
   error: null,
+};
+
+const profileFromColumns = (columns, rowCount) => {
+  const numericColumns = columns.filter((column) => column.type === 'numeric').map((column) => column.name);
+  const dateColumns = columns.filter((column) => column.type === 'date').map((column) => column.name);
+  const dimensionColumns = columns
+    .filter((column) => ['date', 'categorical', 'text', 'boolean'].includes(column.type))
+    .map((column) => column.name);
+  return {
+    rowCount,
+    columnCount: columns.length,
+    columns,
+    numericColumns,
+    dateColumns,
+    dimensionColumns,
+  };
 };
 
 const STEPS = [
@@ -56,16 +69,21 @@ function Stepper({ current }) {
 
 export default function CSVExplorer() {
   const inputRef = useRef(null);
+  const fileRef = useRef(null);
   const [step, setStep] = useState('upload');
   const [dataset, setDataset] = useState(EMPTY_DATASET);
   const [typeOverrides, setTypeOverrides] = useState({});
+  const [missingStrategies, setMissingStrategies] = useState({});
   const [applied, setApplied] = useState(null);
+  const [nextLoading, setNextLoading] = useState(false);
 
   const resetToUpload = () => {
     setStep('upload');
     setDataset(EMPTY_DATASET);
     setTypeOverrides({});
+    setMissingStrategies({});
     setApplied(null);
+    fileRef.current = null;
   };
 
   const parseFile = async (file) => {
@@ -73,43 +91,22 @@ export default function CSVExplorer() {
 
     setDataset({ ...EMPTY_DATASET, fileName: file.name, loading: true });
     setTypeOverrides({});
+    setMissingStrategies({});
     setApplied(null);
+    fileRef.current = file;
 
     try {
-      const serverValidation = await validateCSVOnServer(file);
-      const result = await validateCSV(file);
-
-      if (!result.valid) {
-        setDataset({
-          ...EMPTY_DATASET,
-          fileName: file.name,
-          error: result.message,
-        });
-        return;
-      }
-
-      const headers = (result.meta.fields || []).map((header) => String(header).trim()).filter(Boolean);
-      const rows = result.data.filter((row) => row && Object.values(row).some((value) => String(value ?? '').trim() !== ''));
-
-      if (!headers.length || !rows.length) {
-        setDataset({
-          ...EMPTY_DATASET,
-          fileName: file.name,
-          error: 'The CSV contains column headers but no data rows.',
-        });
-        return;
-      }
-
-      const profile = profileDataset(headers, rows);
+      const result = await prepareCSV(file);
+      const profile = profileFromColumns(result.columns, result.row_count);
       setDataset({
         fileName: file.name,
-        headers,
-        rows,
-        totalRowCount: rows.length,
-        isSampled: false,
+        headers: result.headers,
+        rows: result.rows,
+        totalRowCount: result.total_row_count,
+        isSampled: result.is_sampled,
         loading: false,
         profile,
-          warning: [...(result.warning ? [result.warning] : []), ...(serverValidation.warnings || [])].join(' ') || null,
+        warning: result.warnings?.length ? result.warnings.join(' ') : null,
       });
       setStep('validate');
     } catch (err) {
@@ -117,7 +114,7 @@ export default function CSVExplorer() {
       setDataset({
         ...EMPTY_DATASET,
         fileName: file.name,
-        error: detail || 'Unable to read this file. Please choose a valid CSV file.',
+        error: detail || 'Unable to prepare this file. Please choose a valid CSV.',
       });
     }
   };
@@ -136,12 +133,40 @@ export default function CSVExplorer() {
     });
   };
 
-  const buildChart = () => {
-    if (!dataset.profile) return;
-    const profile = profileDataset(dataset.headers, dataset.rows, typeOverrides);
-    const recommendation = recommendVisualization(profile);
-    setApplied({ profile, recommendation, key: `${dataset.fileName}:${JSON.stringify(typeOverrides)}` });
-    setStep('visualize');
+  const handleStrategy = (name, strategy) => {
+    setMissingStrategies((current) => {
+      const next = { ...current };
+      if (strategy && strategy !== 'none') next[name] = strategy;
+      else delete next[name];
+      return next;
+    });
+  };
+
+  const buildChart = async () => {
+    if (!dataset.profile || !dataset.fileName) return;
+    const activeStrategies = Object.fromEntries(
+      Object.entries(missingStrategies).filter(([, strategy]) => strategy && strategy !== 'none'),
+    );
+    setNextLoading(true);
+    try {
+      const result = await prepareCSV(fileRef.current, {
+        types: typeOverrides,
+        transforms: activeStrategies,
+      });
+      const profile = profileFromColumns(result.columns, result.row_count);
+      setApplied({
+        rows: result.rows,
+        profile,
+        recommendation: recommendVisualization(profile),
+        key: `${dataset.fileName}:${JSON.stringify(typeOverrides)}:${JSON.stringify(activeStrategies)}`,
+      });
+      setStep('visualize');
+    } catch (err) {
+      const detail = err?.message && !/fetch|network|failed to fetch/i.test(err.message) ? err.message : null;
+      setDataset((current) => ({ ...current, error: detail || 'The data could not be prepared.' }));
+    } finally {
+      setNextLoading(false);
+    }
   };
 
   const { loading } = dataset;
@@ -175,11 +200,15 @@ export default function CSVExplorer() {
             totalRowCount={dataset.totalRowCount}
             isSampled={dataset.isSampled}
             warning={dataset.warning}
+            error={dataset.error}
             columns={dataset.profile.columns}
             overrides={typeOverrides}
+            missingStrategies={missingStrategies}
             onOverride={handleOverride}
+            onStrategy={handleStrategy}
             onBack={resetToUpload}
             onNext={buildChart}
+            nextLoading={nextLoading}
           />
         )}
 
@@ -197,7 +226,7 @@ export default function CSVExplorer() {
               key={applied.key}
               fileName={dataset.fileName}
               headers={dataset.headers}
-              rows={dataset.rows}
+              rows={applied.rows}
               profile={applied.profile}
               recommendation={applied.recommendation}
             />

@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import Papa from 'papaparse';
 import { SectionCard } from '../ui/Card';
 import { BtnOutline } from '../ui/Button';
@@ -7,7 +7,6 @@ import auth from '../../services/auth';
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024;
 const MAX_COLUMNS = 5000;
-const VALID_CSV_EXTENSIONS = ['.csv', '.tsv'];
 const BINARY_SIGNATURES = [
   [0x89, 0x50, 0x4E, 0x47], // PNG
   [0xFF, 0xD8, 0xFF],       // JPEG
@@ -190,6 +189,34 @@ export async function validateCSVOnServer(file) {
   const result = contentType.includes('application/json') ? await response.json() : {};
   if (!response.ok || !result.valid) {
     throw new Error(result.detail || 'The server could not validate this CSV.');
+  }
+  return result;
+}
+
+/**
+ * Ask the backend to clean, type and (optionally) fill/drop missing values.
+ * Returns typed rows (missing values are null) plus a cleaning report, so the
+ * visualisation always has renderable data even when the file has gaps.
+ */
+export async function prepareCSV(file, options = {}) {
+  const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  const formData = new FormData();
+  formData.append('file', file);
+  if (options.types && Object.keys(options.types).length) {
+    formData.append('types', JSON.stringify(options.types));
+  }
+  if (options.transforms && Object.keys(options.transforms).length) {
+    formData.append('transforms', JSON.stringify(options.transforms));
+  }
+  const response = await fetch(`${apiBaseUrl}/api/datasets/files/prepare-upload/`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: auth.authenticatedHeaders(),
+    body: formData,
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || !result.valid) {
+    throw new Error(result.detail || 'The server could not prepare this CSV.');
   }
   return result;
 }

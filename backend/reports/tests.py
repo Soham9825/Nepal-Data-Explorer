@@ -380,3 +380,72 @@ class ReportEndpointTests(TestCase):
             format="json",
         )
         self.assertEqual(response.status_code, 200)
+
+
+class MissingRecordResilienceTests(TestCase):
+    """A few missing records must never take down charts, CSV or the PDF."""
+
+    def setUp(self):
+        seed_models()
+        self.client = APIClient()
+
+    def _drop_records(self):
+        """Simulate sparse database data by deleting 1-2 records per dataset."""
+        TouristArrivalByYear.objects.filter(year=2022).delete()
+        TourismStatistic.objects.filter(year=2022).delete()
+        SalaryIndex.objects.filter(year="2021/22").delete()
+        GlobalEconomicSeries.objects.filter(context="India", published_year=2022).delete()
+        SectoralGrowth.objects.filter(fiscal_year="2022/23", sector="Agriculture").delete()
+        ProvinceTourismVisit.objects.filter(province="Bagmati").delete()
+
+    def test_missing_records_still_build_charts_csv_and_pdf(self):
+        from .services import chart_generator, report_generator
+
+        self._drop_records()
+
+        tourism = report_data.build_tourism_dataset({})
+        self.assertEqual(len(tourism["arrival_trend"]), 1)
+        self.assertEqual(len(tourism["avg_stay_trend"]), 1)
+        koshi = next(
+            row for row in tourism["province_tourism"]["latest"]
+            if row["province"] == "Koshi"
+        )
+        self.assertEqual(koshi["visitors"], 150)
+
+        economic = report_data.build_economic_dataset({})
+        self.assertFalse(any(row["year"] == "2021/22" for row in economic["salary_index"]))
+        self.assertTrue(economic["sectoral_growth"])
+
+        for chart_key, image in chart_generator.build_tourism(tourism).items():
+            self.assertTrue(image, chart_key)
+        for chart_key, image in chart_generator.build_economic(economic).items():
+            if chart_key in ("sectoral_growth", "economies_growth", "trade_by_year",
+                             "overall_growth", "trade_balance", "salary_index"):
+                self.assertTrue(image, chart_key)
+
+        assert report_data.build_economic_csv_rows({})
+        assert report_data.build_tourism_csv_rows({})
+
+        for report in ("economic-dashboard", "tourism-dashboard"):
+            response = self.client.post(f"/api/reports/{report}/", {}, format="json")
+            self.assertEqual(response.status_code, 200, report)
+            self.assertIn("application/pdf", response["Content-Type"])
+
+    def test_none_values_inside_kept_rows_cannot_crash_charts(self):
+        from .services import chart_generator
+
+        tourism = report_data.build_tourism_dataset({})
+        tourism["avg_stay_trend"][0]["value"] = None
+        tourism["purpose_trend"][0]["value"] = None
+
+        economic = report_data.build_economic_dataset({})
+        economic["overall_growth"][0]["agriculture"] = None
+        economic["trade_balance"][0]["value"] = None
+        economic["salary_index"][0]["value"] = None
+        economic["appi"][0]["price_index"] = None
+
+        for chart_key, image in chart_generator.build_tourism(tourism).items():
+            self.assertTrue(image, chart_key)
+        for chart_key, image in chart_generator.build_economic(economic).items():
+            if chart_key in ("overall_growth", "trade_balance", "salary_index"):
+                self.assertTrue(image, chart_key)

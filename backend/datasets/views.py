@@ -1,4 +1,5 @@
 import csv
+import json
 import logging
 from pathlib import Path
 
@@ -9,6 +10,16 @@ from rest_framework.permissions import IsAuthenticated
 from django.conf import settings
 
 from .csv_validation import CSVValidationError, validate_csv
+from .csv_preprocess import (
+	VALID_STRATEGIES,
+	VALID_TYPES,
+	apply_strategies,
+	build_cleaning_report,
+	build_columns,
+	infer_column_type,
+	parse_raw_rows,
+	parse_typed_rows,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -121,6 +132,127 @@ def validate_uploaded_csv(request):
 			status=400,
 		)
 	return JsonResponse(result)
+
+
+def _json_field(post, name, default):
+	raw = post.get(name)
+	if not raw:
+		return dict(default)
+	try:
+		payload = json.loads(raw)
+	except (TypeError, ValueError):
+		raise CSVValidationError(f"The '{name}' option is not valid JSON.")
+	if not isinstance(payload, dict):
+		raise CSVValidationError(f"The '{name}' option must be a JSON object.")
+	return payload
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])
+def prepare_uploaded_csv(request):
+	"""Validate, clean, type and optionally transform an uploaded CSV.
+
+	Returns typed rows (missing values = null) suitable for direct
+	visualisation, per-column cleaning statistics and a report of any
+	missing-value strategy that was applied, so charts always have data
+	to render even when the raw file has gaps.
+	"""
+	upload = request.FILES.get("file")
+	if upload is None:
+		return JsonResponse({"detail": "A CSV file is required."}, status=400)
+	try:
+		validated = validate_csv(
+			upload,
+			max_bytes=getattr(settings, "CSV_UPLOAD_MAX_BYTES", 100 * 1024 * 1024),
+			max_rows=getattr(settings, "CSV_UPLOAD_MAX_ROWS", 250000),
+			max_columns=getattr(settings, "CSV_UPLOAD_MAX_COLUMNS", 5000),
+			max_cells=getattr(settings, "CSV_UPLOAD_MAX_CELLS", 50_000_000),
+		)
+		types = {
+			header: kind for header, kind in _json_field(request.POST, "types", {}).items()
+			if header in validated["headers"] and kind in VALID_TYPES
+		}
+		transforms = {
+			header: strategy
+			for header, strategy in _json_field(request.POST, "transforms", {}).items()
+			if header in validated["headers"] and strategy in VALID_STRATEGIES
+		}
+	except CSVValidationError as error:
+		return JsonResponse({"valid": False, "detail": error.message}, status=400)
+	except Exception:
+		logger.exception("Unexpected failure while preparing uploaded CSV")
+		return JsonResponse(
+			{"valid": False, "detail": "The file could not be processed safely. Please check the file and try again."},
+			status=400,
+		)
+
+	try:
+		upload.seek(0)
+		text = upload.read().decode("utf-8-sig")
+	except (OSError, ValueError, UnicodeDecodeError) as error:
+		return JsonResponse({"valid": False, "detail": "The CSV could not be read."}, status=400)
+
+	try:
+		headers, raw_rows = parse_raw_rows(text, validated["delimiter"])
+		inferred_types = {
+			header: infer_column_type([row.get(header) for row in raw_rows]) for header in headers
+		}
+		resolved_types = {**inferred_types, **types}
+		typed_rows, coercion_errors, dropped_empty = parse_typed_rows(headers, raw_rows, resolved_types)
+		typed_rows, transforms_report = apply_strategies(typed_rows, headers, resolved_types, transforms)
+	except Exception:
+		logger.exception("Failed to preprocess uploaded CSV")
+		return JsonResponse(
+			{"valid": False, "detail": "The file could not be cleaned or typed. Please check the file and try again."},
+			status=400,
+		)
+
+	rows_payload = typed_rows
+	is_sampled = False
+	if len(typed_rows) > 50000:
+		rows_payload = typed_rows[:50000]
+		is_sampled = True
+
+	columns = build_columns(headers, raw_rows, typed_rows, resolved_types)
+	transform_dropped = sum(
+		report.get("rows_dropped", 0) for report in transforms_report.values()
+	)
+	cleaning = build_cleaning_report(
+		typed_rows, len(raw_rows), dropped_empty, transform_dropped,
+		coercion_errors, transforms_report, headers,
+	)
+	missing_cells = sum(column["missing"] for column in columns)
+
+	warnings = list(validated["warnings"])
+	if dropped_empty:
+		warnings.append(f"{dropped_empty} all-empty row(s) were removed before visualisation.")
+	coerced = cleaning["coercion_errors"]
+	if coerced:
+		names = ", ".join(f"{header} ({count})" for header, count in list(coerced.items())[:3])
+		warnings.append(f"{sum(coerced.values())} unparseable cell(s) became missing values: {names}.")
+	for header, report in transforms_report.items():
+		filled = report.get("filled", 0)
+		dropped = report.get("rows_dropped", 0)
+		if filled:
+			warnings.append(f"{header}: filled {filled} missing value(s) with '{report['strategy']}'.")
+		if dropped:
+			warnings.append(f"{header}: removed {dropped} row(s) still missing this value.")
+
+	return JsonResponse({
+		"valid": True,
+		"headers": headers,
+		"rows": rows_payload,
+		"types": resolved_types,
+		"row_count": len(typed_rows),
+		"total_row_count": validated["row_count"],
+		"is_sampled": is_sampled,
+		"column_count": len(headers),
+		"missing_cells": missing_cells,
+		"columns": columns,
+		"cleaning": cleaning,
+		"warnings": warnings,
+	})
 
 
 def dashboard_catalog(request):
