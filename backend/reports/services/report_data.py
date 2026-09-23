@@ -24,8 +24,11 @@ from datasets.models import (
     ProvinceGDPStatistic,
     SectoralGrowth,
     TouristArrivalByNationality,
+    TouristArrivalByPurpose,
     TouristArrivalByYear,
     TourismRevenue,
+    TourismStatistic,
+    TrekkerByRegion,
 )
 
 _FALLBACK_YEAR_RE = re.compile(r"(19|20)\d{2}")
@@ -230,7 +233,9 @@ def apply_state_filters(dataset, state=None):
     reflects exactly what is selected on screen.
 
     National: ``selected_province`` narrows the provincial comparison.
-    Tourism: ``arrival_range`` / ``revenue_range`` trim the visible series.
+    Tourism: ``arrival_range`` / ``revenue_range`` / ``stay_range`` trim the
+        visible series; ``purpose_year`` / ``trekking_year`` narrow those
+        series to a single year.
     Economic: ``range`` trims the growth window; ``year`` narrows the
         sectoral/trade series to the chosen fiscal year.
     """
@@ -258,6 +263,27 @@ def apply_state_filters(dataset, state=None):
         if limited_revenue is not revenue:
             dataset["revenue"] = limited_revenue
             dataset["latest_revenue"] = limited_revenue[-1] if limited_revenue else None
+
+        stay = dataset.get("avg_stay_trend") or []
+        limited_stay = _limit_series(stay, "stay_range", state)
+        if limited_stay is not stay:
+            dataset["avg_stay_trend"] = limited_stay
+
+        purpose_year = str(state.get("purpose_year") or "").strip()
+        if purpose_year:
+            dataset["purpose_trend"] = [
+                row for row in dataset.get("purpose_trend", [])
+                if str(row.get("year")) == purpose_year
+            ]
+            dataset["latest_purpose_year"] = purpose_year
+
+        trekking_year = str(state.get("trekking_year") or "").strip()
+        if trekking_year:
+            dataset["trekking_trend"] = [
+                row for row in dataset.get("trekking_trend", [])
+                if str(row.get("year")) == trekking_year
+            ]
+            dataset["latest_trekking_year"] = trekking_year
 
     # -- Economic -------------------------------------------------------------------
     if "global_growth" in dataset:
@@ -448,6 +474,31 @@ def build_tourism_dataset(state=None):
         for item in TourismRevenue.objects.filter(metric="US$_Million").order_by("fiscal_year")
     ]
 
+    avg_stay_trend = [
+        {
+            "year": item.year,
+            "value": _float(item.value),
+            "unit": _clean(item.unit),
+        }
+        for item in TourismStatistic.objects.filter(metric="Avg_Stay").order_by("year")
+    ]
+    purpose_trend = [
+        {
+            "year": item.year,
+            "category": _clean(item.category),
+            "value": item.value,
+        }
+        for item in TouristArrivalByPurpose.objects.exclude(category__iexact="Total").order_by("year", "category")
+    ]
+    trekking_trend = [
+        {
+            "year": item.year,
+            "region": _clean(item.region),
+            "trekkers": item.trekkers,
+        }
+        for item in TrekkerByRegion.objects.order_by("year", "region")
+    ]
+
     report_year = state.get("fiscal_year") or latest_trend_year
     if report_year:
         report_year = str(report_year)
@@ -472,6 +523,11 @@ def build_tourism_dataset(state=None):
         ][:15],
         "revenue": revenue,
         "latest_revenue": revenue[-1] if revenue else None,
+        "avg_stay_trend": avg_stay_trend,
+        "purpose_trend": purpose_trend,
+        "latest_purpose_year": purpose_trend[-1]["year"] if purpose_trend else None,
+        "trekking_trend": trekking_trend,
+        "latest_trekking_year": trekking_trend[-1]["year"] if trekking_trend else None,
         "report_year": report_year or "",
     }
     return apply_state_filters(dataset, state)
@@ -686,5 +742,32 @@ def build_tourism_csv_rows(state=None):
 
     for point in dataset.get("revenue") or []:
         rows.append(_csv_row("Tourism Revenue", "Revenue", point.get("fiscal_year"), point.get("value"), "US$ million"))
+
+    for point in dataset.get("avg_stay_trend") or []:
+        rows.append(_csv_row(
+            "Average Length of Stay",
+            "Average length of stay",
+            point.get("year"),
+            point.get("value"),
+            point.get("unit") or "days",
+        ))
+
+    for row in dataset.get("purpose_trend") or []:
+        rows.append(_csv_row(
+            "Purpose of Visit",
+            f"{row.get('category')} arrivals",
+            row.get("year"),
+            row.get("value"),
+            "arrivals",
+        ))
+
+    for row in dataset.get("trekking_trend") or []:
+        rows.append(_csv_row(
+            "Trekking Areas",
+            f"{row.get('region')} trekkers",
+            row.get("year"),
+            row.get("trekkers"),
+            "trekkers",
+        ))
 
     return rows

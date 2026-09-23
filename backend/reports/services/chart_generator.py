@@ -567,6 +567,77 @@ def tourism_revenue_chart(dataset):
     return _clean_bytes(fig)
 
 
+def tourism_stay_chart(dataset):
+    stay = dataset.get("avg_stay_trend") or []
+    if not stay:
+        return None
+    years = [str(p["year"]) for p in stay]
+    values = [p.get("value") for p in stay]
+    if not any(v is not None for v in values):
+        return None
+    x = list(range(len(values)))
+
+    fig, ax = plt.subplots(figsize=(6.8, 3.4))
+    _line_chart(ax, x, values, ACCENT, "{value:,.1f}")
+    ax.set_xticks(x, years, fontsize=8.5)
+    ax.set_xlabel("Year")
+    ax.set_ylabel("Average length of stay (days)", fontsize=9)
+    _style_axes(ax)
+    ax.xaxis.grid(False)
+    fig.tight_layout()
+    return _clean_bytes(fig)
+
+
+def tourism_purpose_chart(dataset):
+    rows = [
+        roster for roster in dataset.get("purpose_trend") or []
+        if roster.get("value")
+    ]
+    year = dataset.get("latest_purpose_year")
+    if year is not None:
+        rows = [roster for roster in rows if roster.get("year") == year]
+    rows = sorted(rows, key=lambda roster: roster.get("value") or 0)
+    names = [roster["category"] for roster in rows]
+    values = [roster.get("value") or 0 for roster in rows]
+    if not names:
+        return None
+
+    fig, ax = plt.subplots(figsize=(6.8, 4.0))
+    bars = ax.barh(names, values, color="#5a3f00", alpha=0.92, height=0.62)
+    _label_bars(ax, bars, "{value:,.0f}")
+    ax.set_xlabel(f"Arrivals ({year})" if year else "Arrivals", fontsize=9)
+    ax.set_xlim(0, max(values) * 1.18)
+    _style_axes(ax, grid_axis="y")
+    ax.grid(axis="y", visible=False)
+    fig.tight_layout()
+    return _clean_bytes(fig)
+
+
+def tourism_trekking_chart(dataset):
+    rows = [
+        roster for roster in dataset.get("trekking_trend") or []
+        if roster.get("trekkers")
+    ]
+    year = dataset.get("latest_trekking_year")
+    if year is not None:
+        rows = [roster for roster in rows if roster.get("year") == year]
+    rows = sorted(rows, key=lambda roster: roster.get("trekkers") or 0)
+    names = [roster["region"] for roster in rows]
+    values = [roster.get("trekkers") or 0 for roster in rows]
+    if not names:
+        return None
+
+    fig, ax = plt.subplots(figsize=(6.8, 4.0))
+    bars = ax.barh(names, values, color="#0f7a3d", alpha=0.92, height=0.62)
+    _label_bars(ax, bars, "{value:,.0f}")
+    ax.set_xlabel(f"Trekkers ({year})" if year else "Trekkers", fontsize=9)
+    ax.set_xlim(0, max(values) * 1.18)
+    _style_axes(ax, grid_axis="y")
+    ax.grid(axis="y", visible=False)
+    fig.tight_layout()
+    return _clean_bytes(fig)
+
+
 def economic_growth_chart(dataset):
     growth = dataset.get("global_growth") or []
     window = growth[-10:]
@@ -672,6 +743,9 @@ def build_tourism(dataset):
         "tourism_arrivals": tourism_arrivals_chart(dataset),
         "tourism_source_markets": tourism_source_markets_chart(dataset),
         "tourism_revenue": tourism_revenue_chart(dataset),
+        "tourism_stay": tourism_stay_chart(dataset),
+        "tourism_purpose": tourism_purpose_chart(dataset),
+        "tourism_trekking": tourism_trekking_chart(dataset),
     }
 
 

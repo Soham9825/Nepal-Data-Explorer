@@ -672,7 +672,7 @@ def build_tourism_story(dataset, charts, trends, state):
         "title": "Tourism Dashboard Report",
         "subtitle": "Nepal Data Explorer",
         "tagline": "Comprehensive Report",
-        "descriptor": "Tourist arrivals, source markets and revenue for the tourism dashboard",
+        "descriptor": "Tourist arrivals, source markets, revenue, length of stay, purpose of visit and trekking activity for the tourism dashboard",
         "accent": ACCENT,
         "accent_dark": ACCENT_DARK,
     }
@@ -810,18 +810,118 @@ def build_tourism_story(dataset, charts, trends, state):
         revenue_style.add("ALIGN", (0, 1), (0, -1), "LEFT")
         _table(story, revenue_rows, [CONTENT_W * 0.4, CONTENT_W * 0.6], revenue_style)
 
+    # Average length of stay -----------------------------------------------------------
+    stay_trend = dataset.get("avg_stay_trend") or []
+    if stay_trend:
+        _section(story, styles, "6. Average Length of Stay")
+        story.append(
+            Paragraph(
+                "Average number of days a visitor stayed in Nepal per year, as recorded in the "
+                "tourism statistics that also drive the dashboard's length-of-stay trend.",
+                styles["body"],
+            )
+        )
+        fig = charts.get("tourism_stay")
+        if fig:
+            story.append(_image(fig, max_width=CONTENT_W * 0.9, max_height=200))
+        stay_rows = [["Year", "Average stay (days)"]]
+        stay_rows += [[_p(point.get("year")), _p(point.get("value"))] for point in stay_trend]
+        stay_style = _table_style()
+        stay_style.add("ALIGN", (0, 1), (0, -1), "LEFT")
+        _table(story, stay_rows, [CONTENT_W * 0.4, CONTENT_W * 0.6], stay_style)
+
+    # Purpose of visit -----------------------------------------------------------------
+    purpose_trend = dataset.get("purpose_trend") or []
+    if purpose_trend:
+        purpose_year = dataset.get("latest_purpose_year")
+        year_rows = [
+            row for row in purpose_trend if row.get("year") == purpose_year
+        ] or purpose_trend
+        year_rows = sorted(year_rows, key=lambda row: row.get("value") or 0, reverse=True)
+        total_purpose = sum(row.get("value") or 0 for row in year_rows)
+        _section(story, styles, "7. Purpose of Visit")
+        story.append(
+            Paragraph(
+                f"Recorded arrivals by purpose of visit for {purpose_year}, ordered by volume. "
+                f"Shares are percentages of the year's purpose total.",
+                styles["body"],
+            )
+        )
+        fig = charts.get("tourism_purpose")
+        if fig:
+            story.append(_image(fig, max_width=CONTENT_W * 0.9, max_height=230))
+        if year_rows:
+            purpose_rows = [["Purpose", "Arrivals", "Share (%)"]]
+            purpose_rows += [
+                [
+                    _cell(row.get("category")),
+                    _p(row.get("value")),
+                    _p(round((row.get("value") or 0) / total_purpose * 100, 1) if total_purpose else 0),
+                ]
+                for row in year_rows
+            ]
+            purpose_style = _table_style()
+            purpose_style.add("ALIGN", (0, 0), (0, -1), "LEFT")
+            _table(
+                story,
+                purpose_rows,
+                [CONTENT_W * 0.5, CONTENT_W * 0.25, CONTENT_W * 0.25],
+                purpose_style,
+            )
+
+    # Trekking areas -------------------------------------------------------------------
+    trekking_trend = dataset.get("trekking_trend") or []
+    if trekking_trend:
+        trekking_year = dataset.get("latest_trekking_year")
+        year_rows = [
+            row for row in trekking_trend if row.get("year") == trekking_year
+        ] or trekking_trend
+        year_rows = sorted(year_rows, key=lambda row: row.get("trekkers") or 0, reverse=True)
+        total_trekkers = sum(row.get("trekkers") or 0 for row in year_rows)
+        _section(story, styles, "8. Trekking Areas & Trekkers")
+        story.append(
+            Paragraph(
+                f"Trekkers recorded per trekking area for {trekking_year}, ordered by volume.",
+                styles["body"],
+            )
+        )
+        fig = charts.get("tourism_trekking")
+        if fig:
+            story.append(_image(fig, max_width=CONTENT_W * 0.9, max_height=230))
+        if year_rows:
+            trek_rows = [["Trekking area", "Trekkers", "Share (%)"]]
+            trek_rows += [
+                [
+                    _cell(row.get("region")),
+                    _p(row.get("trekkers")),
+                    _p(round((row.get("trekkers") or 0) / total_trekkers * 100, 1) if total_trekkers else 0),
+                ]
+                for row in year_rows
+            ]
+            trek_style = _table_style()
+            trek_style.add("ALIGN", (0, 0), (0, -1), "LEFT")
+            _table(
+                story,
+                trek_rows,
+                [CONTENT_W * 0.5, CONTENT_W * 0.25, CONTENT_W * 0.25],
+                trek_style,
+            )
+
     # Key trends ------------------------------------------------------------------------
-    _section(story, styles, "6. Key Trends & Observations")
+    _section(story, styles, "9. Key Trends & Observations")
     for i, observation in enumerate(trends, start=1):
         story.append(Paragraph(f"<b>{i}.</b> {observation}", styles["bullet"]))
 
     # Data sources ----------------------------------------------------------------------
-    _section(story, styles, "7. Data Sources")
+    _section(story, styles, "10. Data Sources")
     sources_rows = [
         ["Dataset", "Fields", "Reference"],
         ["Tourist Arrivals (annual)", "Total, third-country and Indian arrivals, change", "TouristArrivalByYear"],
         ["Arrivals by Nationality", "Nationality, arrivals, share", "TouristArrivalByNationality"],
         ["Tourism Revenue", "Fiscal year, value, unit", "TourismRevenue"],
+        ["Average Length of Stay", "Year, average stay", "TourismStatistic (Avg_Stay)"],
+        ["Purpose of Visit", "Year, purpose category, arrivals", "TouristArrivalByPurpose"],
+        ["Trekking Areas", "Year, trekking area, trekkers", "TrekkerByRegion"],
     ]
     sources_style = _table_style()
     sources_style.add("ALIGN", (1, 0), (2, -1), "LEFT")
@@ -833,7 +933,7 @@ def build_tourism_story(dataset, charts, trends, state):
     )
 
     # Methodology -----------------------------------------------------------------------
-    _section(story, styles, "8. Methodology")
+    _section(story, styles, "11. Methodology")
     story.append(
         Paragraph(
             "All figures are queried directly from the backend database that also powers the "
@@ -841,6 +941,8 @@ def build_tourism_story(dataset, charts, trends, state):
             "Arrival totals are the sum of third-country and Indian visitor records. Source "
             "market shares are percentages of the reference year's total arrivals. Revenue "
             "figures use the US$ million series only, matching the dashboard revenue trend. "
+            "Purpose-of-visit and trekking figures are shown for the latest year with recorded "
+            "data, while the average length of stay is reported for the full recorded series. "
             "Charts are rendered from the same retrieved data.",
             styles["body"],
         )
@@ -854,13 +956,16 @@ def build_tourism_story(dataset, charts, trends, state):
     )
 
     # Data dictionary -------------------------------------------------------------------
-    _section(story, styles, "9. Data Dictionary")
+    _section(story, styles, "12. Data Dictionary")
     dictionary = [
         ["Variable", "Description", "Unit"],
         ["Total arrivals", "Recorded annual tourist arrivals", "Persons"],
         ["Third country / Indian", "Arrival split by visitor origin", "Persons"],
         ["Change (%)", "Year-on-year change in total arrivals", "%"],
         ["Revenue", "Annual tourism revenue", "US$ million"],
+        ["Average stay", "Average length of stay per visitor", "Days"],
+        ["Purpose of visit", "Arrivals grouped by travel purpose", "Persons"],
+        ["Trekkers", "Trekkers recorded per trekking area", "Persons"],
     ]
     _table(
         story,
@@ -869,13 +974,15 @@ def build_tourism_story(dataset, charts, trends, state):
     )
 
     # Appendix --------------------------------------------------------------------------
-    _section(story, styles, "10. Appendix: Report Parameters")
+    _section(story, styles, "13. Appendix: Report Parameters")
     params = [
         ["Parameter", "Value"],
         ["Report period", report_period],
         ["Active tab", state.get("active_tab") or "arrivals"],
         ["Arrival range", state.get("arrival_range") or "5"],
         ["Revenue range", state.get("revenue_range") or "5"],
+        ["Purpose year", state.get("purpose_year") or "Latest available"],
+        ["Trekking year", state.get("trekking_year") or "Latest available"],
         ["Dashboard filters", ", ".join(f"{k}: {v}" for k, v in (state.get("filters") or {}).items()) or "None"],
         ["Generated at", generated_label],
     ]

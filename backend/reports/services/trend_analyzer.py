@@ -165,6 +165,38 @@ def analyze_tourism(dataset):
             f"(US$) for fiscal year {latest_revenue.get('fiscal_year')}."
         )
 
+    stay = dataset.get("avg_stay_trend") or []
+    if stay:
+        latest_stay = stay[-1]
+        first_stay = stay[0]
+        observations.append(
+            f"The average length of stay was {_pct(latest_stay.get('value'))} days in "
+            f"{latest_stay.get('year')}, compared with {_pct(first_stay.get('value'))} days "
+            f"in {first_stay.get('year')} at the start of the recorded series."
+        )
+
+    purpose = dataset.get("purpose_trend") or []
+    if purpose:
+        purpose_year = dataset.get("latest_purpose_year")
+        by_category = sorted(purpose, key=lambda row: row.get("value") or 0, reverse=True)
+        lead = by_category[0]
+        observations.append(
+            f"In {purpose_year}, the leading purpose of visit was "
+            f"<b>{lead.get('category')}</b> with {_fmt_int(lead.get('value'))} arrivals."
+        )
+
+    trekking = dataset.get("trekking_trend") or []
+    if trekking:
+        trekking_year = dataset.get("latest_trekking_year")
+        year_rows = [row for row in trekking if row.get("year") == trekking_year] or trekking
+        total_trekkers = sum(row.get("trekkers") or 0 for row in year_rows)
+        busiest = max(year_rows, key=lambda row: row.get("trekkers") or 0)
+        observations.append(
+            f"In {trekking_year}, {_fmt_int(total_trekkers)} trekkers were recorded across the "
+            f"trekking areas, with <b>{busiest.get('region')}</b> busiest at "
+            f"{_fmt_int(busiest.get('trekkers'))}."
+        )
+
     if not observations:
         return ["No tourism data observations could be derived from the current dataset."]
     return observations

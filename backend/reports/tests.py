@@ -16,8 +16,11 @@ from datasets.models import (
     PopulationBySex,
     SectoralGrowth,
     TourismRevenue,
+    TourismStatistic,
     TouristArrivalByNationality,
+    TouristArrivalByPurpose,
     TouristArrivalByYear,
+    TrekkerByRegion,
 )
 
 from .services import report_data
@@ -71,6 +74,17 @@ def seed_models():
     TourismRevenue.objects.create(
         fiscal_year="2022/23", metric="US$_Million", value=Decimal("1000.25"), unit="US$",
     )
+    TourismStatistic.objects.create(
+        year=2022, metric="Avg_Stay", statistic_type="Number", value=Decimal("13.1"), unit="Number",
+    )
+    TourismStatistic.objects.create(
+        year=2023, metric="Avg_Stay", statistic_type="Number", value=Decimal("13.2"), unit="Number",
+    )
+    TouristArrivalByPurpose.objects.create(year=2023, category="Holiday Pleasure", value=634301)
+    TouristArrivalByPurpose.objects.create(year=2023, category="Pilgrimage", value=132949)
+    TouristArrivalByPurpose.objects.create(year=2023, category="Total", value=956110)
+    TrekkerByRegion.objects.create(year=2023, region="Mustang", trekkers=1198)
+    TrekkerByRegion.objects.create(year=2023, region="Manaslu", trekkers=3094)
 
 
 class ReportDataTests(TestCase):
@@ -90,6 +104,33 @@ class ReportDataTests(TestCase):
         self.assertEqual(len(full["arrival_trend"]), 2)
         trimmed = report_data.build_tourism_dataset({"arrival_range": "5"})
         self.assertEqual(len(trimmed["arrival_trend"]), 2)  # both years fit in the window
+
+    def test_tourism_dataset_includes_stay_purpose_trekking(self):
+        dataset = report_data.build_tourism_dataset({})
+        self.assertEqual(len(dataset["avg_stay_trend"]), 2)
+        self.assertEqual(dataset["avg_stay_trend"][-1]["value"], 13.2)
+        # "Total" rows are excluded from the purpose series.
+        self.assertEqual(len(dataset["purpose_trend"]), 2)
+        self.assertEqual(dataset["latest_purpose_year"], 2023)
+        self.assertEqual(len(dataset["trekking_trend"]), 2)
+        self.assertEqual(dataset["latest_trekking_year"], 2023)
+
+    def test_tourism_purpose_year_filter_narrows_series(self):
+        dataset = report_data.build_tourism_dataset({"purpose_year": "2023"})
+        self.assertEqual(dataset["latest_purpose_year"], "2023")
+        self.assertEqual(len(dataset["purpose_trend"]), 2)
+        trekking = report_data.build_tourism_dataset({"trekking_year": "2023"})
+        self.assertEqual(trekking["latest_trekking_year"], "2023")
+        self.assertEqual(len(trekking["trekking_trend"]), 2)
+
+    def test_tourism_analyze_covers_new_datasets(self):
+        from .services import trend_analyzer
+
+        observations = trend_analyzer.analyze_tourism(report_data.build_tourism_dataset({}))
+        joined = " ".join(observations)
+        self.assertIn("average length of stay", joined)
+        self.assertIn("purpose of visit", joined)
+        self.assertIn("trekking areas", joined)
 
     def test_economic_year_filter_narrows_sectors(self):
         dataset = report_data.build_economic_dataset({"year": "2022/23"})
@@ -112,6 +153,15 @@ class ReportDataTests(TestCase):
         rows = report_data.build_tourism_csv_rows({})
         self.assertTrue(any(row["Dataset"] == "Source Markets" for row in rows))
         self.assertTrue(any(row["Dataset"] == "Tourist Arrivals" for row in rows))
+
+    def test_tourism_csv_rows_include_new_datasets(self):
+        rows = report_data.build_tourism_csv_rows({})
+        groups = {row["Dataset"] for row in rows}
+        self.assertIn("Average Length of Stay", groups)
+        self.assertIn("Purpose of Visit", groups)
+        self.assertIn("Trekking Areas", groups)
+        purpose = [row for row in rows if row["Dataset"] == "Purpose of Visit"]
+        self.assertNotIn("Total arrivals", [row["Indicator"] for row in purpose])
 
     def test_economic_csv_rows_cover_all_indicators(self):
         rows = report_data.build_economic_csv_rows({})

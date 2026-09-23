@@ -571,7 +571,7 @@ def dashboard_overview(request):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def tourism_dashboard(request):
-	cached_tourism = cache.get("analytics-tourism-dashboard-v3")
+	cached_tourism = cache.get("analytics-tourism-dashboard-v4")
 	if cached_tourism is not None:
 		return Response(cached_tourism)
 
@@ -623,9 +623,33 @@ def tourism_dashboard(request):
 				}
 				for item in TourismRevenue.objects.filter(metric="US$_Million").order_by("fiscal_year")
 			],
+			"avg_stay_trend": [
+				{
+					"year": item.year,
+					"value": _decimal(item.value),
+					"unit": item.unit,
+				}
+				for item in TourismStatistic.objects.filter(metric="Avg_Stay").order_by("year")
+			],
+			"purpose_trend": [
+				{
+					"year": item.year,
+					"category": item.category,
+					"value": item.value,
+				}
+				for item in TouristArrivalByPurpose.objects.exclude(category__iexact="Total").order_by("year", "category")
+			],
+			"trekking_trend": [
+				{
+					"year": item.year,
+					"region": item.region,
+					"trekkers": item.trekkers,
+				}
+				for item in TrekkerByRegion.objects.order_by("year", "region")
+			],
 			"popular_destinations": [],
 	}
-	cache.set("analytics-tourism-dashboard-v3", payload, timeout=60)
+	cache.set("analytics-tourism-dashboard-v4", payload, timeout=60)
 	return Response(payload)
 
 

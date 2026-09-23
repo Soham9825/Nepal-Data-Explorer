@@ -17,6 +17,9 @@ const TABS = [
   { id: 'arrivals', label: 'Tourist Arrivals Trend' },
   { id: 'source-markets', label: 'Top Source Markets' },
   { id: 'revenue', label: 'Revenue Trend' },
+  { id: 'stay', label: 'Avg. Length of Stay' },
+  { id: 'purpose', label: 'Purpose of Visit' },
+  { id: 'trekking', label: 'Trekking Areas & Trekkers' },
 ];
 
 const CHART_META = {
@@ -28,6 +31,15 @@ const CHART_META = {
   },
   revenue: {
     title: 'Tourism Revenue Trend',
+  },
+  stay: {
+    title: 'Average Length of Stay',
+  },
+  purpose: {
+    title: 'Purpose of Visit',
+  },
+  trekking: {
+    title: 'Trekking Areas & Trekkers',
   },
 };
 const SOURCE_MARKET_COLORS = [
@@ -47,6 +59,9 @@ export default function Tourism() {
   const [activeTab, setActiveTab] = useState('arrivals');
   const [arrivalRange, setArrivalRange] = useState('all');
   const [revenueRange, setRevenueRange] = useState('all');
+  const [stayRange, setStayRange] = useState('all');
+  const [purposeYear, setPurposeYear] = useState('');
+  const [trekkingYear, setTrekkingYear] = useState('');
   const [showAllSourceMarkets, setShowAllSourceMarkets] = useState(false);
   const { title: chartTitle } = CHART_META[activeTab];
   const [loading, setLoading] = useState(true);
@@ -90,6 +105,29 @@ export default function Tourism() {
   );
   const visibleRevenueTrend =
     revenueRange === 'all' ? revenueTrend : revenueTrend.slice(-Number(revenueRange));
+  const avgStayTrend = tourismData?.avg_stay_trend || [];
+  const visibleAvgStay =
+    stayRange === 'all' ? avgStayTrend : avgStayTrend.slice(-Number(stayRange));
+  const purposeTrend = tourismData?.purpose_trend || [];
+  const purposeYears = [...new Set(purposeTrend.map((row) => String(row.year)))].sort(
+    (a, b) => Number(a) - Number(b)
+  );
+  const selectedPurposeYear = purposeYears.includes(purposeYear)
+    ? purposeYear
+    : purposeYears.at(-1) || '';
+  const visiblePurpose = purposeTrend
+    .filter((row) => String(row.year) === selectedPurposeYear && Number(row.value) > 0)
+    .sort((a, b) => Number(b.value) - Number(a.value));
+  const trekkingTrend = tourismData?.trekking_trend || [];
+  const trekkingYears = [...new Set(trekkingTrend.map((row) => String(row.year)))].sort(
+    (a, b) => Number(a) - Number(b)
+  );
+  const selectedTrekkingYear = trekkingYears.includes(trekkingYear)
+    ? trekkingYear
+    : trekkingYears.at(-1) || '';
+  const visibleTrekking = trekkingTrend
+    .filter((row) => String(row.year) === selectedTrekkingYear && Number(row.trekkers) > 0)
+    .sort((a, b) => Number(b.trekkers) - Number(a.trekkers));
   const kpis = tourismData?.kpis;
   const arrivalYears = arrivalTrend.map((record) => record.year).filter(Boolean);
   const revenuePeriods = revenueTrend.map((record) => record.fiscal_year).filter(Boolean);
@@ -99,7 +137,13 @@ export default function Tourism() {
       ? `Annual arrivals${arrivalYears.length ? ` (${Math.min(...arrivalYears)}–${Math.max(...arrivalYears)})` : ''}`
       : activeTab === 'revenue'
         ? `Tourism revenue (US$ millions)${revenuePeriods.length ? ` (${revenuePeriods[0]}–${revenuePeriods.at(-1)})` : ''}`
-        : 'Annual visitor counts by site';
+        : activeTab === 'stay' && visibleAvgStay.length > 0
+          ? `Average length of stay in days (${visibleAvgStay[0].year}–${visibleAvgStay.at(-1).year})`
+          : activeTab === 'purpose' && visiblePurpose.length > 0
+            ? `Arrivals by purpose of visit (${selectedPurposeYear})`
+            : activeTab === 'trekking' && visibleTrekking.length > 0
+              ? `Trekkers by trekking area (${selectedTrekkingYear})`
+              : 'Annual visitor counts by site';
   const maxSourceArrivals = Math.max(...sourceMarkets.map((market) => market.arrivals), 0);
   const sourceMarketItems = sourceMarkets.map((market, index) => ({
     label: market.nationality,
@@ -156,6 +200,24 @@ export default function Tourism() {
       Value: record.value,
       Unit: record.unit,
     })),
+    ...visibleAvgStay.map((record) => ({
+      Dataset: 'Average Length of Stay',
+      Year: record.year,
+      'Average stay (days)': record.value,
+      Unit: record.unit,
+    })),
+    ...purposeTrend.map((record) => ({
+      Dataset: 'Purpose of Visit',
+      Year: record.year,
+      Category: record.category,
+      Arrivals: record.value,
+    })),
+    ...trekkingTrend.map((record) => ({
+      Dataset: 'Trekking Areas',
+      Year: record.year,
+      Region: record.region,
+      Trekkers: record.trekkers,
+    })),
   ];
 
   const reportFiscalYear =
@@ -168,11 +230,21 @@ export default function Tourism() {
   const handleDownloadReport = () =>
     downloadTourismReport({
       fiscal_year: String(sourceMarketYear || ''),
-      selected_indicators: ['arrivals', 'source-markets', 'revenue'],
+      selected_indicators: [
+        'arrivals',
+        'source-markets',
+        'revenue',
+        'stay',
+        'purpose',
+        'trekking',
+      ],
       active_tab: activeTab,
       arrival_range: arrivalRange,
       revenue_range: revenueRange,
+      stay_range: stayRange,
       include_all_source_markets: showAllSourceMarkets,
+      purpose_year: selectedPurposeYear,
+      trekking_year: selectedTrekkingYear,
       filters: {},
     });
 
@@ -290,23 +362,38 @@ export default function Tourism() {
                 ? `Annual arrivals (${visibleArrivalTrend[0].year}–${visibleArrivalTrend.at(-1).year})`
                 : activeTab === 'revenue' && visibleRevenueTrend.length
                   ? `Tourism revenue (US$ millions) (${visibleRevenueTrend[0].fiscal_year}–${visibleRevenueTrend.at(-1).fiscal_year})`
-                  : chartSubtitle
+                  : activeTab === 'stay' && visibleAvgStay.length
+                    ? `Average length of stay in days (${visibleAvgStay[0].year}–${visibleAvgStay.at(-1).year})`
+                    : activeTab === 'purpose' && visiblePurpose.length
+                      ? `Arrivals by purpose of visit (${selectedPurposeYear})`
+                      : activeTab === 'trekking' && visibleTrekking.length
+                        ? `Trekkers by trekking area (${selectedTrekkingYear})`
+                        : chartSubtitle
             }
             action={
-              activeTab === 'arrivals' || activeTab === 'revenue' ? (
+              activeTab === 'arrivals' || activeTab === 'revenue' || activeTab === 'stay' ? (
                 <div className="flex items-center gap-1 rounded-sm border border-outline-variant bg-white p-1">
                   {[
                     ['all', 'All'],
                     ['10', '10 years'],
                     ['5', '5 years'],
                   ].map(([id, label]) => {
-                    const selectedRange = activeTab === 'arrivals' ? arrivalRange : revenueRange;
+                    const selectedRange =
+                      activeTab === 'arrivals'
+                        ? arrivalRange
+                        : activeTab === 'stay'
+                          ? stayRange
+                          : revenueRange;
+                    const applyRange =
+                      activeTab === 'arrivals'
+                        ? setArrivalRange
+                        : activeTab === 'stay'
+                          ? setStayRange
+                          : setRevenueRange;
                     return (
                       <button
                         key={id}
-                        onClick={() =>
-                          activeTab === 'arrivals' ? setArrivalRange(id) : setRevenueRange(id)
-                        }
+                        onClick={() => applyRange(id)}
                         className={`rounded-sm px-3 py-1.5 text-xs font-semibold transition-colors ${selectedRange === id ? 'bg-primary text-white' : 'text-onSurface-variant hover:bg-surface-container-highest'}`}
                       >
                         {label}
@@ -314,6 +401,34 @@ export default function Tourism() {
                     );
                   })}
                 </div>
+              ) : activeTab === 'purpose' ? (
+                purposeYears.length > 1 ? (
+                  <select
+                    value={selectedPurposeYear}
+                    onChange={(event) => setPurposeYear(event.target.value)}
+                    className="rounded-sm border border-outline-variant bg-white px-3 py-1.5 text-xs font-semibold text-onSurface"
+                  >
+                    {purposeYears.map((year) => (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
+                    ))}
+                  </select>
+                ) : null
+              ) : activeTab === 'trekking' ? (
+                trekkingYears.length > 1 ? (
+                  <select
+                    value={selectedTrekkingYear}
+                    onChange={(event) => setTrekkingYear(event.target.value)}
+                    className="rounded-sm border border-outline-variant bg-white px-3 py-1.5 text-xs font-semibold text-onSurface"
+                  >
+                    {trekkingYears.map((year) => (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
+                    ))}
+                  </select>
+                ) : null
               ) : activeTab === 'source-markets' ? (
                 <BtnOutline
                   onClick={() => setShowAllSourceMarkets((value) => !value)}
@@ -368,6 +483,46 @@ export default function Tourism() {
                   xKey="year"
                   series={[{ key: 'revenue', color: '#b70011', label: 'Revenue (US$ millions)' }]}
                   height="100%"
+                />
+              )}
+
+              {activeTab === 'stay' && (
+                <LineChart
+                  data={visibleAvgStay.map((record) => ({
+                    year: record.year,
+                    stay: record.value,
+                  }))}
+                  xKey="year"
+                  series={[{ key: 'stay', color: '#0f7a3d', label: 'Avg. stay (days)' }]}
+                  height="100%"
+                />
+              )}
+
+              {activeTab === 'purpose' && (
+                <BarChart
+                  data={visiblePurpose.map((record, index) => ({
+                    name: record.category,
+                    arrivals: record.value,
+                    color: SOURCE_MARKET_COLORS[index % SOURCE_MARKET_COLORS.length],
+                  }))}
+                  labelKey="name"
+                  valueKey="arrivals"
+                  height="100%"
+                  bordered={false}
+                />
+              )}
+
+              {activeTab === 'trekking' && (
+                <BarChart
+                  data={visibleTrekking.map((record, index) => ({
+                    name: record.region,
+                    trekkers: record.trekkers,
+                    color: SOURCE_MARKET_COLORS[index % SOURCE_MARKET_COLORS.length],
+                  }))}
+                  labelKey="name"
+                  valueKey="trekkers"
+                  height="100%"
+                  bordered={false}
                 />
               )}
             </div>
@@ -439,11 +594,15 @@ export default function Tourism() {
           reportMeta={{
             fiscalYear: reportFiscalYear,
             selectedProvince: '',
-            indicators: 'Tourist Arrivals Trend, Top Source Markets, Revenue Trend',
+            indicators:
+              'Tourist Arrivals Trend, Top Source Markets, Revenue Trend, Average Length of Stay, Purpose of Visit, Trekking Areas',
             periodRange: [
               arrivalRange === 'all' ? 'All arrival years' : `${arrivalRange} arrival years`,
               showAllSourceMarkets ? 'All source markets' : 'Top 10 source markets',
               revenueRange === 'all' ? 'All revenue years' : `${revenueRange} revenue years`,
+              stayRange === 'all' ? 'All stay years' : `${stayRange} stay years`,
+              selectedPurposeYear ? `Purpose year ${selectedPurposeYear}` : '',
+              selectedTrekkingYear ? `Trekking year ${selectedTrekkingYear}` : '',
             ]
               .filter(Boolean)
               .join(' | '),
