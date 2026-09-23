@@ -501,6 +501,8 @@ class ProvinceTourismVisit(models.Model):
     destination_type = models.CharField(max_length=100, blank=True)
     visitor_count = models.PositiveIntegerField(null=True, blank=True)
     visitor_scope = models.CharField(max_length=100, blank=True)
+    national_total_arrivals = models.PositiveIntegerField(null=True, blank=True)
+    national_arrival_pct_change = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
     pandemic_period = models.BooleanField(default=False)
     recovery_period = models.BooleanField(default=False)
     post_recovery_period = models.BooleanField(default=False)

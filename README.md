@@ -121,6 +121,7 @@ Do this after migrations succeed:
 ```bash
 python manage.py import_curated_datasets --set tourism --set population --set economic
 python manage.py import_nationality_forecasts
+python manage.py import_province_tourism
 ```
 
 The province GDP CSV is **not bundled** with the repo — use your own file from the CBS series. Replace the path with the exact location of your file:
