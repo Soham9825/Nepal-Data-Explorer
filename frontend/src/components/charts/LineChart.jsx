@@ -23,6 +23,15 @@ function formatTick(value) {
   return Number(value.toFixed(1)).toLocaleString();
 }
 
+// Tooltip values keep decimals for small numbers so e.g. 0.25 doesn't read "0".
+function formatValue(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return "—";
+  return num.toLocaleString(undefined, {
+    maximumFractionDigits: Math.abs(num) < 100 ? 2 : 0,
+  });
+}
+
 // Round a raw step up to a "nice" value (1/2/2.5/5 * power of ten) so tick
 // labels read cleanly instead of showing long decimal fragments.
 function niceStep(rawVal) {
@@ -506,31 +515,48 @@ export default function LineChart({
             );
           })}
 
-          {/* Hover feedback: dashed guide + markers for the active index */}
+          {/* Hover feedback: soft highlight band, guide line and halo markers */}
           {hasHover && activeX != null && (
             <g>
+              <rect
+                x={activeX - 1}
+                y={PADDING_Y}
+                width={2}
+                height={VB_HEIGHT - PADDING_Y * 2}
+                fill="#0051d5"
+                opacity="0.07"
+              />
               <line
                 x1={activeX}
                 y1={PADDING_Y}
                 x2={activeX}
                 y2={VB_HEIGHT - PADDING_Y}
-                stroke="#475569"
+                stroke="#64748B"
                 strokeWidth="1"
-                strokeDasharray="4 4"
-                strokeOpacity="0.7"
+                strokeDasharray="3 4"
+                strokeOpacity="0.5"
                 vectorEffect="non-scaling-stroke"
               />
               {activePoints.map((p) => (
-                <circle
-                  key={p.seriesKey}
-                  cx={p.x}
-                  cy={p.y}
-                  r={5}
-                  fill="#ffffff"
-                  stroke={p.color}
-                  strokeWidth="2.5"
-                  vectorEffect="non-scaling-stroke"
-                />
+                <g key={p.seriesKey}>
+                  <circle
+                    cx={p.x}
+                    cy={p.y}
+                    r={p.bold ? 10 : 8}
+                    fill={p.color}
+                    fillOpacity="0.18"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                  <circle
+                    cx={p.x}
+                    cy={p.y}
+                    r={p.bold ? 5.5 : 4.5}
+                    fill="#ffffff"
+                    stroke={p.color}
+                    strokeWidth="2.5"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                </g>
               ))}
             </g>
           )}
@@ -561,18 +587,16 @@ export default function LineChart({
                   style={{ backgroundColor: p.color }}
                 />
                 {p.seriesLabel || p.seriesKey}:{" "}
-                <strong className="text-onSurface">
-                  {Number(p.value).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                </strong>
+                <strong className="text-onSurface">{formatValue(p.value)}</strong>
               </p>
             ))}
             {activeItem[chart.bandKeys?.[0]] != null && activeItem[chart.bandKeys?.[1]] != null && (
               <p className="mt-1 text-xs text-onSurface-variant">
                 Forecast range:{" "}
                 <strong className="text-onSurface">
-                  {Number(activeItem[chart.bandKeys[0]]).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  {formatValue(activeItem[chart.bandKeys[0]])}
                   {" – "}
-                  {Number(activeItem[chart.bandKeys[1]]).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  {formatValue(activeItem[chart.bandKeys[1]])}
                 </strong>
               </p>
             )}

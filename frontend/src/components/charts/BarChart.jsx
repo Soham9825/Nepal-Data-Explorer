@@ -59,9 +59,13 @@ export default function BarChart({
   const groupPadding = barSlot * 0.18;
   const groupWidth = barSlot - groupPadding;
   const barGap = isMultiSeries ? 4 : 0;
+  // Single-series bars shrink as the number of bars grows, so dense charts
+  // (e.g. all 19 source markets) fit the same plot area as a top-10 view.
+  const denseShrink = isMultiSeries ? 1 : Math.max(0.7, 1 - (data.length - 10) * 0.015);
   const barWidth = isMultiSeries
     ? (groupWidth - barGap * (seriesConfig.length - 1)) / seriesConfig.length
-    : groupWidth * 0.55;
+    : groupWidth * 0.55 * denseShrink;
+  const cornerRadius = Math.max(1, Math.min(3, barWidth * 0.1));
 
   const paddingPct = (PADDING_X / VB_WIDTH) * 100;
   const plotWidthPct = 100 - paddingPct * 2;
@@ -215,7 +219,7 @@ export default function BarChart({
                         y={y}
                         width={barWidth}
                         height={barHeight}
-                        rx="3"
+                        rx={cornerRadius}
                         fill={barColor}
                         opacity="1"
                         stroke={isActive ? barColor : "none"}

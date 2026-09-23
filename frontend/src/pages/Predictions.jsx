@@ -94,6 +94,23 @@ function SkeletonBlock({ className = '' }) {
   return <div className={`animate-pulse rounded-sm bg-slate-200/70 ${className}`} />;
 }
 
+// Themed select: surface background, 1px outline border and a custom chevron,
+// keeping dropdowns visually consistent with the rest of the dashboard.
+function ThemedSelect({ value, onChange, children }) {
+  return (
+    <div className="relative">
+      <select
+        value={value}
+        onChange={onChange}
+        className="appearance-none border border-outline-variant bg-surface px-3 py-2 pr-8 font-sans text-sm font-semibold normal-case text-onSurface outline-none cursor-pointer transition-colors hover:bg-surface-container-highest focus:border-onSurface-variant"
+      >
+        {children}
+      </select>
+      <Icon name="expand_more" size={14} color="#6b7280" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2" />
+    </div>
+  );
+}
+
 export default function Predictions() {
   const [type, setType] = useState('monthly');
   const [nationality, setNationality] = useState('India');
@@ -277,12 +294,15 @@ export default function Predictions() {
       });
 
       const forecastValues = monthlyForecastSorted.map((item) => Number(item.predicted_value)).filter(Number.isFinite);
+      const forecastYears = [...new Set(monthlyForecastSorted.map((item) => item.year))].sort();
       cards.push({
         key: 'forecast',
         icon: 'auto_graph',
         label: 'AI Forecast Total',
         value: formatValue(forecastValues.reduce((s, v) => s + v, 0)),
-        sub: 'Forecast window total',
+        sub: forecastYears.length
+          ? `Monthly total, ${forecastYears[0]}–${forecastYears.at(-1)}`
+          : 'Forecast window total',
         color: FORECAST_COLOR,
       });
 
@@ -336,25 +356,32 @@ export default function Predictions() {
         color: HIST_COLOR,
       });
 
-      const forecastValues = selectedNationalityForecast.map((item) => Number(item.predicted_value)).filter(Number.isFinite);
+      const sortedForecast = [...selectedNationalityForecast].sort(
+        (x, y) => x.target_year - y.target_year || x.target_month - y.target_month
+      );
+      const firstForecast = sortedForecast[0];
+      const lastForecast = sortedForecast[sortedForecast.length - 1];
+      const lastActual = last ? Number(last.arrivals) : null;
       cards.push({
         key: 'forecast',
         icon: 'auto_graph',
-        label: 'AI Forecast Total',
-        value: formatValue(forecastValues.reduce((s, v) => s + v, 0)),
-        sub: 'Forecast window total',
+        label: 'AI Projected Arrivals',
+        value: lastForecast ? formatValue(lastForecast.predicted_value) : '—',
+        sub: lastForecast ? `AI forecast for ${lastForecast.target_year}` : 'Forecast',
         color: FORECAST_COLOR,
       });
 
-      const lastActual = last ? Number(last.arrivals) : null;
-      const fTotal = forecastValues.reduce((s, v) => s + v, 0);
-      const growth = lastActual && fTotal ? percentChange(lastActual * (forecastValues.length / Math.max(hist.length, 1)), fTotal) : null;
+      const growth = lastActual != null && firstForecast
+        ? percentChange(lastActual, Number(firstForecast.predicted_value))
+        : null;
       cards.push({
         key: 'growth',
         icon: 'speed',
         label: 'Forecast Growth',
         value: growth != null ? `${growth >= 0 ? '+' : ''}${growth.toFixed(1)}%` : '—',
-        sub: 'vs last year actual',
+        sub: firstForecast?.target_year && last?.year
+          ? `Year ${last.year} actual → ${firstForecast.target_year} forecast`
+          : 'vs last year actual',
         color: growth != null && growth < 0 ? '#b70011' : FORECAST_COLOR,
       });
 
@@ -485,7 +512,7 @@ export default function Predictions() {
         icon: growth >= 0 ? 'trending_up' : 'trending_down',
         color: growth >= 0 ? FORECAST_COLOR : '#b70011',
         title: 'Against recent history',
-        detail: `Forecast averaged ${growth >= 0 ? '+' : ''}${growth.toFixed(1)}% ${growth >= 0 ? 'above' : 'below'} the trailing ${forecastValues.length}-month average`,
+        detail: `Forecast averaged ${growth >= 0 ? '+' : ''}${growth.toFixed(1)}% ${growth >= 0 ? 'above' : 'below'} the trailing ${forecastValues.length} ${isMonthly ? 'months' : 'years'}`,
       });
     }
     if (avgBand != null) {
@@ -500,7 +527,7 @@ export default function Predictions() {
       icon: 'functions',
       color: HIST_COLOR,
       title: 'Cumulative outlook',
-      detail: `${formatValue(forecastValues.reduce((s, v) => s + v, 0))} total arrivals projected across the ${forecastValues.length}-month forecast window`,
+      detail: `${formatValue(forecastValues.reduce((s, v) => s + v, 0))} total arrivals projected across the ${forecastValues.length}-${isMonthly ? 'month' : 'year'} forecast window`,
     });
 
     return result;
@@ -617,15 +644,16 @@ export default function Predictions() {
             {!isMonthly && (
               <label className="text-xs font-bold uppercase text-onSurface-variant">
                 Nationality
-                <select
-                  value={nationality}
-                  onChange={(event) => setNationality(event.target.value)}
-                  className="block mt-2 border border-outline-variant rounded-sm bg-surface px-3 py-2 text-sm normal-case font-normal text-onSurface"
-                >
-                  {(availableNationalities.length ? availableNationalities : ['India']).map((item) => (
-                    <option key={item} value={item}>{formatCountryName(item)}</option>
-                  ))}
-                </select>
+                <span className="mt-2 block">
+                  <ThemedSelect
+                    value={nationality}
+                    onChange={(event) => setNationality(event.target.value)}
+                  >
+                    {(availableNationalities.length ? availableNationalities : ['India']).map((item) => (
+                      <option key={item} value={item}>{formatCountryName(item)}</option>
+                    ))}
+                  </ThemedSelect>
+                </span>
               </label>
             )}
 
@@ -633,15 +661,16 @@ export default function Predictions() {
               <>
                 <label className="text-xs font-bold uppercase text-onSurface-variant">
                   Year
-                  <select
-                    value={selectedMonthlyYear}
-                    onChange={(event) => setMonthlyYear(event.target.value)}
-                    className="block mt-2 border border-outline-variant rounded-sm bg-surface px-3 py-2 text-sm normal-case font-normal text-onSurface"
-                  >
-                    {monthlyYears.map((item) => <option key={item} value={item}>{item}</option>)}
-                  </select>
+                  <span className="mt-2 block">
+                    <ThemedSelect
+                      value={selectedMonthlyYear}
+                      onChange={(event) => setMonthlyYear(event.target.value)}
+                    >
+                      {monthlyYears.map((item) => <option key={item} value={item}>{item}</option>)}
+                    </ThemedSelect>
+                  </span>
                 </label>
-                <label className="flex items-center gap-2 text-xs font-bold uppercase text-onSurface-variant pt-1 cursor-pointer select-none">
+                <label className="flex h-[38px] cursor-pointer select-none items-center gap-2 text-xs font-bold uppercase text-onSurface-variant">
                   <input
                     type="checkbox"
                     checked={fullTimeline}
@@ -676,7 +705,9 @@ export default function Predictions() {
         {showContent && (
           <SectionCard
             title={`${label} — Historical + AI Forecast`}
-            subtitle="Solid blue line = historical arrivals · Green line with shaded band = model prediction"
+            subtitle={isMonthly
+              ? 'Solid blue line = historical arrivals · Green line with shaded band = model prediction'
+              : 'Solid blue = actual arrivals · Green = AI annual projections with confidence band'}
             className="rounded-sm"
             contentClassName="min-h-[320px]"
           >
@@ -743,7 +774,15 @@ export default function Predictions() {
 
         {/* Forecast detail cards */}
         {showContent && (
-          <SectionCard title="Forecast Detail" subtitle={`Model outputs for the ${monthlyForecastSorted.length}-month forecast${!isMonthly ? ' window' : ''} — scroll to see all`} className="rounded-sm">
+          <SectionCard
+            title="Forecast Detail"
+            subtitle={
+              isMonthly
+                ? `Model outputs for the ${forecastItems.length}-month forecast window — scroll to see all`
+                : `Model outputs for ${forecastItems.length} annual projections for ${nationality} — scroll to see all`
+            }
+            className="rounded-sm"
+          >
             <div className="max-h-[34rem] overflow-y-auto pr-1">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {forecastItems.map((item, i) => {
