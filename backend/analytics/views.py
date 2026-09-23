@@ -17,6 +17,7 @@ from datasets.models import (
 	NewsArticle,
 	ProvinceGDPStatistic,
 	ProvinceMetric,
+	ProvinceTourismVisit,
 	SalaryIndex,
 	SectoralGrowth,
 	TourismDestination,
@@ -95,6 +96,132 @@ PROVINCE_GDP_ORDER = [
 	"Karnali",
 	"Sudurpashchim",
 ]
+
+# Official tourism destinations (as published in Nepal Tourism Statistics) ->
+# display name and a Wikimedia image matched to each place. Keys match the
+# `destination` column of nepal_tourism_province_clean_2020_2025_final.csv.
+OFFICIAL_DESTINATION_MAP = {
+	"Chitwan National Park": {
+		"name": "Chitwan National Park",
+		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Rhinoceros%20in%20Chitwan%20National%20Park.jpg?width=1280",
+	},
+	"Gaurishanker Conservation Area": {
+		"name": "Gaurishankar Conservation Area",
+		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Gauri%20Sankar%20BW.jpg?width=1280",
+	},
+	"Langtang National Park": {
+		"name": "Langtang National Park",
+		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Langtang%20Lirung.jpg?width=1280",
+	},
+	"Pashupatinath": {
+		"name": "Pashupatinath Temple",
+		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Pashupatinath.jpg?width=1280",
+	},
+	"ShivapuriNagarjun  National Park": {
+		"name": "Shivapuri Nagarjun National Park",
+		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Shivapuri%20mountain.jpeg?width=1280",
+	},
+	"Annapurna Conservation Area": {
+		"name": "Annapurna Conservation Area",
+		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Annapurna%20Base%20Camp.jpg?width=1280",
+	},
+	"Dhorpatan Hunting Reserve": {
+		"name": "Dhorpatan Hunting Reserve",
+		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Dhorpatan%2CDhorpatan%20Hunting%20Reserve%20at%20morning.jpg?width=1280",
+	},
+	"Gorkha T.Valley": {
+		"name": "Gorkha Tsum Valley",
+		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Manaslu%20range.jpg?width=1280",
+	},
+	"Manaslu": {
+		"name": "Manaslu Region",
+		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Manaslu%20range.jpg?width=1280",
+	},
+	"Manaslu Conservation Area": {
+		"name": "Manaslu Conservation Area",
+		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Manaslu%20range.jpg?width=1280",
+	},
+	"Mustang": {
+		"name": "Mustang (Upper Mustang)",
+		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Lo%20Manthang.jpg?width=1280",
+	},
+	"Narphu": {
+		"name": "Nar Phu Valley",
+		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/NarPhuVillage.jpg?width=1280",
+	},
+	"Humla": {
+		"name": "Humla (Simikot)",
+		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Simikot.jpg?width=1280",
+	},
+	"Lower Dolpa": {
+		"name": "Lower Dolpa",
+		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Shey-Phoksundo%20Lake%20in%20Dolpa.jpg?width=1280",
+	},
+	"Upper Dolpa": {
+		"name": "Upper Dolpa",
+		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Shey-Phoksundo%20Lake%20in%20Dolpa.jpg?width=1280",
+	},
+	"Rara National Park": {
+		"name": "Rara National Park",
+		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Rara%20Lake.jpg?width=1280",
+	},
+	"SheyPhoksundo National Park": {
+		"name": "Shey Phoksundo National Park",
+		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Shey-Phoksundo%20Lake%20in%20Dolpa.jpg?width=1280",
+	},
+	"Kanchanjunga": {
+		"name": "Kanchenjunga Region",
+		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Kangchenjunga.jpg?width=1280",
+	},
+	"Kanchanjunga Conservation Area": {
+		"name": "Kanchenjunga Conservation Area",
+		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Kangchenjunga.jpg?width=1280",
+	},
+	"KoshiTappu Wildlife Reserve": {
+		"name": "Koshi Tappu Wildlife Reserve",
+		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Jungle-Jungle%20in%20Koshi%20Tappu%20Wildlife%20Reserve%2C%20Nepal.jpg?width=1280",
+	},
+	"Makalu Barun National Park": {
+		"name": "Makalu Barun National Park",
+		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Makalu.jpg?width=1280",
+	},
+	"Sagarmatha National Park": {
+		"name": "Sagarmatha National Park",
+		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Everest%2C%20Himalayas.jpg?width=1280",
+	},
+	"Banke National Park": {
+		"name": "Banke National Park",
+		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Banke%20National%20Park.jpg?width=1280",
+	},
+	"Bardiya National Park": {
+		"name": "Bardiya National Park",
+		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Aerial_shot_of_the_Khaura_River_and_the_tree_canopy%2C_Bardiya_National_Park.jpg?width=1280",
+	},
+	"Krishnasar Conservation ARea": {
+		"name": "Krishnasar Conservation Area",
+		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Blackbuck_buck_%28Antilope_cervicapra%29_in_Blackbuck_Conservation_Area%2C_Bardiya%2C_Nepal.jpg?width=1280",
+	},
+	"Lumbini": {
+		"name": "Lumbini, Birthplace of Buddha",
+		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Lumbini%20Maya%20Devi%20Temple%201.jpg?width=1280",
+	},
+	"Parsa Wildlife Reserve": {
+		"name": "Parsa Wildlife Reserve",
+		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Wild_boar_at_Parsa_Wildlife_Reserve.jpg?width=1280",
+	},
+	"ApinappaConsersation Area": {
+		"name": "Api Nampa Conservation Area",
+		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Mt._Nampa_Surrounded_by_Clouds_in_Api_Nampa_Conservation_Area.jpg?width=1280",
+	},
+	"Khaptad National Park": {
+		"name": "Khaptad National Park",
+		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Khaptad%2C%20Khaptad%20National%20Park%2C%20Nepal.jpg?width=1280",
+	},
+	"Shukla Phata Wildlife Reserve": {
+		"name": "Shuklaphanta Wildlife Reserve",
+		"image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Shuklaphanta%20National%20park.jpg?width=1280",
+	},
+}
 
 GDP_DETAIL_FIELDS = (
 	"gdp_basic_current",
@@ -649,6 +776,36 @@ def province_gdp_detail(request, province_name):
 def province_dashboard(request, province_name):
 	province_metrics = ProvinceMetric.objects.filter(province__iexact=province_name).order_by("domain", "metric", "year")
 	destinations = TourismDestination.objects.filter(province__iexact=province_name).order_by("rank", "name")
+	tourism_visits = (
+		ProvinceTourismVisit.objects.filter(province__iexact=province_name)
+		.order_by("destination", "year")
+	)
+	tourism_visits_list = list(tourism_visits)
+
+	# Official dataset destinations: latest published year per destination, with a
+	# matched Wikimedia image. This is the authoritative "places" list for a province.
+	latest_by_destination = {}
+	for visit in tourism_visits_list:
+		current = latest_by_destination.get(visit.destination)
+		if current is None or visit.year > current.year:
+			latest_by_destination[visit.destination] = visit
+	official_destinations = []
+	for visit in latest_by_destination.values():
+		meta = OFFICIAL_DESTINATION_MAP.get(visit.destination) or {"name": visit.destination, "image_url": ""}
+		official_destinations.append(
+			{
+				"name": meta["name"],
+				"official_name": visit.destination,
+				"district": visit.district,
+				"destination_type": visit.destination_type,
+				"visitor_scope": visit.visitor_scope,
+				"annual_visitors": visit.visitor_count,
+				"year": visit.year,
+				"image_url": meta["image_url"],
+				"rank": len(official_destinations) + 1,
+			}
+		)
+	official_destinations.sort(key=lambda item: -(item["annual_visitors"] or 0))
 	news = NewsArticle.objects.filter(province__iexact=province_name).order_by("-published_at", "title")[:15]
 	gdp_rows = (
 		ProvinceGDPStatistic.objects.filter(province__iexact=province_name)
@@ -684,9 +841,31 @@ def province_dashboard(request, province_name):
 						"rank": item.rank,
 						"annual_visitors": item.annual_visitors,
 						"description": item.description,
+						"image_url": item.image_url,
 					}
 					for item in destinations
-				]
+				],
+				"official_destinations": official_destinations,
+				"visits": [
+					{
+						"year": item.year,
+						"destination": item.destination,
+						"district": item.district,
+						"destination_type": item.destination_type,
+						"visitor_count": item.visitor_count,
+						"visitor_scope": item.visitor_scope,
+						"period": (
+							"pandemic"
+							if item.pandemic_period
+							else "recovery"
+							if item.recovery_period
+							else "post_recovery"
+							if item.post_recovery_period
+							else None
+						),
+					}
+					for item in tourism_visits
+				],
 			},
 			"news": [
 				{
@@ -703,6 +882,7 @@ def province_dashboard(request, province_name):
 				"province_metrics": province_metrics.exists(),
 				"gdp": bool(gdp_serialized),
 				"destinations": destinations.exists(),
+				"tourism_visits": tourism_visits.exists(),
 				"news": bool(news),
 			},
 		}

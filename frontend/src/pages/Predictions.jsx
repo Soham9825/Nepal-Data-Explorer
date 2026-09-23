@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import DashboardLayout from '../components/layout/DashboardLayout';
 import { SectionCard } from '../components/ui/Card';
 import { TabBtn } from '../components/ui/Tabs';
 import { BtnPrimary, BtnOutline } from '../components/ui/Button';
@@ -569,8 +568,7 @@ export default function Predictions() {
   const showContent = done && forecastItems.length > 0;
 
   return (
-    <DashboardLayout pageTitle="AI Predictions">
-      <div className="space-y-6">
+    <div className="space-y-6">
         {/* Header */}
         <div>
           <h3 className="text-2xl font-bold text-onSurface">AI Predictions</h3>
@@ -873,6 +871,5 @@ export default function Predictions() {
           </div>
         )}
       </div>
-    </DashboardLayout>
   );
 }

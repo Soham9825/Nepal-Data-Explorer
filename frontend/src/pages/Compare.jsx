@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { downloadCSV } from '../utils/download';
 import { API_BASE_URL } from '../config';
-import DashboardLayout from '../components/layout/DashboardLayout';
 import { SectionCard } from '../components/ui/Card';
 import { BtnPrimary } from '../components/ui/Button';
 import { Icon } from '../components/ui/Icon';
@@ -260,8 +259,7 @@ export default function Compare() {
   const updating = loading && showResults;
 
   return (
-    <DashboardLayout pageTitle="Compare Indicators">
-      <div className="space-y-6">
+    <div className="space-y-6">
         <div>
           <h3 className="text-2xl font-bold text-onSurface">Compare Indicators</h3>
           <p className="text-onSurface-variant text-sm">
@@ -552,6 +550,5 @@ export default function Compare() {
           <p className="text-sm text-onSurface-variant">No comparison datasets are available.</p>
         )}
       </div>
-    </DashboardLayout>
   );
 }

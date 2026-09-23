@@ -1,5 +1,4 @@
-import React, { useEffect, useState } from 'react';
-import DashboardLayout from '../components/layout/DashboardLayout';
+import { useEffect, useState } from 'react';
 import { SectionCard } from '../components/ui/Card';
 import { BtnPrimary } from '../components/ui/Button';
 import { Icon } from '../components/ui/Icon';
@@ -86,8 +85,7 @@ export default function Support() {
   };
 
   return (
-    <DashboardLayout pageTitle="Support & Help">
-      <div className="w-full space-y-6">
+    <div className="w-full space-y-6">
         {/* Header */}
         <div>
           <h3 className="text-2xl font-bold text-onSurface font-hanken">
@@ -175,7 +173,6 @@ export default function Support() {
             </div>
           </form>
         </SectionCard>
-      </div>
-    </DashboardLayout>
+    </div>
   );
 }

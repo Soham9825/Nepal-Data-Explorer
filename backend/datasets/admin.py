@@ -8,6 +8,7 @@ from .models import (
     NewsArticle,
     ProvinceGDPStatistic,
     ProvinceMetric,
+    ProvinceTourismVisit,
     SalaryIndex,
     SectoralGrowth,
     TourismDestination,
@@ -162,6 +163,13 @@ class TourismRevenueAdmin(admin.ModelAdmin):
     list_display = ("fiscal_year", "metric", "value", "unit")
     list_filter = ("fiscal_year", "metric")
     search_fields = ("fiscal_year", "metric")
+
+
+@admin.register(ProvinceTourismVisit)
+class ProvinceTourismVisitAdmin(admin.ModelAdmin):
+    list_display = ("province", "destination", "year", "visitor_count", "visitor_scope")
+    list_filter = ("province", "year", "visitor_scope")
+    search_fields = ("province", "destination", "district")
 
 
 @admin.register(NewsArticle)

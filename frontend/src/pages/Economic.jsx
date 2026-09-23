@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import DashboardLayout from '../components/layout/DashboardLayout';
 import { SectionCard } from '../components/ui/Card';
 import MetricCard from '../components/cards/MetricCard';
 import LineChart from '../components/charts/LineChart';
@@ -314,17 +313,14 @@ export default function Economic() {
 
   if (loading) {
     return (
-      <DashboardLayout pageTitle="Economic Data">
-        <div className="flex min-h-[520px] items-center justify-center">
-          <Loader size="lg" />
-        </div>
-      </DashboardLayout>
+      <div className="flex min-h-[520px] items-center justify-center">
+        <Loader size="lg" />
+      </div>
     );
   }
 
   return (
-    <DashboardLayout pageTitle="Economic Data">
-      <div className="space-y-8">
+    <div className="space-y-8">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h1 className="text-3xl font-bold text-onSurface">Economic Data</h1>
@@ -506,6 +502,5 @@ export default function Economic() {
           }}
         />
       </div>
-    </DashboardLayout>
   );
 }

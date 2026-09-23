@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import DashboardLayout from '../components/layout/DashboardLayout';
 import ActionCard from '../components/reports/ActionCard';
 import ReportsList from '../components/reports/ReportsList';
 import ReportPreviewModal from '../components/reports/ReportPreviewModal';
@@ -26,8 +25,8 @@ export default function Reports() {
   };
 
   return (
-    <DashboardLayout pageTitle="Reports & Exports">
-      <div className="space-y-6">
+    <>
+    <div className="space-y-6">
         <div>
           <h3 className="text-2xl font-bold text-onSurface">Reports & Exports</h3>
           <p className="text-onSurface-variant text-sm">Download datasets, AI forecasts, and compiled reports for research or policy use</p>
@@ -51,6 +50,6 @@ export default function Reports() {
         onClose={() => setActiveReport(null)}
         onDownload={handleDownload}
       />
-    </DashboardLayout>
+    </>
   );
 }

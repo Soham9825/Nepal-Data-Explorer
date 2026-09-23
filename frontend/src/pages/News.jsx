@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import DashboardLayout from '../components/layout/DashboardLayout';
 import { Tag } from '../components/ui/Tag';
 import { Icon } from '../components/ui/Icon';
 import { API_BASE_URL } from '../config';
@@ -33,8 +32,7 @@ export default function News() {
   const filtered = cat === 'All' ? news : news.filter(n => n.category === cat);
 
   return (
-    <DashboardLayout pageTitle="National Headlines">
-      <div className="space-y-6">
+    <div className="space-y-6">
         <div>
           <h3 className="text-2xl font-bold text-onSurface">National Headlines</h3>
           <p className="text-onSurface-variant text-sm">Economic policy updates, NRB announcements, and sector news</p>
@@ -78,7 +76,6 @@ export default function News() {
             );
           })}
         </div>}
-      </div>
-    </DashboardLayout>
+    </div>
   );
 }
