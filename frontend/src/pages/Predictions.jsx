@@ -556,13 +556,65 @@ export default function Predictions() {
       : 'Forecast';
 
   const handleDownload = () => {
-    const exportRows = forecastItems.map((item) => ({
-      period: isMonthly ? item.date : `${item.target_year}-${item.target_month}`,
-      value: item.predicted_value,
+    if (isMonthly) {
+      const historicalRows = monthlyHistory.map((item) => ({
+        period: `${item.month} ${item.year}`,
+        year: item.year,
+        month: item.month,
+        type: 'actual',
+        arrivals: item.arrivals,
+        predicted_value: '',
+        lower_bound: '',
+        upper_bound: '',
+        model: '',
+      }));
+      const forecastRows = monthlyForecastSorted.map((item) => ({
+        period: item.date,
+        year: item.year,
+        month: item.month,
+        type: 'forecast',
+        arrivals: '',
+        predicted_value: item.predicted_value,
+        lower_bound: item.lower_bound || '',
+        upper_bound: item.upper_bound || '',
+        model: '',
+      }));
+      const monthlyRows = [...historicalRows, ...forecastRows].sort(
+        (a, b) => toMonthTimestamp(a.year, a.month) - toMonthTimestamp(b.year, b.month)
+      );
+      downloadCSV(monthlyRows, 'monthly-tourism-arrivals-history-forecast.csv');
+      return;
+    }
+
+    const historicalRows = nationalityHistory.map((item) => ({
+      nationality: item.nationality,
+      year: item.year,
+      month: '',
+      type: 'actual',
+      arrivals: item.arrivals,
+      percent: item.percent != null ? item.percent : '',
+      predicted_value: '',
+      lower_bound: '',
+      upper_bound: '',
+      model: '',
+    }));
+    const forecastRows = nationalityForecast.map((item) => ({
+      nationality: item.topic,
+      year: item.target_year,
+      month: item.target_month,
+      type: 'forecast',
+      arrivals: '',
+      percent: '',
+      predicted_value: item.predicted_value,
       lower_bound: item.lower_bound || '',
       upper_bound: item.upper_bound || '',
+      model: formatModelName(item.model_name),
     }));
-    downloadCSV(exportRows, `${type}-tourism-forecast.csv`);
+    const nationalityRows = [...historicalRows, ...forecastRows].sort((a, b) => {
+      const nameDiff = String(a.nationality).localeCompare(String(b.nationality));
+      return nameDiff !== 0 ? nameDiff : Number(a.year) - Number(b.year);
+    });
+    downloadCSV(nationalityRows, 'nationality-tourism-arrivals-history-forecast.csv');
   };
 
   const showContent = done && forecastItems.length > 0;
