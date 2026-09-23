@@ -1,5 +1,4 @@
-import React, { useRef, useState } from 'react';
-import DashboardLayout from '../components/layout/DashboardLayout';
+import { useRef, useState } from 'react';
 import CSVUploadCard, { validateCSVOnServer } from '../components/csv/CSVUploadCard';
 import CSVValidateStep from '../components/csv/CSVValidateStep';
 import CSVChartEngine from '../components/csv/CSVChartEngine';
@@ -147,8 +146,7 @@ export default function CSVExplorer() {
 
   const { loading } = dataset;
   return (
-    <DashboardLayout pageTitle="CSV Explorer">
-      <div className="space-y-6">
+    <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-onSurface font-hanken">CSV Explorer</h1>
           <p className="mt-1 max-w-3xl text-sm text-onSurface-variant font-hanken">
@@ -212,6 +210,5 @@ export default function CSVExplorer() {
           </>
         )}
       </div>
-    </DashboardLayout>
   );
 }

@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import DashboardLayout from "../components/layout/DashboardLayout";
 import { SectionCard } from "../components/ui/Card";
 import { BtnPrimary } from "../components/ui/Button";
 import { Icon } from "../components/ui/Icon";
@@ -72,7 +71,7 @@ export default function Admin() {
   const adminCount = (users || []).filter((user) => user.is_staff || user.is_superuser).length;
 
   return (
-    <DashboardLayout pageTitle="Admin Panel">
+    <>
       {/* Header */}
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
@@ -182,6 +181,6 @@ export default function Admin() {
           </>
         )}
       </SectionCard>
-    </DashboardLayout>
+    </>
   );
 }

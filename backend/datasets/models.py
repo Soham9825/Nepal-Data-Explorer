@@ -466,6 +466,7 @@ class TourismDestination(models.Model):
     rank = models.PositiveIntegerField(null=True, blank=True)
     annual_visitors = models.PositiveIntegerField(null=True, blank=True)
     description = models.TextField(blank=True)
+    image_url = models.URLField(blank=True)
     is_active = models.BooleanField(default=True)
 
     class Meta:
@@ -483,6 +484,43 @@ class TourismDestination(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class ProvinceTourismVisit(models.Model):
+    """Official per-destination-year tourism visits from Nepal Tourism Statistics.
+
+    Mirrors the columns of `nepal_tourism_province_clean_2020_2025_final.csv`:
+    one row per (province, destination, year) with the published visitor_count
+    for that destination's visitor_scope.
+    """
+
+    province = models.CharField(max_length=100)
+    year = models.PositiveIntegerField()
+    destination = models.CharField(max_length=200)
+    district = models.CharField(max_length=150, blank=True)
+    destination_type = models.CharField(max_length=100, blank=True)
+    visitor_count = models.PositiveIntegerField(null=True, blank=True)
+    visitor_scope = models.CharField(max_length=100, blank=True)
+    pandemic_period = models.BooleanField(default=False)
+    recovery_period = models.BooleanField(default=False)
+    post_recovery_period = models.BooleanField(default=False)
+    data_source = models.CharField(max_length=150, blank=True)
+
+    class Meta:
+        ordering = ["province", "year", "destination"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["province", "year", "destination"],
+                name="unique_province_tourism_visit",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["province"]),
+            models.Index(fields=["province", "year"]),
+        ]
+
+    def __str__(self):
+        return f"{self.province} - {self.destination} ({self.year})"
 
 
 class TourismRevenue(models.Model):

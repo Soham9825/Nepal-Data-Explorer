@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import DashboardLayout from '../components/layout/DashboardLayout';
 import { SectionCard } from '../components/ui/Card';
 import { Icon } from '../components/ui/Icon';
 import { ProgressBar } from '../components/ui/ProgressBar';
@@ -179,17 +178,14 @@ export default function Tourism() {
 
   if (loading) {
     return (
-      <DashboardLayout pageTitle="Tourism">
-        <div className="flex min-h-[520px] items-center justify-center">
-          <Loader size="lg" />
-        </div>
-      </DashboardLayout>
+      <div className="flex min-h-[520px] items-center justify-center">
+        <Loader size="lg" />
+      </div>
     );
   }
 
   return (
-    <DashboardLayout pageTitle="Tourism">
-      <div className="space-y-6">
+    <div className="space-y-6">
         {/* Header */}
         <div>
           <h3 className="text-2xl font-bold text-onSurface font-hanken">Tourism Statistics</h3>
@@ -457,7 +453,6 @@ export default function Tourism() {
         {!loading && !error && !tourismData && (
           <p className="text-sm text-onSurface-variant">No tourism data is available.</p>
         )}
-      </div>
-    </DashboardLayout>
+    </div>
   );
 }

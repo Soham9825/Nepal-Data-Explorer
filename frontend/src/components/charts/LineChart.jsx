@@ -63,6 +63,7 @@ export default function LineChart({
 }) {
   const [activeIndex, setActiveIndex] = useState(null);
   const [tip, setTip] = useState(null);
+  const [plotWidth, setPlotWidth] = useState(0);
 
   const containerRef = useRef(null);
   const tooltipRef = useRef(null);
@@ -197,17 +198,35 @@ export default function LineChart({
         }
       }
     } else {
-      const step = Math.max(1, Math.ceil((data.length - 1) / 10));
-      data.forEach((item, index) => {
-        if (index % step === 0 || index === data.length - 1) {
-          labelTicks.push({ index, label: String(item[labelKey]) });
+      // Evenly spread labels across the whole axis including both endpoints.
+      // The category axis is ordinal, so points sit at equal x positions and
+      // the readout is cleanest when every point is labeled (all 8 fiscal years
+      // fit comfortably here). We estimate label width from the longest label so
+      // dense series fall back to a smooth, uniform sub-sampling.
+      const maxLabelLength = Math.max(
+        ...data.map((item) => String(item[labelKey]).length),
+        1
+      );
+      const plotWidthPx = plotWidth || 760;
+      const labelPx = maxLabelLength * 6.2 + 3; // ~45px for "2018/19" at 12px semibold
+      const spanPx = plotWidthPx * (1 - (2 * PADDING_X) / VB_WIDTH);
+      const maxLabels = Math.max(
+        3,
+        Math.min(10, Math.floor(spanPx / labelPx) + 1)
+      );
+      const count = Math.min(maxLabels, data.length);
+      for (let i = 0; i < count; i++) {
+        const index = Math.round((i * (data.length - 1)) / Math.max(count - 1, 1));
+        if (!labelTicks.some((tick) => tick.index === index)) {
+          labelTicks.push({ index, label: String(data[index][labelKey]) });
         }
-      });
+      }
+      if (!labelTicks.length) labelTicks.push({ index: 0, label: String(data[0][labelKey]) });
     }
     if (!labelTicks.length) labelTicks.push({ index: 0, label: String(data[0][labelKey]) });
 
     return { min, max, ticks, zoneX, seriesData, xForValue, labelTicks, bandKeys };
-  }, [data, series, xKey, labelKey, timeScale, xDomainStart, xDomainEnd, yDomain, zoneStart, bands, toTimeValue]);
+  }, [data, series, xKey, labelKey, timeScale, xDomainStart, xDomainEnd, yDomain, zoneStart, bands, toTimeValue, plotWidth]);
 
   chartRef.current = chart;
 
@@ -293,6 +312,23 @@ export default function LineChart({
   useLayoutEffect(() => {
     recomputeTooltipPosition();
   }, [recomputeTooltipPosition, data, chart]);
+
+  // Keep x-axis tick density accurate by measuring the plot box. The chart
+  // container only mounts once data arrives, so re-observe once it exists.
+  const hasChartLayout = !!chart;
+  useLayoutEffect(() => {
+    const node = containerRef.current;
+    if (!node) return undefined;
+    const update = () => setPlotWidth(node.clientWidth);
+    update();
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", update);
+      return () => window.removeEventListener("resize", update);
+    }
+    const observer = new ResizeObserver(update);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [hasChartLayout]);
 
   useLayoutEffect(() => {
     if (activeIndex == null) return undefined;

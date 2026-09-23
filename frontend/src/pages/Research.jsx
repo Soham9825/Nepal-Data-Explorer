@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import DashboardLayout from '../components/layout/DashboardLayout';
 import { SectionCard } from '../components/ui/Card';
 import { BtnOutline, BtnPrimary } from '../components/ui/Button';
 import { Icon } from '../components/ui/Icon';
@@ -73,8 +72,7 @@ export default function Research() {
   ];
 
   return (
-    <DashboardLayout pageTitle="Research Data Access">
-      <div className="space-y-6">
+    <div className="space-y-6">
         <div>
           <h3 className="text-2xl font-bold text-onSurface">Research Data Access</h3>
           <p className="text-onSurface-variant text-sm max-w-2xl">
@@ -182,6 +180,5 @@ export default function Research() {
           </a>
         </div>
       </div>
-    </DashboardLayout>
   );
 }

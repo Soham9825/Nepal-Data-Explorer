@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from 'react';
-import DashboardLayout from '../components/layout/DashboardLayout';
 import MetricCard from '../components/cards/MetricCard';
 import NewsCard from '../components/cards/NewsCard';
 import ProgressBar from '../components/cards/ProgressBar';
@@ -54,7 +53,7 @@ const formatPublishedDate = (value) => {
 
 export default function National() {
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error] = useState(null);
   const [news, setNews] = useState([]);
   const [newsLoading, setNewsLoading] = useState(true);
   const [selectedProvince, setSelectedProvince] = useState(null);
@@ -371,30 +370,25 @@ export default function National() {
 
   if (loading) {
     return (
-      <DashboardLayout pageTitle="National Dashboard">
-        <div className="flex min-h-[calc(100vh-10rem)] flex-col items-center justify-center gap-4 rounded-sm border border-outline-variant bg-surface">
-          <Loader size="lg" />
-          <p className="text-sm font-semibold text-onSurface-variant">Loading national data...</p>
-        </div>
-      </DashboardLayout>
+      <div className="flex min-h-[520px] items-center justify-center">
+        <Loader size="lg" />
+      </div>
     );
   }
 
   if (error) {
     return (
-      <DashboardLayout pageTitle="National Dashboard">
-        <ErrorMessage
-          title="Failed to load data"
-          message={error}
-          onRetry={() => window.location.reload()}
-        />
-      </DashboardLayout>
+      <ErrorMessage
+        title="Failed to load data"
+        message={error}
+        onRetry={() => window.location.reload()}
+      />
     );
   }
 
   return (
-    <DashboardLayout pageTitle="National Dashboard" breadcrumbs={['Dashboard']}>
-      <div className="space-y-6">
+    <>
+    <div className="space-y-6">
         {/* Hero Metrics */}
         <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {metrics.map((m) => (
@@ -554,6 +548,6 @@ export default function National() {
         .line-clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
         .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
       `}</style>
-    </DashboardLayout>
+    </>
   );
 }

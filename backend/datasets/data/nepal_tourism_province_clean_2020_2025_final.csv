@@ -1,0 +1,181 @@
+﻿id,province,year,destination,district,destination_type,visitor_count,visitor_scope,national_total_arrivals,national_arrival_pct_change,pandemic_period,recovery_period,post_recovery_period,data_source
+1,Bagmati,2020,Chitwan National Park,Chitwan,National Park,92994,foreign_visitors_to_protected_area,230085,-80.7,1,0,0,Nepal Tourism Statistics 2025
+2,Bagmati,2020,Gaurishanker Conservation Area,Dolakha/Ramechhap/Sindhupalchok,Conservation Area,1523,foreign_visitors_to_protected_area,230085,-80.7,1,0,0,Nepal Tourism Statistics 2025
+3,Bagmati,2020,Langtang National Park,Rasuwa/Nuwakot/Sindhupalchok,National Park,8242,foreign_visitors_to_protected_area,230085,-80.7,1,0,0,Nepal Tourism Statistics 2025
+4,Bagmati,2020,Pashupatinath,Kathmandu,Religious/Cultural,25400,visitors_excluding_Indian_citizens,230085,-80.7,1,0,0,Nepal Tourism Statistics 2025
+5,Bagmati,2020,ShivapuriNagarjun  National Park,Kathmandu/Nuwakot/Sindhupalchok,National Park,8692,foreign_visitors_to_protected_area,230085,-80.7,1,0,0,Nepal Tourism Statistics 2025
+6,Bagmati,2021,Chitwan National Park,Chitwan,National Park,2819,foreign_visitors_to_protected_area,150962,-34.3,1,0,0,Nepal Tourism Statistics 2025
+7,Bagmati,2021,Gaurishanker Conservation Area,Dolakha/Ramechhap/Sindhupalchok,Conservation Area,30,foreign_visitors_to_protected_area,150962,-34.3,1,0,0,Nepal Tourism Statistics 2025
+8,Bagmati,2021,Langtang National Park,Rasuwa/Nuwakot/Sindhupalchok,National Park,342,foreign_visitors_to_protected_area,150962,-34.3,1,0,0,Nepal Tourism Statistics 2025
+9,Bagmati,2021,Pashupatinath,Kathmandu,Religious/Cultural,3190,visitors_excluding_Indian_citizens,150962,-34.3,1,0,0,Nepal Tourism Statistics 2025
+10,Bagmati,2021,ShivapuriNagarjun  National Park,Kathmandu/Nuwakot/Sindhupalchok,National Park,642,foreign_visitors_to_protected_area,150962,-34.3,1,0,0,Nepal Tourism Statistics 2025
+11,Bagmati,2022,Chitwan National Park,Chitwan,National Park,34787,foreign_visitors_to_protected_area,614869,307.3,0,1,0,Nepal Tourism Statistics 2025
+12,Bagmati,2022,Gaurishanker Conservation Area,Dolakha/Ramechhap/Sindhupalchok,Conservation Area,12,foreign_visitors_to_protected_area,614869,307.3,0,1,0,Nepal Tourism Statistics 2025
+13,Bagmati,2022,Langtang National Park,Rasuwa/Nuwakot/Sindhupalchok,National Park,2498,foreign_visitors_to_protected_area,614869,307.3,0,1,0,Nepal Tourism Statistics 2025
+14,Bagmati,2022,Pashupatinath,Kathmandu,Religious/Cultural,55204,visitors_excluding_Indian_citizens,614869,307.3,0,1,0,Nepal Tourism Statistics 2025
+15,Bagmati,2022,ShivapuriNagarjun  National Park,Kathmandu/Nuwakot/Sindhupalchok,National Park,5325,foreign_visitors_to_protected_area,614869,307.3,0,1,0,Nepal Tourism Statistics 2025
+16,Bagmati,2023,Chitwan National Park,Chitwan,National Park,101759,foreign_visitors_to_protected_area,1014882,65.05,0,1,0,Nepal Tourism Statistics 2025
+17,Bagmati,2023,Gaurishanker Conservation Area,Dolakha/Ramechhap/Sindhupalchok,Conservation Area,684,foreign_visitors_to_protected_area,1014882,65.05,0,1,0,Nepal Tourism Statistics 2025
+18,Bagmati,2023,Langtang National Park,Rasuwa/Nuwakot/Sindhupalchok,National Park,7614,foreign_visitors_to_protected_area,1014882,65.05,0,1,0,Nepal Tourism Statistics 2025
+19,Bagmati,2023,Pashupatinath,Kathmandu,Religious/Cultural,118531,visitors_excluding_Indian_citizens,1014882,65.05,0,1,0,Nepal Tourism Statistics 2025
+20,Bagmati,2023,ShivapuriNagarjun  National Park,Kathmandu/Nuwakot/Sindhupalchok,National Park,11207,foreign_visitors_to_protected_area,1014882,65.05,0,1,0,Nepal Tourism Statistics 2025
+21,Bagmati,2024,Chitwan National Park,Chitwan,National Park,126905,foreign_visitors_to_protected_area,1147548,13.07,0,0,1,Nepal Tourism Statistics 2025
+22,Bagmati,2024,Gaurishanker Conservation Area,Dolakha/Ramechhap/Sindhupalchok,Conservation Area,1625,foreign_visitors_to_protected_area,1147548,13.07,0,0,1,Nepal Tourism Statistics 2025
+23,Bagmati,2024,Langtang National Park,Rasuwa/Nuwakot/Sindhupalchok,National Park,11180,foreign_visitors_to_protected_area,1147548,13.07,0,0,1,Nepal Tourism Statistics 2025
+24,Bagmati,2024,Pashupatinath,Kathmandu,Religious/Cultural,136139,visitors_excluding_Indian_citizens,1147548,13.07,0,0,1,Nepal Tourism Statistics 2025
+25,Bagmati,2024,ShivapuriNagarjun  National Park,Kathmandu/Nuwakot/Sindhupalchok,National Park,12679,foreign_visitors_to_protected_area,1147548,13.07,0,0,1,Nepal Tourism Statistics 2025
+26,Bagmati,2025,Chitwan National Park,Chitwan,National Park,103904,foreign_visitors_to_protected_area,1162365,1.29,0,0,1,Nepal Tourism Statistics 2025
+27,Bagmati,2025,Gaurishanker Conservation Area,Dolakha/Ramechhap/Sindhupalchok,Conservation Area,1677,foreign_visitors_to_protected_area,1162365,1.29,0,0,1,Nepal Tourism Statistics 2025
+28,Bagmati,2025,Langtang National Park,Rasuwa/Nuwakot/Sindhupalchok,National Park,10637,foreign_visitors_to_protected_area,1162365,1.29,0,0,1,Nepal Tourism Statistics 2025
+29,Bagmati,2025,Pashupatinath,Kathmandu,Religious/Cultural,122431,visitors_excluding_Indian_citizens,1162365,1.29,0,0,1,Nepal Tourism Statistics 2025
+30,Bagmati,2025,ShivapuriNagarjun  National Park,Kathmandu/Nuwakot/Sindhupalchok,National Park,11806,foreign_visitors_to_protected_area,1162365,1.29,0,0,1,Nepal Tourism Statistics 2025
+31,Gandaki,2020,Annapurna Conservation Area,Kaski/Lamjung/Manang/Myagdi/Mustang,Conservation Area,103782,foreign_visitors_to_protected_area,230085,-80.7,1,0,0,Nepal Tourism Statistics 2025
+32,Gandaki,2020,Dhorpatan Hunting Reserve,Baglung/Myagdi/Rukum East,Hunting Reserve,75,foreign_visitors_to_protected_area,230085,-80.7,1,0,0,Nepal Tourism Statistics 2025
+33,Gandaki,2020,Gorkha T.Valley,Gorkha,Trekking Area,138,trekkers,230085,-80.7,1,0,0,Nepal Tourism Statistics 2025
+34,Gandaki,2020,Manaslu,Gorkha,Trekking Area,360,trekkers,230085,-80.7,1,0,0,Nepal Tourism Statistics 2025
+35,Gandaki,2020,Manaslu Conservation Area,Gorkha,Conservation Area,5388,foreign_visitors_to_protected_area,230085,-80.7,1,0,0,Nepal Tourism Statistics 2025
+36,Gandaki,2020,Mustang,Mustang,Trekking Area,62,trekkers,230085,-80.7,1,0,0,Nepal Tourism Statistics 2025
+37,Gandaki,2020,Narphu,Manang,Trekking Area,17,trekkers,230085,-80.7,1,0,0,Nepal Tourism Statistics 2025
+38,Gandaki,2021,Annapurna Conservation Area,Kaski/Lamjung/Manang/Myagdi/Mustang,Conservation Area,4921,foreign_visitors_to_protected_area,150962,-34.3,1,0,0,Nepal Tourism Statistics 2025
+39,Gandaki,2021,Dhorpatan Hunting Reserve,Baglung/Myagdi/Rukum East,Hunting Reserve,20,foreign_visitors_to_protected_area,150962,-34.3,1,0,0,Nepal Tourism Statistics 2025
+40,Gandaki,2021,Gorkha T.Valley,Gorkha,Trekking Area,152,trekkers,150962,-34.3,1,0,0,Nepal Tourism Statistics 2025
+41,Gandaki,2021,Manaslu,Gorkha,Trekking Area,908,trekkers,150962,-34.3,1,0,0,Nepal Tourism Statistics 2025
+42,Gandaki,2021,Manaslu Conservation Area,Gorkha,Conservation Area,194,foreign_visitors_to_protected_area,150962,-34.3,1,0,0,Nepal Tourism Statistics 2025
+43,Gandaki,2021,Mustang,Mustang,Trekking Area,362,trekkers,150962,-34.3,1,0,0,Nepal Tourism Statistics 2025
+44,Gandaki,2021,Narphu,Manang,Trekking Area,259,trekkers,150962,-34.3,1,0,0,Nepal Tourism Statistics 2025
+45,Gandaki,2022,Annapurna Conservation Area,Kaski/Lamjung/Manang/Myagdi/Mustang,Conservation Area,5452,foreign_visitors_to_protected_area,614869,307.3,0,1,0,Nepal Tourism Statistics 2025
+46,Gandaki,2022,Dhorpatan Hunting Reserve,Baglung/Myagdi/Rukum East,Hunting Reserve,64,foreign_visitors_to_protected_area,614869,307.3,0,1,0,Nepal Tourism Statistics 2025
+47,Gandaki,2022,Gorkha T.Valley,Gorkha,Trekking Area,1279,trekkers,614869,307.3,0,1,0,Nepal Tourism Statistics 2025
+48,Gandaki,2022,Manaslu,Gorkha,Trekking Area,5890,trekkers,614869,307.3,0,1,0,Nepal Tourism Statistics 2025
+49,Gandaki,2022,Manaslu Conservation Area,Gorkha,Conservation Area,1642,foreign_visitors_to_protected_area,614869,307.3,0,1,0,Nepal Tourism Statistics 2025
+50,Gandaki,2022,Mustang,Mustang,Trekking Area,3387,trekkers,614869,307.3,0,1,0,Nepal Tourism Statistics 2025
+51,Gandaki,2022,Narphu,Manang,Trekking Area,1194,trekkers,614869,307.3,0,1,0,Nepal Tourism Statistics 2025
+52,Gandaki,2023,Annapurna Conservation Area,Kaski/Lamjung/Manang/Myagdi/Mustang,Conservation Area,107880,foreign_visitors_to_protected_area,1014882,65.05,0,1,0,Nepal Tourism Statistics 2025
+53,Gandaki,2023,Dhorpatan Hunting Reserve,Baglung/Myagdi/Rukum East,Hunting Reserve,94,foreign_visitors_to_protected_area,1014882,65.05,0,1,0,Nepal Tourism Statistics 2025
+54,Gandaki,2023,Gorkha T.Valley,Gorkha,Trekking Area,753,trekkers,1014882,65.05,0,1,0,Nepal Tourism Statistics 2025
+55,Gandaki,2023,Manaslu,Gorkha,Trekking Area,3094,trekkers,1014882,65.05,0,1,0,Nepal Tourism Statistics 2025
+56,Gandaki,2023,Manaslu Conservation Area,Gorkha,Conservation Area,8413,foreign_visitors_to_protected_area,1014882,65.05,0,1,0,Nepal Tourism Statistics 2025
+57,Gandaki,2023,Mustang,Mustang,Trekking Area,1198,trekkers,1014882,65.05,0,1,0,Nepal Tourism Statistics 2025
+58,Gandaki,2023,Narphu,Manang,Trekking Area,512,trekkers,1014882,65.05,0,1,0,Nepal Tourism Statistics 2025
+59,Gandaki,2024,Annapurna Conservation Area,Kaski/Lamjung/Manang/Myagdi/Mustang,Conservation Area,240141,foreign_visitors_to_protected_area,1147548,13.07,0,0,1,Nepal Tourism Statistics 2025
+60,Gandaki,2024,Dhorpatan Hunting Reserve,Baglung/Myagdi/Rukum East,Hunting Reserve,119,foreign_visitors_to_protected_area,1147548,13.07,0,0,1,Nepal Tourism Statistics 2025
+61,Gandaki,2024,Gorkha T.Valley,Gorkha,Trekking Area,2567,trekkers,1147548,13.07,0,0,1,Nepal Tourism Statistics 2025
+62,Gandaki,2024,Manaslu,Gorkha,Trekking Area,12810,trekkers,1147548,13.07,0,0,1,Nepal Tourism Statistics 2025
+63,Gandaki,2024,Manaslu Conservation Area,Gorkha,Conservation Area,10082,foreign_visitors_to_protected_area,1147548,13.07,0,0,1,Nepal Tourism Statistics 2025
+64,Gandaki,2024,Mustang,Mustang,Trekking Area,5614,trekkers,1147548,13.07,0,0,1,Nepal Tourism Statistics 2025
+65,Gandaki,2024,Narphu,Manang,Trekking Area,1925,trekkers,1147548,13.07,0,0,1,Nepal Tourism Statistics 2025
+66,Gandaki,2025,Annapurna Conservation Area,Kaski/Lamjung/Manang/Myagdi/Mustang,Conservation Area,313549,foreign_visitors_to_protected_area,1162365,1.29,0,0,1,Nepal Tourism Statistics 2025
+67,Gandaki,2025,Dhorpatan Hunting Reserve,Baglung/Myagdi/Rukum East,Hunting Reserve,226,foreign_visitors_to_protected_area,1162365,1.29,0,0,1,Nepal Tourism Statistics 2025
+68,Gandaki,2025,Gorkha T.Valley,Gorkha,Trekking Area,2513,trekkers,1162365,1.29,0,0,1,Nepal Tourism Statistics 2025
+69,Gandaki,2025,Manaslu,Gorkha,Trekking Area,14720,trekkers,1162365,1.29,0,0,1,Nepal Tourism Statistics 2025
+70,Gandaki,2025,Manaslu Conservation Area,Gorkha,Conservation Area,10752,foreign_visitors_to_protected_area,1162365,1.29,0,0,1,Nepal Tourism Statistics 2025
+71,Gandaki,2025,Mustang,Mustang,Trekking Area,4178,trekkers,1162365,1.29,0,0,1,Nepal Tourism Statistics 2025
+72,Gandaki,2025,Narphu,Manang,Trekking Area,1672,trekkers,1162365,1.29,0,0,1,Nepal Tourism Statistics 2025
+73,Karnali,2020,Humla,Humla,Trekking Area,22,trekkers,230085,-80.7,1,0,0,Nepal Tourism Statistics 2025
+74,Karnali,2020,Lower Dolpa,Dolpa,Trekking Area,12,trekkers,230085,-80.7,1,0,0,Nepal Tourism Statistics 2025
+75,Karnali,2020,Rara National Park,Mugu,National Park,256,foreign_visitors_to_protected_area,230085,-80.7,1,0,0,Nepal Tourism Statistics 2025
+76,Karnali,2020,SheyPhoksundo National Park,Dolpa,National Park,426,foreign_visitors_to_protected_area,230085,-80.7,1,0,0,Nepal Tourism Statistics 2025
+77,Karnali,2020,Upper Dolpa,Dolpa,Trekking Area,1,trekkers,230085,-80.7,1,0,0,Nepal Tourism Statistics 2025
+78,Karnali,2021,Humla,Humla,Trekking Area,148,trekkers,150962,-34.3,1,0,0,Nepal Tourism Statistics 2025
+79,Karnali,2021,Lower Dolpa,Dolpa,Trekking Area,168,trekkers,150962,-34.3,1,0,0,Nepal Tourism Statistics 2025
+80,Karnali,2021,Rara National Park,Mugu,National Park,23,foreign_visitors_to_protected_area,150962,-34.3,1,0,0,Nepal Tourism Statistics 2025
+81,Karnali,2021,SheyPhoksundo National Park,Dolpa,National Park,10,foreign_visitors_to_protected_area,150962,-34.3,1,0,0,Nepal Tourism Statistics 2025
+82,Karnali,2021,Upper Dolpa,Dolpa,Trekking Area,75,trekkers,150962,-34.3,1,0,0,Nepal Tourism Statistics 2025
+83,Karnali,2022,Humla,Humla,Trekking Area,1442,trekkers,614869,307.3,0,1,0,Nepal Tourism Statistics 2025
+84,Karnali,2022,Lower Dolpa,Dolpa,Trekking Area,786,trekkers,614869,307.3,0,1,0,Nepal Tourism Statistics 2025
+85,Karnali,2022,Rara National Park,Mugu,National Park,99,foreign_visitors_to_protected_area,614869,307.3,0,1,0,Nepal Tourism Statistics 2025
+86,Karnali,2022,SheyPhoksundo National Park,Dolpa,National Park,123,foreign_visitors_to_protected_area,614869,307.3,0,1,0,Nepal Tourism Statistics 2025
+87,Karnali,2022,Upper Dolpa,Dolpa,Trekking Area,492,trekkers,614869,307.3,0,1,0,Nepal Tourism Statistics 2025
+88,Karnali,2023,Humla,Humla,Trekking Area,178,trekkers,1014882,65.05,0,1,0,Nepal Tourism Statistics 2025
+89,Karnali,2023,Lower Dolpa,Dolpa,Trekking Area,365,trekkers,1014882,65.05,0,1,0,Nepal Tourism Statistics 2025
+90,Karnali,2023,Rara National Park,Mugu,National Park,274,foreign_visitors_to_protected_area,1014882,65.05,0,1,0,Nepal Tourism Statistics 2025
+91,Karnali,2023,SheyPhoksundo National Park,Dolpa,National Park,533,foreign_visitors_to_protected_area,1014882,65.05,0,1,0,Nepal Tourism Statistics 2025
+92,Karnali,2023,Upper Dolpa,Dolpa,Trekking Area,145,trekkers,1014882,65.05,0,1,0,Nepal Tourism Statistics 2025
+93,Karnali,2024,Humla,Humla,Trekking Area,1045,trekkers,1147548,13.07,0,0,1,Nepal Tourism Statistics 2025
+94,Karnali,2024,Lower Dolpa,Dolpa,Trekking Area,1348,trekkers,1147548,13.07,0,0,1,Nepal Tourism Statistics 2025
+95,Karnali,2024,Rara National Park,Mugu,National Park,277,foreign_visitors_to_protected_area,1147548,13.07,0,0,1,Nepal Tourism Statistics 2025
+96,Karnali,2024,SheyPhoksundo National Park,Dolpa,National Park,496,foreign_visitors_to_protected_area,1147548,13.07,0,0,1,Nepal Tourism Statistics 2025
+97,Karnali,2024,Upper Dolpa,Dolpa,Trekking Area,657,trekkers,1147548,13.07,0,0,1,Nepal Tourism Statistics 2025
+98,Karnali,2025,Humla,Humla,Trekking Area,770,trekkers,1162365,1.29,0,0,1,Nepal Tourism Statistics 2025
+99,Karnali,2025,Lower Dolpa,Dolpa,Trekking Area,1092,trekkers,1162365,1.29,0,0,1,Nepal Tourism Statistics 2025
+100,Karnali,2025,Rara National Park,Mugu,National Park,324,foreign_visitors_to_protected_area,1162365,1.29,0,0,1,Nepal Tourism Statistics 2025
+101,Karnali,2025,SheyPhoksundo National Park,Dolpa,National Park,304,foreign_visitors_to_protected_area,1162365,1.29,0,0,1,Nepal Tourism Statistics 2025
+102,Karnali,2025,Upper Dolpa,Dolpa,Trekking Area,281,trekkers,1162365,1.29,0,0,1,Nepal Tourism Statistics 2025
+103,Koshi,2020,Kanchanjunga,Taplejung,Trekking Area,55,trekkers,230085,-80.7,1,0,0,Nepal Tourism Statistics 2025
+104,Koshi,2020,Kanchanjunga Conservation Area,Taplejung,Conservation Area,584,foreign_visitors_to_protected_area,230085,-80.7,1,0,0,Nepal Tourism Statistics 2025
+105,Koshi,2020,KoshiTappu Wildlife Reserve,Sunsari/Saptari/Udayapur,Wildlife Reserve,198,foreign_visitors_to_protected_area,230085,-80.7,1,0,0,Nepal Tourism Statistics 2025
+106,Koshi,2020,Makalu Barun National Park,Sankhuwasabha/Solukhumbu,National Park,1425,foreign_visitors_to_protected_area,230085,-80.7,1,0,0,Nepal Tourism Statistics 2025
+107,Koshi,2020,Sagarmatha National Park,Solukhumbu,National Park,32636,foreign_visitors_to_protected_area,230085,-80.7,1,0,0,Nepal Tourism Statistics 2025
+108,Koshi,2021,Kanchanjunga,Taplejung,Trekking Area,137,trekkers,150962,-34.3,1,0,0,Nepal Tourism Statistics 2025
+109,Koshi,2021,Kanchanjunga Conservation Area,Taplejung,Conservation Area,42,foreign_visitors_to_protected_area,150962,-34.3,1,0,0,Nepal Tourism Statistics 2025
+110,Koshi,2021,KoshiTappu Wildlife Reserve,Sunsari/Saptari/Udayapur,Wildlife Reserve,17,foreign_visitors_to_protected_area,150962,-34.3,1,0,0,Nepal Tourism Statistics 2025
+111,Koshi,2021,Makalu Barun National Park,Sankhuwasabha/Solukhumbu,National Park,30,foreign_visitors_to_protected_area,150962,-34.3,1,0,0,Nepal Tourism Statistics 2025
+112,Koshi,2021,Sagarmatha National Park,Solukhumbu,National Park,2461,foreign_visitors_to_protected_area,150962,-34.3,1,0,0,Nepal Tourism Statistics 2025
+113,Koshi,2022,Kanchanjunga,Taplejung,Trekking Area,858,trekkers,614869,307.3,0,1,0,Nepal Tourism Statistics 2025
+114,Koshi,2022,Kanchanjunga Conservation Area,Taplejung,Conservation Area,146,foreign_visitors_to_protected_area,614869,307.3,0,1,0,Nepal Tourism Statistics 2025
+115,Koshi,2022,KoshiTappu Wildlife Reserve,Sunsari/Saptari/Udayapur,Wildlife Reserve,126,foreign_visitors_to_protected_area,614869,307.3,0,1,0,Nepal Tourism Statistics 2025
+116,Koshi,2022,Makalu Barun National Park,Sankhuwasabha/Solukhumbu,National Park,516,foreign_visitors_to_protected_area,614869,307.3,0,1,0,Nepal Tourism Statistics 2025
+117,Koshi,2022,Sagarmatha National Park,Solukhumbu,National Park,21210,foreign_visitors_to_protected_area,614869,307.3,0,1,0,Nepal Tourism Statistics 2025
+118,Koshi,2023,Kanchanjunga,Taplejung,Trekking Area,405,trekkers,1014882,65.05,0,1,0,Nepal Tourism Statistics 2025
+119,Koshi,2023,Kanchanjunga Conservation Area,Taplejung,Conservation Area,868,foreign_visitors_to_protected_area,1014882,65.05,0,1,0,Nepal Tourism Statistics 2025
+120,Koshi,2023,KoshiTappu Wildlife Reserve,Sunsari/Saptari/Udayapur,Wildlife Reserve,255,foreign_visitors_to_protected_area,1014882,65.05,0,1,0,Nepal Tourism Statistics 2025
+121,Koshi,2023,Makalu Barun National Park,Sankhuwasabha/Solukhumbu,National Park,385,foreign_visitors_to_protected_area,1014882,65.05,0,1,0,Nepal Tourism Statistics 2025
+122,Koshi,2023,Sagarmatha National Park,Solukhumbu,National Park,52499,foreign_visitors_to_protected_area,1014882,65.05,0,1,0,Nepal Tourism Statistics 2025
+123,Koshi,2024,Kanchanjunga,Taplejung,Trekking Area,1902,trekkers,1147548,13.07,0,0,1,Nepal Tourism Statistics 2025
+124,Koshi,2024,Kanchanjunga Conservation Area,Taplejung,Conservation Area,1290,foreign_visitors_to_protected_area,1147548,13.07,0,0,1,Nepal Tourism Statistics 2025
+125,Koshi,2024,KoshiTappu Wildlife Reserve,Sunsari/Saptari/Udayapur,Wildlife Reserve,335,foreign_visitors_to_protected_area,1147548,13.07,0,0,1,Nepal Tourism Statistics 2025
+126,Koshi,2024,Makalu Barun National Park,Sankhuwasabha/Solukhumbu,National Park,1111,foreign_visitors_to_protected_area,1147548,13.07,0,0,1,Nepal Tourism Statistics 2025
+127,Koshi,2024,Sagarmatha National Park,Solukhumbu,National Park,49372,foreign_visitors_to_protected_area,1147548,13.07,0,0,1,Nepal Tourism Statistics 2025
+128,Koshi,2025,Kanchanjunga,Taplejung,Trekking Area,1680,trekkers,1162365,1.29,0,0,1,Nepal Tourism Statistics 2025
+129,Koshi,2025,Kanchanjunga Conservation Area,Taplejung,Conservation Area,1384,foreign_visitors_to_protected_area,1162365,1.29,0,0,1,Nepal Tourism Statistics 2025
+130,Koshi,2025,KoshiTappu Wildlife Reserve,Sunsari/Saptari/Udayapur,Wildlife Reserve,354,foreign_visitors_to_protected_area,1162365,1.29,0,0,1,Nepal Tourism Statistics 2025
+131,Koshi,2025,Makalu Barun National Park,Sankhuwasabha/Solukhumbu,National Park,2118,foreign_visitors_to_protected_area,1162365,1.29,0,0,1,Nepal Tourism Statistics 2025
+132,Koshi,2025,Sagarmatha National Park,Solukhumbu,National Park,47524,foreign_visitors_to_protected_area,1162365,1.29,0,0,1,Nepal Tourism Statistics 2025
+133,Lumbini,2020,Banke National Park,Banke,National Park,8,foreign_visitors_to_protected_area,230085,-80.7,1,0,0,Nepal Tourism Statistics 2025
+134,Lumbini,2020,Bardiya National Park,Bardiya,National Park,5506,foreign_visitors_to_protected_area,230085,-80.7,1,0,0,Nepal Tourism Statistics 2025
+135,Lumbini,2020,Krishnasar Conservation ARea,Bardiya,Conservation Area,34,foreign_visitors_to_protected_area,230085,-80.7,1,0,0,Nepal Tourism Statistics 2025
+136,Lumbini,2020,Lumbini,Rupandehi,Religious/Cultural/UNESCO,294874,Nepal+India+third_country_visitors,230085,-80.7,1,0,0,Nepal Tourism Statistics 2025
+137,Lumbini,2021,Banke National Park,Banke,National Park,6,foreign_visitors_to_protected_area,150962,-34.3,1,0,0,Nepal Tourism Statistics 2025
+138,Lumbini,2021,Bardiya National Park,Bardiya,National Park,269,foreign_visitors_to_protected_area,150962,-34.3,1,0,0,Nepal Tourism Statistics 2025
+139,Lumbini,2021,Krishnasar Conservation ARea,Bardiya,Conservation Area,2,foreign_visitors_to_protected_area,150962,-34.3,1,0,0,Nepal Tourism Statistics 2025
+140,Lumbini,2021,Lumbini,Rupandehi,Religious/Cultural/UNESCO,508904,Nepal+India+third_country_visitors,150962,-34.3,1,0,0,Nepal Tourism Statistics 2025
+141,Lumbini,2022,Banke National Park,Banke,National Park,5,foreign_visitors_to_protected_area,614869,307.3,0,1,0,Nepal Tourism Statistics 2025
+142,Lumbini,2022,Bardiya National Park,Bardiya,National Park,3395,foreign_visitors_to_protected_area,614869,307.3,0,1,0,Nepal Tourism Statistics 2025
+143,Lumbini,2022,Krishnasar Conservation ARea,Bardiya,Conservation Area,12,foreign_visitors_to_protected_area,614869,307.3,0,1,0,Nepal Tourism Statistics 2025
+144,Lumbini,2022,Lumbini,Rupandehi,Religious/Cultural/UNESCO,904133,Nepal+India+third_country_visitors,614869,307.3,0,1,0,Nepal Tourism Statistics 2025
+145,Lumbini,2023,Banke National Park,Banke,National Park,14,foreign_visitors_to_protected_area,1014882,65.05,0,1,0,Nepal Tourism Statistics 2025
+146,Lumbini,2023,Bardiya National Park,Bardiya,National Park,7904,foreign_visitors_to_protected_area,1014882,65.05,0,1,0,Nepal Tourism Statistics 2025
+147,Lumbini,2023,Krishnasar Conservation ARea,Bardiya,Conservation Area,50,foreign_visitors_to_protected_area,1014882,65.05,0,1,0,Nepal Tourism Statistics 2025
+148,Lumbini,2023,Lumbini,Rupandehi,Religious/Cultural/UNESCO,1011460,Nepal+India+third_country_visitors,1014882,65.05,0,1,0,Nepal Tourism Statistics 2025
+149,Lumbini,2024,Banke National Park,Banke,National Park,38,foreign_visitors_to_protected_area,1147548,13.07,0,0,1,Nepal Tourism Statistics 2025
+150,Lumbini,2024,Bardiya National Park,Bardiya,National Park,8574,foreign_visitors_to_protected_area,1147548,13.07,0,0,1,Nepal Tourism Statistics 2025
+151,Lumbini,2024,Krishnasar Conservation ARea,Bardiya,Conservation Area,68,foreign_visitors_to_protected_area,1147548,13.07,0,0,1,Nepal Tourism Statistics 2025
+152,Lumbini,2024,Lumbini,Rupandehi,Religious/Cultural/UNESCO,1172304,Nepal+India+third_country_visitors,1147548,13.07,0,0,1,Nepal Tourism Statistics 2025
+153,Lumbini,2025,Banke National Park,Banke,National Park,83,foreign_visitors_to_protected_area,1162365,1.29,0,0,1,Nepal Tourism Statistics 2025
+154,Lumbini,2025,Bardiya National Park,Bardiya,National Park,8752,foreign_visitors_to_protected_area,1162365,1.29,0,0,1,Nepal Tourism Statistics 2025
+155,Lumbini,2025,Krishnasar Conservation ARea,Bardiya,Conservation Area,110,foreign_visitors_to_protected_area,1162365,1.29,0,0,1,Nepal Tourism Statistics 2025
+156,Lumbini,2025,Lumbini,Rupandehi,Religious/Cultural/UNESCO,1126419,Nepal+India+third_country_visitors,1162365,1.29,0,0,1,Nepal Tourism Statistics 2025
+157,Madhesh,2020,Parsa Wildlife Reserve,Parsa,Wildlife Reserve,14,foreign_visitors_to_protected_area,230085,-80.7,1,0,0,Nepal Tourism Statistics 2025
+158,Madhesh,2021,Parsa Wildlife Reserve,Parsa,Wildlife Reserve,5,foreign_visitors_to_protected_area,150962,-34.3,1,0,0,Nepal Tourism Statistics 2025
+159,Madhesh,2022,Parsa Wildlife Reserve,Parsa,Wildlife Reserve,8,foreign_visitors_to_protected_area,614869,307.3,0,1,0,Nepal Tourism Statistics 2025
+160,Madhesh,2023,Parsa Wildlife Reserve,Parsa,Wildlife Reserve,86,foreign_visitors_to_protected_area,1014882,65.05,0,1,0,Nepal Tourism Statistics 2025
+161,Madhesh,2024,Parsa Wildlife Reserve,Parsa,Wildlife Reserve,68,foreign_visitors_to_protected_area,1147548,13.07,0,0,1,Nepal Tourism Statistics 2025
+162,Madhesh,2025,Parsa Wildlife Reserve,Parsa,Wildlife Reserve,45,foreign_visitors_to_protected_area,1162365,1.29,0,0,1,Nepal Tourism Statistics 2025
+163,Sudurpashchim,2020,ApinappaConsersation Area,Darchula,Conservation Area,7,foreign_visitors_to_protected_area,230085,-80.7,1,0,0,Nepal Tourism Statistics 2025
+164,Sudurpashchim,2020,Khaptad National Park,Bajura/Bajhang/Doti/Achham,National Park,16,foreign_visitors_to_protected_area,230085,-80.7,1,0,0,Nepal Tourism Statistics 2025
+165,Sudurpashchim,2020,Shukla Phata Wildlife Reserve,Kanchanpur,Wildlife Reserve,172,foreign_visitors_to_protected_area,230085,-80.7,1,0,0,Nepal Tourism Statistics 2025
+166,Sudurpashchim,2021,ApinappaConsersation Area,Darchula,Conservation Area,3,foreign_visitors_to_protected_area,150962,-34.3,1,0,0,Nepal Tourism Statistics 2025
+167,Sudurpashchim,2021,Khaptad National Park,Bajura/Bajhang/Doti/Achham,National Park,3,foreign_visitors_to_protected_area,150962,-34.3,1,0,0,Nepal Tourism Statistics 2025
+168,Sudurpashchim,2021,Shukla Phata Wildlife Reserve,Kanchanpur,Wildlife Reserve,8,foreign_visitors_to_protected_area,150962,-34.3,1,0,0,Nepal Tourism Statistics 2025
+169,Sudurpashchim,2022,ApinappaConsersation Area,Darchula,Conservation Area,16,foreign_visitors_to_protected_area,614869,307.3,0,1,0,Nepal Tourism Statistics 2025
+170,Sudurpashchim,2022,Khaptad National Park,Bajura/Bajhang/Doti/Achham,National Park,22,foreign_visitors_to_protected_area,614869,307.3,0,1,0,Nepal Tourism Statistics 2025
+171,Sudurpashchim,2022,Shukla Phata Wildlife Reserve,Kanchanpur,Wildlife Reserve,150,foreign_visitors_to_protected_area,614869,307.3,0,1,0,Nepal Tourism Statistics 2025
+172,Sudurpashchim,2023,ApinappaConsersation Area,Darchula,Conservation Area,18,foreign_visitors_to_protected_area,1014882,65.05,0,1,0,Nepal Tourism Statistics 2025
+173,Sudurpashchim,2023,Khaptad National Park,Bajura/Bajhang/Doti/Achham,National Park,80,foreign_visitors_to_protected_area,1014882,65.05,0,1,0,Nepal Tourism Statistics 2025
+174,Sudurpashchim,2023,Shukla Phata Wildlife Reserve,Kanchanpur,Wildlife Reserve,261,foreign_visitors_to_protected_area,1014882,65.05,0,1,0,Nepal Tourism Statistics 2025
+175,Sudurpashchim,2024,ApinappaConsersation Area,Darchula,Conservation Area,23,foreign_visitors_to_protected_area,1147548,13.07,0,0,1,Nepal Tourism Statistics 2025
+176,Sudurpashchim,2024,Khaptad National Park,Bajura/Bajhang/Doti/Achham,National Park,57,foreign_visitors_to_protected_area,1147548,13.07,0,0,1,Nepal Tourism Statistics 2025
+177,Sudurpashchim,2024,Shukla Phata Wildlife Reserve,Kanchanpur,Wildlife Reserve,217,foreign_visitors_to_protected_area,1147548,13.07,0,0,1,Nepal Tourism Statistics 2025
+178,Sudurpashchim,2025,ApinappaConsersation Area,Darchula,Conservation Area,18,foreign_visitors_to_protected_area,1162365,1.29,0,0,1,Nepal Tourism Statistics 2025
+179,Sudurpashchim,2025,Khaptad National Park,Bajura/Bajhang/Doti/Achham,National Park,42,foreign_visitors_to_protected_area,1162365,1.29,0,0,1,Nepal Tourism Statistics 2025
+180,Sudurpashchim,2025,Shukla Phata Wildlife Reserve,Kanchanpur,Wildlife Reserve,551,foreign_visitors_to_protected_area,1162365,1.29,0,0,1,Nepal Tourism Statistics 2025

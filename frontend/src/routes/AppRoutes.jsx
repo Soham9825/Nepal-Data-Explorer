@@ -1,6 +1,7 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import ProtectedRoute from "./ProtectedRoute";
 import AdminRoute from "./AdminRoute";
+import DashboardLayout from "../components/layout/DashboardLayout";
 
 import National from "../pages/National";
 import Economic from "../pages/Economic";
@@ -22,6 +23,43 @@ import Admin from "../pages/Admin";
 import NotFound from "../pages/NotFound";
 
 import CSVExplorer from "../pages/CSVExplorer";
+
+const PAGE_TITLES = {
+  "/": "National Dashboard",
+  "/national": "National Dashboard",
+  "/economic": "Economic Data",
+  "/tourism": "Tourism",
+  "/predictions": "AI Predictions",
+  "/compare": "Compare Indicators",
+  "/provinces": "Province Explorer",
+  "/provinces/:id": "Province Explorer",
+  "/news": "National Headlines",
+  "/reports": "Reports & Exports",
+  "/research": "Research Data Access",
+  "/support": "Support & Help",
+  "/admin": "Admin Panel",
+  "/csv-explorer": "CSV Explorer",
+};
+
+// Persistent shell: the sidebar and topbar stay mounted while the
+// routed page below them swaps, so navigating never looks like a reload.
+function ProtectedLayout({ children }) {
+  const { pathname } = useLocation();
+  const pageTitle =
+    PAGE_TITLES[pathname] ||
+    (/^\/provinces\//.test(pathname) ? "Province Explorer" : PAGE_TITLES["/"]);
+
+  return <DashboardLayout pageTitle={pageTitle}>{children}</DashboardLayout>;
+}
+
+function Protected({ children }) {
+  return (
+    <ProtectedRoute>
+      <ProtectedLayout>{children}</ProtectedLayout>
+    </ProtectedRoute>
+  );
+}
+
 export default function AppRoutes() {
   return (
     <BrowserRouter>
@@ -29,106 +67,106 @@ export default function AppRoutes() {
         <Route
           path="/"
           element={
-            <ProtectedRoute>
+            <Protected>
               <National />
-            </ProtectedRoute>
+            </Protected>
           }
         />
         <Route
           path="/national"
           element={
-            <ProtectedRoute>
+            <Protected>
               <National />
-            </ProtectedRoute>
+            </Protected>
           }
         />
         <Route
           path="/economic"
           element={
-            <ProtectedRoute>
+            <Protected>
               <Economic />
-            </ProtectedRoute>
+            </Protected>
           }
         />
         <Route
           path="/tourism"
           element={
-            <ProtectedRoute>
+            <Protected>
               <Tourism />
-            </ProtectedRoute>
+            </Protected>
           }
         />
         <Route
           path="/predictions"
           element={
-            <ProtectedRoute>
+            <Protected>
               <Predictions />
-            </ProtectedRoute>
+            </Protected>
           }
         />
         <Route
           path="/compare"
           element={
-            <ProtectedRoute>
+            <Protected>
               <Compare />
-            </ProtectedRoute>
+            </Protected>
           }
         />
         <Route
           path="/provinces"
           element={
-            <ProtectedRoute>
+            <Protected>
               <Provinces />
-            </ProtectedRoute>
+            </Protected>
           }
         />
         <Route
           path="/provinces/:id"
           element={
-            <ProtectedRoute>
+            <Protected>
               <Provinces />
-            </ProtectedRoute>
+            </Protected>
           }
         />
         <Route
           path="/news"
           element={
-            <ProtectedRoute>
+            <Protected>
               <News />
-            </ProtectedRoute>
+            </Protected>
           }
         />
         <Route
           path="/reports"
           element={
-            <ProtectedRoute>
+            <Protected>
               <Reports />
-            </ProtectedRoute>
+            </Protected>
           }
         />
         <Route
           path="/research"
           element={
-            <ProtectedRoute>
+            <Protected>
               <Research />
-            </ProtectedRoute>
+            </Protected>
           }
         />
         <Route
           path="/support"
           element={
-            <ProtectedRoute>
+            <Protected>
               <Support />
-            </ProtectedRoute>
+            </Protected>
           }
         />
 
        <Route
         path="/csv-explorer"
         element={
-          <ProtectedRoute>
+          <Protected>
             <CSVExplorer />
-          </ProtectedRoute>
+          </Protected>
         }
         />
 
@@ -137,7 +175,9 @@ export default function AppRoutes() {
           path="/admin"
           element={
             <AdminRoute>
-              <Admin />
+              <ProtectedLayout>
+                <Admin />
+              </ProtectedLayout>
             </AdminRoute>
           }
         />

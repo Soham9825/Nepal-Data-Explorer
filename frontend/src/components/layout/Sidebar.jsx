@@ -9,6 +9,7 @@ const navItems = [
   { id: "national", label: "National", icon: "dashboard", path: "/" },
   { id: "economic", label: "Economic", icon: "payments", path: "/economic" },
   { id: "tourism", label: "Tourism", icon: "flight", path: "/tourism" },
+  { id: "provinces", label: "Provinces", icon: "map", path: "/provinces" },
   { id: "compare", label: "Compare Data", icon: "compare_arrows", path: "/compare" },
   { id: "predictions", label: "AI Predictions", icon: "auto_awesome", path: "/predictions" },
   { id: "reports", label: "Reports", icon: "description", path: "/reports" },
