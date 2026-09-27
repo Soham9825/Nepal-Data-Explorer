@@ -1,92 +1,30 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { SectionCard } from '../components/ui/Card';
-import { TabBtn } from '../components/ui/Tabs';
-import { BtnPrimary, BtnOutline } from '../components/ui/Button';
-import { Icon } from '../components/ui/Icon';
-import { downloadCSV } from '../utils/download';
-import LineChart from '../components/charts/LineChart';
-import BarChart from '../components/charts/BarChart';
-import { formatCountryName } from '../utils/countryFlags';
-import { API_BASE_URL } from '../config';
-
-const INDICATOR_LABELS = {
-  monthly: 'Monthly Tourist Arrivals',
-  nationality: 'Tourist Arrivals by Nationality',
-};
-
-const HIST_COLOR = '#0051d5';
-const FORECAST_COLOR = '#16a34a';
-
-const CHART_DOMAIN_START = Date.UTC(2015, 0, 1);
-const CHART_DOMAIN_END = Date.UTC(2026, 11, 31);
-
-const MONTH_NUMBERS = {
-  jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
-  jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
-};
-const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-const MODEL_LABELS = {
-  ridge: 'Ridge',
-  random_forest: 'Random Forest',
-  gradient_boosting: 'Gradient Boosting',
-  sarima: 'SARIMA',
-  arima: 'ARIMA',
-};
-
-function formatModelName(modelName) {
-  if (!modelName) return '';
-  const key = String(modelName).toLowerCase();
-  return MODEL_LABELS[key] || String(modelName);
-}
-
-function toMonthTimestamp(year, month) {
-  const key = String(month || '').trim().slice(0, 3).toLowerCase();
-  const monthIndex = MONTH_NUMBERS[key] ?? (Number(month) - 1);
-  return Date.UTC(Number(year), monthIndex, 1);
-}
-
-function shortMonth(month) {
-  const name = String(month || '');
-  const key = name.slice(0, 3).toLowerCase();
-  if (MONTH_NUMBERS[key] != null) {
-    return name.charAt(0).toUpperCase() + name.slice(1, 3).toLowerCase();
-  }
-  return name;
-}
-
-function formatValue(value, digits = 0) {
-  const num = Number(value);
-  if (!Number.isFinite(num)) return '—';
-  return num.toLocaleString(undefined, { maximumFractionDigits: digits });
-}
-
-function overallTrend(values) {
-  if (!values.length) return 'flat';
-  const first = values[0];
-  const last = values[values.length - 1];
-  const tolerance = Math.max(1, Math.abs(first) * 0.005);
-  if (last - first > tolerance) return 'up';
-  if (first - last > tolerance) return 'down';
-  return 'flat';
-}
-
-function percentChange(baseline, current) {
-  if (!Number.isFinite(baseline) || !Number.isFinite(current) || baseline === 0) return null;
-  return ((current - baseline) / Math.abs(baseline)) * 100;
-}
-
-function mean(values) {
-  const nums = values.map(Number).filter(Number.isFinite);
-  if (!nums.length) return 0;
-  return nums.reduce((sum, v) => sum + v, 0) / nums.length;
-}
-
-const TREND_UI = {
-  up: { icon: 'trending_up', color: '#1b7f3b', label: 'Rising' },
-  down: { icon: 'trending_down', color: '#b70011', label: 'Falling' },
-  flat: { icon: 'trending_flat', color: '#7a5100', label: 'Stable' },
-};
+import { SectionCard } from '../../components/ui/Card';
+import { TabBtn } from '../../components/ui/Tabs';
+import { BtnPrimary, BtnOutline } from '../../components/ui/Button';
+import { Icon } from '../../components/ui/Icon';
+import { downloadCSV } from '../../utils/download';
+import LineChart from '../../components/charts/LineChart';
+import BarChart from '../../components/charts/BarChart';
+import { formatCountryName } from '../../utils/countryFlags';
+import { API_BASE_URL } from '../../config';
+import {
+  CHART_DOMAIN_END,
+  CHART_DOMAIN_START,
+  FORECAST_COLOR,
+  HIST_COLOR,
+  INDICATOR_LABELS,
+  MONTHS_SHORT,
+  MONTH_NUMBERS,
+  TREND_UI,
+  formatModelName,
+  formatValue,
+  mean,
+  overallTrend,
+  percentChange,
+  shortMonth,
+  toMonthTimestamp,
+} from './helpers';
 
 // Skeleton placeholder shown while the APIs are loading.
 function SkeletonBlock({ className = '' }) {
@@ -101,11 +39,16 @@ function ThemedSelect({ value, onChange, children }) {
       <select
         value={value}
         onChange={onChange}
-        className="appearance-none border border-outline-variant bg-surface px-3 py-2 pr-8 font-sans text-sm font-semibold normal-case text-onSurface outline-none cursor-pointer transition-colors hover:bg-surface-container-highest focus:border-onSurface-variant"
+        className="appearance-none border border-outline-variant bg-surface px-3 py-2 pr-8 font-sans text-sm font-semibold normal-case text-onSurface outline-none cursor-pointer transition-colors hover:bg-surface-highest focus:border-onSurface-variant"
       >
         {children}
       </select>
-      <Icon name="expand_more" size={14} color="#6b7280" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2" />
+      <Icon
+        name="expand_more"
+        size={14}
+        color="#6b7280"
+        className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2"
+      />
     </div>
   );
 }
@@ -209,13 +152,21 @@ export default function Predictions() {
     [monthlyForecast]
   );
 
-  const monthlyYears = [...new Set([
-    ...monthlyHistory.map((item) => String(item.year)),
-    ...monthlyForecastSorted.map((item) => String(item.year)),
-  ])].sort();
-  const selectedMonthlyYear = monthlyYears.includes(monthlyYear) ? monthlyYear : monthlyYears.at(-1) || '';
-  const selectedMonthlyHistory = monthlyHistory.filter((item) => String(item.year) === selectedMonthlyYear);
-  const selectedMonthlyForecast = monthlyForecastSorted.filter((item) => String(item.year) === selectedMonthlyYear);
+  const monthlyYears = [
+    ...new Set([
+      ...monthlyHistory.map((item) => String(item.year)),
+      ...monthlyForecastSorted.map((item) => String(item.year)),
+    ]),
+  ].sort();
+  const selectedMonthlyYear = monthlyYears.includes(monthlyYear)
+    ? monthlyYear
+    : monthlyYears.at(-1) || '';
+  const selectedMonthlyHistory = monthlyHistory.filter(
+    (item) => String(item.year) === selectedMonthlyYear
+  );
+  const selectedMonthlyForecast = monthlyForecastSorted.filter(
+    (item) => String(item.year) === selectedMonthlyYear
+  );
 
   const isMonthly = type === 'monthly';
   const label = isMonthly ? INDICATOR_LABELS.monthly : `${nationality} Arrivals`;
@@ -263,14 +214,25 @@ export default function Predictions() {
       hasForecast: forecastRows.length > 0,
       forecastRows,
     };
-  }, [isMonthly, fullTimeline, monthlyHistory, selectedMonthlyHistory, selectedMonthlyForecast, monthlyForecastSorted, selectedNationalityForecast, selectedNationalityHistory]);
+  }, [
+    isMonthly,
+    fullTimeline,
+    monthlyHistory,
+    selectedMonthlyHistory,
+    selectedMonthlyForecast,
+    monthlyForecastSorted,
+    selectedNationalityForecast,
+    selectedNationalityHistory,
+  ]);
 
-  const chartStart = isMonthly && !fullTimeline && selectedMonthlyYear
-    ? Date.UTC(Number(selectedMonthlyYear), 0, 1)
-    : CHART_DOMAIN_START;
-  const chartEnd = isMonthly && !fullTimeline && selectedMonthlyYear
-    ? Date.UTC(Number(selectedMonthlyYear), 11, 31)
-    : CHART_DOMAIN_END;
+  const chartStart =
+    isMonthly && !fullTimeline && selectedMonthlyYear
+      ? Date.UTC(Number(selectedMonthlyYear), 0, 1)
+      : CHART_DOMAIN_START;
+  const chartEnd =
+    isMonthly && !fullTimeline && selectedMonthlyYear
+      ? Date.UTC(Number(selectedMonthlyYear), 11, 31)
+      : CHART_DOMAIN_END;
   const chartZoneStart = chartRows.hasForecast
     ? Math.min(...chartRows.forecastRows.map((row) => row.period))
     : undefined;
@@ -292,7 +254,9 @@ export default function Predictions() {
         color: HIST_COLOR,
       });
 
-      const forecastValues = monthlyForecastSorted.map((item) => Number(item.predicted_value)).filter(Number.isFinite);
+      const forecastValues = monthlyForecastSorted
+        .map((item) => Number(item.predicted_value))
+        .filter(Number.isFinite);
       const forecastYears = [...new Set(monthlyForecastSorted.map((item) => item.year))].sort();
       cards.push({
         key: 'forecast',
@@ -306,7 +270,9 @@ export default function Predictions() {
       });
 
       const fAvg = forecastValues.length ? mean(forecastValues) : null;
-      const trailing = monthlyHistory.slice(-Math.max(forecastValues.length, 1)).map((item) => Number(item.arrivals));
+      const trailing = monthlyHistory
+        .slice(-Math.max(forecastValues.length, 1))
+        .map((item) => Number(item.arrivals));
       const hAvg = trailing.length ? mean(trailing) : null;
       const growth = fAvg != null && hAvg ? percentChange(hAvg, fAvg) : null;
       cards.push({
@@ -318,9 +284,15 @@ export default function Predictions() {
         color: growth != null && growth < 0 ? '#b70011' : FORECAST_COLOR,
       });
 
-      const histValues = monthlyHistory.map((item) => Number(item.arrivals)).filter(Number.isFinite);
-      const histMinYear = monthlyHistory.length ? Math.min(...monthlyHistory.map((i) => i.year)) : null;
-      const histMaxYear = monthlyHistory.length ? Math.max(...monthlyHistory.map((i) => i.year)) : null;
+      const histValues = monthlyHistory
+        .map((item) => Number(item.arrivals))
+        .filter(Number.isFinite);
+      const histMinYear = monthlyHistory.length
+        ? Math.min(...monthlyHistory.map((i) => i.year))
+        : null;
+      const histMaxYear = monthlyHistory.length
+        ? Math.max(...monthlyHistory.map((i) => i.year))
+        : null;
       cards.push({
         key: 'avg',
         icon: 'show_chart',
@@ -331,8 +303,7 @@ export default function Predictions() {
       });
 
       const peak = monthlyHistory.reduce(
-        (best, item) =>
-          !best || Number(item.arrivals) > Number(best.arrivals) ? item : best,
+        (best, item) => (!best || Number(item.arrivals) > Number(best.arrivals) ? item : best),
         null
       );
       cards.push({
@@ -370,17 +341,19 @@ export default function Predictions() {
         color: FORECAST_COLOR,
       });
 
-      const growth = lastActual != null && firstForecast
-        ? percentChange(lastActual, Number(firstForecast.predicted_value))
-        : null;
+      const growth =
+        lastActual != null && firstForecast
+          ? percentChange(lastActual, Number(firstForecast.predicted_value))
+          : null;
       cards.push({
         key: 'growth',
         icon: 'speed',
         label: 'Forecast Growth',
         value: growth != null ? `${growth >= 0 ? '+' : ''}${growth.toFixed(1)}%` : '—',
-        sub: firstForecast?.target_year && last?.year
-          ? `Year ${last.year} actual → ${firstForecast.target_year} forecast`
-          : 'vs last year actual',
+        sub:
+          firstForecast?.target_year && last?.year
+            ? `Year ${last.year} actual → ${firstForecast.target_year} forecast`
+            : 'vs last year actual',
         color: growth != null && growth < 0 ? '#b70011' : FORECAST_COLOR,
       });
 
@@ -394,7 +367,10 @@ export default function Predictions() {
         color: '#5c403c',
       });
 
-      const peak = hist.reduce((best, item) => (!best || Number(item.arrivals) > Number(best.arrivals) ? item : best), null);
+      const peak = hist.reduce(
+        (best, item) => (!best || Number(item.arrivals) > Number(best.arrivals) ? item : best),
+        null
+      );
       cards.push({
         key: 'peak',
         icon: 'star',
@@ -406,17 +382,28 @@ export default function Predictions() {
     }
 
     return cards;
-  }, [isMonthly, arrivalTrend, monthlyHistory, monthlyForecastSorted, selectedNationalityHistory, selectedNationalityForecast]);
+  }, [
+    isMonthly,
+    arrivalTrend,
+    monthlyHistory,
+    monthlyForecastSorted,
+    selectedNationalityHistory,
+    selectedNationalityForecast,
+  ]);
 
   // Seasonality (monthly only): calendar-month averages for history vs forecast.
   const seasonality = useMemo(() => {
     if (!isMonthly) return null;
     const byMonthHist = MONTHS_SHORT.map((_, i) => {
-      const rows = monthlyHistory.filter((item) => MONTH_NUMBERS[String(item.month).slice(0, 3).toLowerCase()] === i);
+      const rows = monthlyHistory.filter(
+        (item) => MONTH_NUMBERS[String(item.month).slice(0, 3).toLowerCase()] === i
+      );
       return { index: i, avg: mean(rows.map((r) => r.arrivals)) };
     });
     const byMonthFcast = MONTHS_SHORT.map((_, i) => {
-      const rows = monthlyForecastSorted.filter((item) => MONTH_NUMBERS[String(item.month).slice(0, 3).toLowerCase()] === i);
+      const rows = monthlyForecastSorted.filter(
+        (item) => MONTH_NUMBERS[String(item.month).slice(0, 3).toLowerCase()] === i
+      );
       return { index: i, avg: mean(rows.map((r) => r.predicted_value)) };
     });
     return {
@@ -432,12 +419,19 @@ export default function Predictions() {
   // Annual comparison: real years bar with forecast-only years highlighted in green.
   const annual = useMemo(() => {
     if (isMonthly) {
-      const hist = arrivalTrend.map((item) => ({ year: Number(item.year), value: Number(item.total_arrivals), forecast: false }));
+      const hist = arrivalTrend.map((item) => ({
+        year: Number(item.year),
+        value: Number(item.total_arrivals),
+        forecast: false,
+      }));
       const fcastTotals = {};
       monthlyForecastSorted.forEach((item) => {
-        fcastTotals[Number(item.year)] = (fcastTotals[Number(item.year)] || 0) + Number(item.predicted_value || 0);
+        fcastTotals[Number(item.year)] =
+          (fcastTotals[Number(item.year)] || 0) + Number(item.predicted_value || 0);
       });
-      const years = [...new Set([...hist.map((h) => h.year), ...Object.keys(fcastTotals).map(Number)])].sort((a, b) => a - b);
+      const years = [
+        ...new Set([...hist.map((h) => h.year), ...Object.keys(fcastTotals).map(Number)]),
+      ].sort((a, b) => a - b);
       return years.map((year) => {
         const real = hist.find((h) => h.year === year);
         if (real) return { year, arrivals: real.value, color: HIST_COLOR };
@@ -445,35 +439,57 @@ export default function Predictions() {
       });
     }
 
-    const hist = selectedNationalityHistory.map((item) => ({ year: Number(item.year), value: Number(item.arrivals), forecast: false }));
+    const hist = selectedNationalityHistory.map((item) => ({
+      year: Number(item.year),
+      value: Number(item.arrivals),
+      forecast: false,
+    }));
     const fcastTotals = {};
     selectedNationalityForecast.forEach((item) => {
       fcastTotals[Number(item.target_year)] =
         (fcastTotals[Number(item.target_year)] || 0) + Number(item.predicted_value || 0);
     });
-    const years = [...new Set([...hist.map((h) => h.year), ...Object.keys(fcastTotals).map(Number)])].sort((a, b) => a - b);
+    const years = [
+      ...new Set([...hist.map((h) => h.year), ...Object.keys(fcastTotals).map(Number)]),
+    ].sort((a, b) => a - b);
     return years.map((year) => {
       const real = hist.find((h) => h.year === year);
       if (real) return { year, arrivals: real.value, color: HIST_COLOR };
       return { year, arrivals: fcastTotals[year], color: FORECAST_COLOR };
     });
-  }, [isMonthly, arrivalTrend, monthlyForecastSorted, selectedNationalityHistory, selectedNationalityForecast]);
+  }, [
+    isMonthly,
+    arrivalTrend,
+    monthlyForecastSorted,
+    selectedNationalityHistory,
+    selectedNationalityForecast,
+  ]);
 
   // Dynamic insights derived from the actual forecast values.
   const insights = useMemo(() => {
-    const forecastValues = (isMonthly ? monthlyForecastSorted : selectedNationalityForecast).map((item) =>
-      Number(item.predicted_value)
-    ).filter(Number.isFinite);
+    const forecastValues = (isMonthly ? monthlyForecastSorted : selectedNationalityForecast)
+      .map((item) => Number(item.predicted_value))
+      .filter(Number.isFinite);
     if (!forecastValues.length) return [];
 
     const trend = overallTrend(forecastValues);
-    const peakIndex = forecastValues.reduce((best, v, i) => (v > forecastValues[best] ? i : best), 0);
-    const slowIndex = forecastValues.reduce((best, v, i) => (v < forecastValues[best] ? i : best), 0);
+    const peakIndex = forecastValues.reduce(
+      (best, v, i) => (v > forecastValues[best] ? i : best),
+      0
+    );
+    const slowIndex = forecastValues.reduce(
+      (best, v, i) => (v < forecastValues[best] ? i : best),
+      0
+    );
     const rows = isMonthly ? monthlyForecastSorted : selectedNationalityForecast;
 
     const trailing = isMonthly
-      ? monthlyHistory.slice(-Math.max(forecastValues.length, 1)).map((item) => Number(item.arrivals))
-      : selectedNationalityHistory.slice(-Math.max(forecastValues.length, 1)).map((item) => Number(item.arrivals));
+      ? monthlyHistory
+          .slice(-Math.max(forecastValues.length, 1))
+          .map((item) => Number(item.arrivals))
+      : selectedNationalityHistory
+          .slice(-Math.max(forecastValues.length, 1))
+          .map((item) => Number(item.arrivals));
     const growth = percentChange(mean(trailing), mean(forecastValues));
 
     const widths = rows
@@ -482,7 +498,9 @@ export default function Predictions() {
         hi: Number(item.upper_bound),
         v: Number(item.predicted_value),
       }))
-      .filter((w) => Number.isFinite(w.lo) && Number.isFinite(w.hi) && Number.isFinite(w.v) && w.v !== 0);
+      .filter(
+        (w) => Number.isFinite(w.lo) && Number.isFinite(w.hi) && Number.isFinite(w.v) && w.v !== 0
+      );
     const avgBand = widths.length
       ? mean(widths.map((w) => (Math.abs(w.hi - w.lo) / Math.abs(w.v)) * 100))
       : null;
@@ -530,8 +548,13 @@ export default function Predictions() {
     });
 
     return result;
-     
-  }, [isMonthly, monthlyForecastSorted, selectedNationalityForecast, monthlyHistory, selectedNationalityHistory]);
+  }, [
+    isMonthly,
+    monthlyForecastSorted,
+    selectedNationalityForecast,
+    monthlyHistory,
+    selectedNationalityHistory,
+  ]);
 
   function formatPeriod(item, monthly) {
     if (!item) return 'N/A';
@@ -541,7 +564,9 @@ export default function Predictions() {
   }
 
   const forecastItems = isMonthly ? monthlyForecastSorted : selectedNationalityForecast;
-  const forecastValues = forecastItems.map((item) => Number(item.predicted_value)).filter(Number.isFinite);
+  const forecastValues = forecastItems
+    .map((item) => Number(item.predicted_value))
+    .filter(Number.isFinite);
   const availableNationalities = [...new Set(nationalityForecast.map((item) => item.topic))].sort();
   const forecastModels = [...new Set(forecastItems.map((item) => item.model_name).filter(Boolean))];
 
@@ -621,220 +646,242 @@ export default function Predictions() {
 
   return (
     <div className="space-y-6">
-        {/* Header */}
-        <div>
-          <h3 className="text-2xl font-bold text-onSurface">AI Predictions</h3>
-          <p className="text-onSurface-variant text-sm">
-            Machine learning forecasts trained on 10+ years of NRB, CBS, and DoT tourism data
-          </p>
+      {/* Header */}
+      <div>
+        <h3 className="text-2xl font-bold text-onSurface">AI Predictions</h3>
+        <p className="text-onSurface-variant text-sm">
+          Machine learning forecasts trained on 10+ years of NRB, CBS, and DoT tourism data
+        </p>
+      </div>
+
+      {/* Error state */}
+      {error && !loading && (
+        <div className="flex items-center gap-3 border border-red-200 bg-red-50 p-4 rounded-sm">
+          <Icon name="error" size={22} color="#b70011" />
+          <p className="text-sm text-red-700 flex-1">{error}</p>
+          <BtnOutline onClick={retry} className="gap-2 rounded-sm">
+            <Icon name="refresh" size={14} /> Retry
+          </BtnOutline>
         </div>
+      )}
 
-        {/* Error state */}
-        {error && !loading && (
-          <div className="flex items-center gap-3 border border-red-200 bg-red-50 p-4 rounded-sm">
-            <Icon name="error" size={22} color="#b70011" />
-            <p className="text-sm text-red-700 flex-1">{error}</p>
-            <BtnOutline onClick={retry} className="gap-2 rounded-sm">
-              <Icon name="refresh" size={14} /> Retry
-            </BtnOutline>
-          </div>
-        )}
-
-        {/* KPI summary cards */}
-        {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="bg-surface border border-outline-variant rounded-sm p-5">
-                <SkeletonBlock className="h-4 w-24 mb-2" />
-                <SkeletonBlock className="h-8 w-28 mb-2" />
-                <SkeletonBlock className="h-3 w-20" />
-              </div>
-            ))}
-          </div>
-        ) : !error ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-            {kpis.map((card) => (
-              <div
-                key={card.key}
-                className="bg-surface border border-outline-variant rounded-sm p-5 card-shadow"
-                style={{ borderTop: `3px solid ${card.color}` }}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="text-xs font-bold uppercase text-onSurface-variant">{card.label}</div>
-                  <Icon name={card.icon} size={18} color={card.color} />
-                </div>
-                <div className="text-3xl font-bold text-onSurface font-hanken">{card.value}</div>
-                <div className="text-xs text-onSurface-variant mt-1">{card.sub}</div>
-              </div>
-            ))}
-          </div>
-        ) : null}
-
-        {/* Configure */}
-        <SectionCard
-          title="Configure Forecast"
-          subtitle="Explore the tourism forecasts produced by the trained models"
-          className="rounded-sm"
-        >
-          <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
-            <div>
-              <div className="text-xs font-bold uppercase text-onSurface-variant mb-2.5">Forecast dataset</div>
-              <div className="flex gap-2 rounded-sm border border-outline-variant p-1">
-                {[
-                  ['monthly', 'Monthly arrivals'],
-                  ['nationality', 'By nationality'],
-                ].map(([v, l]) => (
-                  <TabBtn key={v} active={type === v} onClick={() => setType(v)}>
-                    {l}
-                  </TabBtn>
-                ))}
-              </div>
+      {/* KPI summary cards */}
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="bg-surface border border-outline-variant rounded-sm p-5">
+              <SkeletonBlock className="h-4 w-24 mb-2" />
+              <SkeletonBlock className="h-8 w-28 mb-2" />
+              <SkeletonBlock className="h-3 w-20" />
             </div>
+          ))}
+        </div>
+      ) : !error ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+          {kpis.map((card) => (
+            <div
+              key={card.key}
+              className="bg-surface border border-outline-variant rounded-sm p-5 card-shadow"
+              style={{ borderTop: `3px solid ${card.color}` }}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-xs font-bold uppercase text-onSurface-variant">
+                  {card.label}
+                </div>
+                <Icon name={card.icon} size={18} color={card.color} />
+              </div>
+              <div className="text-3xl font-bold text-onSurface font-hanken">{card.value}</div>
+              <div className="text-xs text-onSurface-variant mt-1">{card.sub}</div>
+            </div>
+          ))}
+        </div>
+      ) : null}
 
-            {!isMonthly && (
+      {/* Configure */}
+      <SectionCard
+        title="Configure Forecast"
+        subtitle="Explore the tourism forecasts produced by the trained models"
+        className="rounded-sm"
+      >
+        <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
+          <div>
+            <div className="text-xs font-bold uppercase text-onSurface-variant mb-2.5">
+              Forecast dataset
+            </div>
+            <div className="flex gap-2 rounded-sm border border-outline-variant p-1">
+              {[
+                ['monthly', 'Monthly arrivals'],
+                ['nationality', 'By nationality'],
+              ].map(([v, l]) => (
+                <TabBtn key={v} active={type === v} onClick={() => setType(v)}>
+                  {l}
+                </TabBtn>
+              ))}
+            </div>
+          </div>
+
+          {!isMonthly && (
+            <label className="text-xs font-bold uppercase text-onSurface-variant">
+              Nationality
+              <span className="mt-2 block">
+                <ThemedSelect
+                  value={nationality}
+                  onChange={(event) => setNationality(event.target.value)}
+                >
+                  {(availableNationalities.length ? availableNationalities : ['India']).map(
+                    (item) => (
+                      <option key={item} value={item}>
+                        {formatCountryName(item)}
+                      </option>
+                    )
+                  )}
+                </ThemedSelect>
+              </span>
+            </label>
+          )}
+
+          {isMonthly && (
+            <>
               <label className="text-xs font-bold uppercase text-onSurface-variant">
-                Nationality
+                Year
                 <span className="mt-2 block">
                   <ThemedSelect
-                    value={nationality}
-                    onChange={(event) => setNationality(event.target.value)}
+                    value={selectedMonthlyYear}
+                    onChange={(event) => setMonthlyYear(event.target.value)}
                   >
-                    {(availableNationalities.length ? availableNationalities : ['India']).map((item) => (
-                      <option key={item} value={item}>{formatCountryName(item)}</option>
+                    {monthlyYears.map((item) => (
+                      <option key={item} value={item}>
+                        {item}
+                      </option>
                     ))}
                   </ThemedSelect>
                 </span>
               </label>
-            )}
+              <label className="flex h-[38px] cursor-pointer select-none items-center gap-2 text-xs font-bold uppercase text-onSurface-variant">
+                <input
+                  type="checkbox"
+                  checked={fullTimeline}
+                  onChange={(event) => setFullTimeline(event.target.checked)}
+                  className="size-4 accent-[#0051d5] cursor-pointer"
+                />
+                Full timeline
+              </label>
+            </>
+          )}
 
-            {isMonthly && (
-              <>
-                <label className="text-xs font-bold uppercase text-onSurface-variant">
-                  Year
-                  <span className="mt-2 block">
-                    <ThemedSelect
-                      value={selectedMonthlyYear}
-                      onChange={(event) => setMonthlyYear(event.target.value)}
-                    >
-                      {monthlyYears.map((item) => <option key={item} value={item}>{item}</option>)}
-                    </ThemedSelect>
-                  </span>
-                </label>
-                <label className="flex h-[38px] cursor-pointer select-none items-center gap-2 text-xs font-bold uppercase text-onSurface-variant">
-                  <input
-                    type="checkbox"
-                    checked={fullTimeline}
-                    onChange={(event) => setFullTimeline(event.target.checked)}
-                    className="size-4 accent-[#0051d5] cursor-pointer"
-                  />
-                  Full timeline
-                </label>
-              </>
+          <div className="flex items-center gap-3 ml-auto">
+            <BtnPrimary
+              onClick={() => setDone(true)}
+              className="gap-2 rounded-sm"
+              disabled={loading || !forecastItems.length}
+            >
+              <Icon name="auto_awesome" size={16} color="#fff" />
+              View Forecast
+            </BtnPrimary>
+            {showContent && (
+              <BtnOutline
+                onClick={handleDownload}
+                className="gap-2 rounded-sm"
+                title={`Download ${label} historical + forecast data as CSV`}
+              >
+                <Icon name="download" size={14} />
+                Download CSV
+              </BtnOutline>
             )}
-
-            <div className="flex items-center gap-3 ml-auto">
-              <BtnPrimary onClick={() => setDone(true)} className="gap-2 rounded-sm" disabled={loading || !forecastItems.length}>
-                <Icon name="auto_awesome" size={16} color="#fff" />
-                View Forecast
-              </BtnPrimary>
-              {showContent && (
-                <BtnOutline
-                  onClick={handleDownload}
-                  className="gap-2 rounded-sm"
-                  title={`Download ${label} historical + forecast data as CSV`}
-                >
-                  <Icon name="download" size={14} />
-                  Download CSV
-                </BtnOutline>
-              )}
-            </div>
           </div>
-        </SectionCard>
+        </div>
+      </SectionCard>
 
-        {/* Main forecast chart */}
-        {showContent && (
-          <SectionCard
-            title={`${label} — Historical + AI Forecast`}
-            subtitle={isMonthly
+      {/* Main forecast chart */}
+      {showContent && (
+        <SectionCard
+          title={`${label} — Historical + AI Forecast`}
+          subtitle={
+            isMonthly
               ? 'Solid blue line = historical arrivals · Green line with shaded band = model prediction'
-              : 'Solid blue = actual arrivals · Green = AI annual projections with confidence band'}
-            className="rounded-sm"
-            contentClassName="min-h-[320px]"
-          >
-            <LineChart
-              data={chartRows.rows}
-              xKey="period"
-              labelKey="label"
-              tooltipKey="tooltipLabel"
-              timeScale
-              xDomainStart={chartStart}
-              xDomainEnd={chartEnd}
-              zoneStart={chartZoneStart}
-              zoneLabel={zoneLabelText === 'Forecast' ? 'Forecast starts' : zoneLabelText}
-              bands={[{ keyMin: 'lower', keyMax: 'upper', color: FORECAST_COLOR, opacity: 0.12 }]}
-              series={[
-                { key: 'hist', color: HIST_COLOR, label: 'Historical' },
-                { key: 'forecast', color: FORECAST_COLOR, label: 'AI Forecast', dashed: true },
-              ]}
-              height={440}
-            />
-          </SectionCard>
-        )}
+              : 'Solid blue = actual arrivals · Green = AI annual projections with confidence band'
+          }
+          className="rounded-sm"
+          contentClassName="min-h-[320px]"
+        >
+          <LineChart
+            data={chartRows.rows}
+            xKey="period"
+            labelKey="label"
+            tooltipKey="tooltipLabel"
+            timeScale
+            xDomainStart={chartStart}
+            xDomainEnd={chartEnd}
+            zoneStart={chartZoneStart}
+            zoneLabel={zoneLabelText === 'Forecast' ? 'Forecast starts' : zoneLabelText}
+            bands={[{ keyMin: 'lower', keyMax: 'upper', color: FORECAST_COLOR, opacity: 0.12 }]}
+            series={[
+              { key: 'hist', color: HIST_COLOR, label: 'Historical' },
+              { key: 'forecast', color: FORECAST_COLOR, label: 'AI Forecast', dashed: true },
+            ]}
+            height={440}
+          />
+        </SectionCard>
+      )}
 
-        {/* Seasonality + Annual comparison */}
-        {showContent && (
-          <div className="grid grid-cols-1 gap-6">
-            {seasonality && (
-              <SectionCard title="Seasonality" subtitle="Average arrivals by calendar month — history vs forecast" className="rounded-sm h-full">
-                <div className="h-80">
-                  <BarChart
-                    data={seasonality.data}
-                    xKey="name"
-                    series={[
-                      { key: 'histAvg', color: HIST_COLOR, label: 'Historical avg' },
-                      { key: 'fcastAvg', color: FORECAST_COLOR, label: 'Forecast avg' },
-                    ]}
-                    height="100%"
-                    bordered={false}
-                    tooltipFormatter={(month) => `${month} month average`}
-                  />
-                </div>
-              </SectionCard>
-            )}
-
+      {/* Seasonality + Annual comparison */}
+      {showContent && (
+        <div className="grid grid-cols-1 gap-6">
+          {seasonality && (
             <SectionCard
-              title="Annual Tourist Arrivals"
-              subtitle="Real arrivals by year with the forecast period highlighted in green"
+              title="Seasonality"
+              subtitle="Average arrivals by calendar month — history vs forecast"
               className="rounded-sm h-full"
             >
-              <div className={!isMonthly ? 'h-[28rem]' : 'h-96'}>
+              <div className="h-80">
                 <BarChart
-                  data={annual}
-                  xKey="year"
-                  labelKey="year"
-                  valueKey="arrivals"
+                  data={seasonality.data}
+                  xKey="name"
+                  series={[
+                    { key: 'histAvg', color: HIST_COLOR, label: 'Historical avg' },
+                    { key: 'fcastAvg', color: FORECAST_COLOR, label: 'Forecast avg' },
+                  ]}
                   height="100%"
                   bordered={false}
-                  tooltipFormatter={(year) => `Arrivals ${year}`}
+                  tooltipFormatter={(month) => `${month} month average`}
                 />
               </div>
             </SectionCard>
-          </div>
-        )}
+          )}
 
-        {/* Forecast detail cards */}
-        {showContent && (
           <SectionCard
-            title="Forecast Detail"
-            subtitle={
-              isMonthly
-                ? `Model outputs for the ${forecastItems.length}-month forecast window — scroll to see all`
-                : `Model outputs for ${forecastItems.length} annual projections for ${nationality} — scroll to see all`
-            }
-            className="rounded-sm"
+            title="Annual Tourist Arrivals"
+            subtitle="Real arrivals by year with the forecast period highlighted in green"
+            className="rounded-sm h-full"
           >
-            <div className="max-h-[34rem] overflow-y-auto pr-1">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className={!isMonthly ? 'h-[28rem]' : 'h-96'}>
+              <BarChart
+                data={annual}
+                xKey="year"
+                labelKey="year"
+                valueKey="arrivals"
+                height="100%"
+                bordered={false}
+                tooltipFormatter={(year) => `Arrivals ${year}`}
+              />
+            </div>
+          </SectionCard>
+        </div>
+      )}
+
+      {/* Forecast detail cards */}
+      {showContent && (
+        <SectionCard
+          title="Forecast Detail"
+          subtitle={
+            isMonthly
+              ? `Model outputs for the ${forecastItems.length}-month forecast window — scroll to see all`
+              : `Model outputs for ${forecastItems.length} annual projections for ${nationality} — scroll to see all`
+          }
+          className="rounded-sm"
+        >
+          <div className="max-h-[34rem] overflow-y-auto pr-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {forecastItems.map((item, i) => {
                 const trend = overallTrend(forecastValues.slice(0, i + 1));
                 const tr = TREND_UI[trend];
@@ -845,7 +892,9 @@ export default function Predictions() {
                     style={{ borderTop: `3px solid ${FORECAST_COLOR}` }}
                   >
                     <div className="text-xs font-bold uppercase text-onSurface-variant mb-1.5">
-                      {isMonthly ? `${item.month} ${item.year}` : `${item.target_year}-${String(item.target_month).padStart(2, '0')}`}
+                      {isMonthly
+                        ? `${item.month} ${item.year}`
+                        : `${item.target_year}-${String(item.target_month).padStart(2, '0')}`}
                     </div>
                     <div className="text-2xl font-bold text-onSurface font-hanken">
                       {formatValue(item.predicted_value)}
@@ -856,7 +905,9 @@ export default function Predictions() {
                       </div>
                     )}
                     {item.model_name && (
-                      <div className="text-xs text-onSurface-variant mt-1">Model: {formatModelName(item.model_name)}</div>
+                      <div className="text-xs text-onSurface-variant mt-1">
+                        Model: {formatModelName(item.model_name)}
+                      </div>
                     )}
                     <div className="flex items-center gap-1 mt-2">
                       <Icon name={tr.icon} size={14} color={tr.color} />
@@ -867,61 +918,72 @@ export default function Predictions() {
                   </div>
                 );
               })}
-              </div>
-            </div>
-          </SectionCard>
-        )}
-
-        {/* AI Forecast Insights */}
-        {showContent && insights.length > 0 && (
-          <SectionCard title="AI Forecast Insights" subtitle="What the numbers say about the horizon ahead" className="rounded-sm">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {insights.map((insight, i) => (
-                <div
-                  key={i}
-                  className="p-4 bg-surface-lowest border border-outline-variant rounded-sm"
-                  style={{ borderLeft: `3px solid ${insight.color}` }}
-                >
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <Icon name={insight.icon} size={18} color={insight.color} />
-                    <span className="text-sm font-bold text-onSurface">{insight.title}</span>
-                  </div>
-                  <p className="text-xs text-onSurface-variant leading-relaxed">{insight.detail}</p>
-                </div>
-              ))}
-            </div>
-          </SectionCard>
-        )}
-
-        {/* Model Information — only when the backend actually provides per-row model metadata */}
-        {showContent && forecastModels.length > 0 && (
-          <SectionCard title="Model Information" subtitle="Forecast algorithms reported by the ML pipeline" className="rounded-sm">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {forecastModels.map((model, i) => (
-                <div key={i} className="flex items-center gap-3 p-3.5 bg-surface-lowest border border-outline-variant rounded-sm">
-                  <Icon name="memory" size={18} color={FORECAST_COLOR} />
-                  <div>
-                    <div className="text-sm font-bold text-onSurface">{formatModelName(model)}</div>
-                    <div className="text-xs text-onSurface-variant">Model ID {model}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </SectionCard>
-        )}
-
-        {/* Empty pre-generation prompt */}
-        {!done && !loading && !error && (
-          <div className="border-2 border-dashed border-outline-variant rounded-sm p-16 text-center">
-            <Icon name="auto_awesome" size={48} color="#916f6b" className="block mx-auto mb-4" />
-            <div className="text-base font-bold text-onSurface-variant mb-1.5">
-              Select parameters above and click View Forecast
-            </div>
-            <div className="text-sm text-onSurface-variant opacity-70">
-              Historical data shown from 2015 with model forecasts through 2026
             </div>
           </div>
-        )}
-      </div>
+        </SectionCard>
+      )}
+
+      {/* AI Forecast Insights */}
+      {showContent && insights.length > 0 && (
+        <SectionCard
+          title="AI Forecast Insights"
+          subtitle="What the numbers say about the horizon ahead"
+          className="rounded-sm"
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {insights.map((insight, i) => (
+              <div
+                key={i}
+                className="p-4 bg-surface-lowest border border-outline-variant rounded-sm"
+                style={{ borderLeft: `3px solid ${insight.color}` }}
+              >
+                <div className="flex items-center gap-2 mb-1.5">
+                  <Icon name={insight.icon} size={18} color={insight.color} />
+                  <span className="text-sm font-bold text-onSurface">{insight.title}</span>
+                </div>
+                <p className="text-xs text-onSurface-variant leading-relaxed">{insight.detail}</p>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Model Information — only when the backend actually provides per-row model metadata */}
+      {showContent && forecastModels.length > 0 && (
+        <SectionCard
+          title="Model Information"
+          subtitle="Forecast algorithms reported by the ML pipeline"
+          className="rounded-sm"
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {forecastModels.map((model, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-3 p-3.5 bg-surface-lowest border border-outline-variant rounded-sm"
+              >
+                <Icon name="memory" size={18} color={FORECAST_COLOR} />
+                <div>
+                  <div className="text-sm font-bold text-onSurface">{formatModelName(model)}</div>
+                  <div className="text-xs text-onSurface-variant">Model ID {model}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Empty pre-generation prompt */}
+      {!done && !loading && !error && (
+        <div className="border-2 border-dashed border-outline-variant rounded-sm p-16 text-center">
+          <Icon name="auto_awesome" size={48} color="#916f6b" className="block mx-auto mb-4" />
+          <div className="text-base font-bold text-onSurface-variant mb-1.5">
+            Select parameters above and click View Forecast
+          </div>
+          <div className="text-sm text-onSurface-variant opacity-70">
+            Historical data shown from 2015 with model forecasts through 2026
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

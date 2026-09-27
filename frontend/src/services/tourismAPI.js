@@ -1,7 +1,16 @@
-import { auth } from './auth';
 import { API_BASE_URL } from '../config';
 
 const ANALYTICS_API = `${API_BASE_URL}/api/analytics`;
+
+// Every endpoint in the analytics app is `@permission_classes([AllowAny])`, so
+// these reads deliberately send no Authorization header. DRF authenticates
+// before it checks permissions: attaching an expired or blacklisted access
+// token to a public URL raises InvalidToken and 401s the request even though
+// the view would have allowed anonymous access. Endpoints that do require a
+// token keep using auth.authenticatedHeaders().
+const PUBLIC_READ_HEADERS = {
+  Accept: 'application/json',
+};
 
 export const tourismAPI = {
   /**
@@ -12,10 +21,7 @@ export const tourismAPI = {
     try {
       const response = await fetch(`${ANALYTICS_API}/tourism/`, {
         method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          ...auth.authenticatedHeaders(),
-        },
+        headers: PUBLIC_READ_HEADERS,
         // include cookies for session authentication
         credentials: 'include',
       });
@@ -39,10 +45,7 @@ export const tourismAPI = {
     try {
       const response = await fetch(`${ANALYTICS_API}/dashboard/`, {
         method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          ...auth.authenticatedHeaders(),
-        },
+        headers: PUBLIC_READ_HEADERS,
         credentials: 'include',
       });
 
@@ -61,9 +64,7 @@ export const tourismAPI = {
     try {
       const response = await fetch(`${ANALYTICS_API}/tourism/year/${year}/`, {
         method: 'GET',
-        headers: {
-          ...auth.authenticatedHeaders(),
-        },
+        headers: PUBLIC_READ_HEADERS,
         credentials: 'include',
       });
 
@@ -84,15 +85,13 @@ export const tourismAPI = {
   getFilteredData: async (filters = {}) => {
     try {
       const queryParams = new URLSearchParams(filters).toString();
-      const url = queryParams 
+      const url = queryParams
         ? `${ANALYTICS_API}/tourism/?${queryParams}`
         : `${ANALYTICS_API}/tourism/`;
-      
+
       const response = await fetch(url, {
         method: 'GET',
-        headers: {
-          ...auth.authenticatedHeaders(),
-        },
+        headers: PUBLIC_READ_HEADERS,
         credentials: 'include',
       });
 
@@ -105,5 +104,5 @@ export const tourismAPI = {
       console.error('Error fetching filtered data:', error);
       throw error;
     }
-  }
+  },
 };

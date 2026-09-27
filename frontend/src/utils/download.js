@@ -26,7 +26,10 @@ export function downloadCSV(rows = [], filename = 'data.csv') {
   const body = rows
     .map((row) => columns.map((column) => escapeCsvValue(row[column])).join(','))
     .join('\r\n');
-  downloadBlob(new Blob([`\uFEFF${header}\r\n${body}`], { type: 'text/csv;charset=utf-8;' }), filename);
+  downloadBlob(
+    new Blob([`\uFEFF${header}\r\n${body}`], { type: 'text/csv;charset=utf-8;' }),
+    filename
+  );
 }
 
 export function downloadJson(object, filename = 'data.json') {

@@ -7,10 +7,11 @@ import { PROVINCE_PATHS, NEPAL_MAP_VIEWBOX } from '../../data/provincePaths';
 export default function ProvinceMap({ populationData, selectedProvince, onProvinceClick }) {
   const selectedId = selectedProvince?.id ?? null;
 
-  const normalizeProvinceName = (name) => String(name || '')
-    .toLowerCase()
-    .replace(/province|state/g, '')
-    .replace(/[^a-z0-9]/g, '');
+  const normalizeProvinceName = (name) =>
+    String(name || '')
+      .toLowerCase()
+      .replace(/province|state/g, '')
+      .replace(/[^a-z0-9]/g, '');
   const provinceAliases = {
     sudurpashchim: ['sudurpaschim'],
     koshi: ['1', 'province1', 'provinceone'],
@@ -24,16 +25,16 @@ export default function ProvinceMap({ populationData, selectedProvince, onProvin
   }, [populationData]);
 
   const selectedShape = PROVINCE_PATHS.find((p) => p.id === selectedId);
-  const selectedStats = selectedShape ? (
-    statsByName[normalizeProvinceName(selectedShape.name)] ||
-    (provinceAliases[normalizeProvinceName(selectedShape.name)] || [])
-      .map((alias) => statsByName[alias])
-      .find(Boolean)
-  ) : null;
+  const selectedStats = selectedShape
+    ? statsByName[normalizeProvinceName(selectedShape.name)] ||
+      (provinceAliases[normalizeProvinceName(selectedShape.name)] || [])
+        .map((alias) => statsByName[alias])
+        .find(Boolean)
+    : null;
 
   return (
     <div className="lg:col-span-2 bg-surface border border-outline-variant rounded-sm overflow-hidden flex flex-col relative card-shadow hover:border-primary transition-colors duration-200">
-      <div className="p-6 border-b border-outline-variant flex justify-between items-center bg-surface-container-lowest">
+      <div className="p-6 border-b border-outline-variant flex justify-between items-center bg-surface-lowest">
         <div>
           <h3 className="font-bold text-on-surface text-xl font-sans">
             Provincial Population Density
@@ -50,7 +51,7 @@ export default function ProvinceMap({ populationData, selectedProvince, onProvin
         </div>
       </div>
 
-      <div className="flex-1 min-h-[500px] bg-surface-container-highest relative overflow-hidden">
+      <div className="flex-1 min-h-[500px] bg-surface-highest relative overflow-hidden">
         <svg viewBox={NEPAL_MAP_VIEWBOX} className="w-full h-full">
           {PROVINCE_PATHS.map((p) => {
             const isSelected = selectedId === p.id;
@@ -90,7 +91,9 @@ export default function ProvinceMap({ populationData, selectedProvince, onProvin
               )}
               <div className="flex justify-between">
                 <span className="text-on-surface-variant">Density</span>
-                <span className="font-bold">{selectedStats?.density != null ? `${selectedStats.density} p/km²` : '—'}</span>
+                <span className="font-bold">
+                  {selectedStats?.density != null ? `${selectedStats.density} p/km²` : '—'}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-on-surface-variant">Capital</span>
@@ -105,7 +108,7 @@ export default function ProvinceMap({ populationData, selectedProvince, onProvin
             Density (p/km²)
           </h4>
           <div className="flex items-center space-x-1">
-            <div className="w-8 h-2 bg-surface-container-high rounded-sm" />
+            <div className="w-8 h-2 bg-surface-high rounded-sm" />
             <div className="w-8 h-2 bg-secondary/40 rounded-sm" />
             <div className="w-8 h-2 bg-secondary rounded-sm" />
             <div className="w-8 h-2 bg-primary rounded-sm" />

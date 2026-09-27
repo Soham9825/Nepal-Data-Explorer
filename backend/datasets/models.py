@@ -260,7 +260,7 @@ class WholesalePriceIndex(models.Model):
 class TouristArrivalBySex(models.Model):
     year = models.PositiveIntegerField()
     gender = models.CharField(max_length=30)
-    value = models.PositiveIntegerField()
+    value = models.DecimalField(max_digits=12, decimal_places=2)
     statistic_type = models.CharField(max_length=100, blank=True)
 
     class Meta:

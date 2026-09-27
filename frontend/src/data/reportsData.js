@@ -1,6 +1,16 @@
 export const quickActions = [
-  { title: 'Export Raw CSV', desc: 'All indicators — clean, structured data', icon: 'table_chart', color: '#0051d5' },
-  { title: 'Download AI Forecast', desc: 'Predictions with confidence intervals', icon: 'auto_awesome', color: '#7a5100' },
+  {
+    title: 'Export Raw CSV',
+    desc: 'All indicators — clean, structured data',
+    icon: 'table_chart',
+    color: '#0051d5',
+  },
+  {
+    title: 'Download AI Forecast',
+    desc: 'Predictions with confidence intervals',
+    icon: 'auto_awesome',
+    color: '#7a5100',
+  },
 ];
 
 export const typeColors = {

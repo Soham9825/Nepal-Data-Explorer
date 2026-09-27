@@ -30,12 +30,11 @@ const COUNTRY_FLAGS = {
   Britain: '🇬🇧',
 };
 
-
 export function getCountryFlag(country) {
   const name = String(country || '').trim();
   const normalizedName = name.toLowerCase().replace(/[^a-z]/g, '');
   const matchingName = Object.keys(COUNTRY_FLAGS).find(
-    (countryName) => countryName.toLowerCase().replace(/[^a-z]/g, '') === normalizedName,
+    (countryName) => countryName.toLowerCase().replace(/[^a-z]/g, '') === normalizedName
   );
   return COUNTRY_FLAGS[name] || (matchingName && COUNTRY_FLAGS[matchingName]) || '🌐';
 }
@@ -73,7 +72,13 @@ const COUNTRY_CODES = {
 };
 
 export function getCountryCode(country) {
-  return COUNTRY_CODES[String(country || '').trim()] || String(country || '').trim().slice(0, 3).toUpperCase();
+  return (
+    COUNTRY_CODES[String(country || '').trim()] ||
+    String(country || '')
+      .trim()
+      .slice(0, 3)
+      .toUpperCase()
+  );
 }
 
 export function formatCountryCode(country) {

@@ -133,7 +133,7 @@ class Command(BaseCommand):
                 row_to_defaults=lambda row: {
                     "year": _parse_int(row["Year"]),
                     "gender": _clean_text(row["Gender"]),
-                    "value": _parse_int(row["Value"]),
+                    "value": _parse_decimal(row["Value"]),
                     "statistic_type": _clean_text(row.get("Type", "")),
                 },
             ),

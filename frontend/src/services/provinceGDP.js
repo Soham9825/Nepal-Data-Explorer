@@ -11,18 +11,6 @@ export const PROVINCE_ORDER = [
   'Sudurpashchim',
 ];
 
-// Colors follow National.jsx PROV_COLORS keyed by canonical name so the province
-// legend on the Economic page stays consistent with the National dashboard.
-export const PROVINCE_COLORS = {
-  Koshi: '#b70011',
-  Madhesh: '#0051d5',
-  Bagmati: '#7a5100',
-  Gandaki: '#316bf3',
-  Lumbini: '#9a6800',
-  Karnali: '#5c403c',
-  Sudurpashchim: '#dc2626',
-};
-
 export const GROWTH_METRICS = {
   basic_price: {
     key: 'basic_price',
@@ -103,7 +91,8 @@ export function latestProvinceRecord(payload, province = 'All') {
   const latest = payload?.latest;
   if (!latest || !latest.provinces) return null;
 
-  const records = province === 'All' ? Object.values(latest.provinces) : [latest.provinces[province]];
+  const records =
+    province === 'All' ? Object.values(latest.provinces) : [latest.provinces[province]];
   const present = records.filter((record) => record && record.fiscal_year);
   if (present.length === 0) return null;
   return { fiscalYear: latest.fiscal_year, dataStatus: latest.data_status, records: present };

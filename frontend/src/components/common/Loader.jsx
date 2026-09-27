@@ -1,4 +1,3 @@
-
 export default function Loader({ size = 'md', fullScreen = false }) {
   const sizeClasses = {
     sm: 'w-4 h-4 border-2',
@@ -7,20 +6,16 @@ export default function Loader({ size = 'md', fullScreen = false }) {
   };
 
   const loader = (
-    <div className={`${sizeClasses[size]} rounded-full border-primary border-t-transparent animate-spin`} />
+    <div
+      className={`${sizeClasses[size]} rounded-full border-primary border-t-transparent animate-spin`}
+    />
   );
 
   if (fullScreen) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-white z-50">
-        {loader}
-      </div>
+      <div className="fixed inset-0 flex items-center justify-center bg-white z-50">{loader}</div>
     );
   }
 
-  return (
-    <div className="flex items-center justify-center p-8">
-      {loader}
-    </div>
-  );
+  return <div className="flex items-center justify-center p-8">{loader}</div>;
 }

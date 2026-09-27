@@ -12,10 +12,6 @@
     padding: 0;
   }
 
-  html.fonts-loading body {
-    visibility: hidden;
-  }
-
   ::-webkit-scrollbar {
     width: 5px;
   }
@@ -32,6 +28,22 @@
     background: #f8f9fa;
     color: #131b2e;
   }
+
+  /* A button is the one element whose default cursor is a plain arrow, so without
+     this the only cue that it is clickable is a hover colour that small controls
+     often lack. Set once here rather than per button, which is also why a new
+     control cannot forget it. Disabled buttons keep the not-allowed cursor that
+     Tailwind's `disabled:` utilities set, so a greyed-out control does not
+     advertise itself. */
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']) {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [role='button'][aria-disabled='true'] {
+    cursor: not-allowed;
+  }
 }
 
 @layer components {
@@ -40,14 +52,18 @@
     font-style: normal;
     font-size: 20px;
     line-height: 1;
-    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    font-variation-settings:
+      'FILL' 0,
+      'wght' 400,
+      'GRAD' 0,
+      'opsz' 24;
     user-select: none;
     display: inline-flex;
     align-items: center;
   }
 
   .card-shadow {
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.10);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   }
 
   .animate-spin {

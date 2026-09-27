@@ -4,25 +4,71 @@
  * and is also useful for consumers that want to render a CSV elsewhere.
  */
 export const CHART_COLORS = [
-  '#0051d5', '#16a34a', '#dc2626', '#eab308', '#9333ea',
-  '#f97316', '#0891b2', '#db2777', '#111827', '#059669',
-  '#7c3aed', '#ea580c', '#0284c7', '#c026d3', '#65a30d',
-  '#e11d48', '#2563eb', '#16a34a', '#ca8a04', '#9333ea',
+  '#0051d5',
+  '#16a34a',
+  '#dc2626',
+  '#eab308',
+  '#9333ea',
+  '#f97316',
+  '#0891b2',
+  '#db2777',
+  '#111827',
+  '#059669',
+  '#7c3aed',
+  '#ea580c',
+  '#0284c7',
+  '#c026d3',
+  '#65a30d',
+  '#e11d48',
+  '#2563eb',
+  '#16a34a',
+  '#ca8a04',
+  '#9333ea',
 ];
 
 const MONTH_NAMES = [
-  'january', 'february', 'march', 'april', 'may', 'june',
-  'july', 'august', 'september', 'october', 'november', 'december',
+  'january',
+  'february',
+  'march',
+  'april',
+  'may',
+  'june',
+  'july',
+  'august',
+  'september',
+  'october',
+  'november',
+  'december',
 ];
-const MONTH_ABBR = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+const MONTH_ABBR = [
+  'jan',
+  'feb',
+  'mar',
+  'apr',
+  'may',
+  'jun',
+  'jul',
+  'aug',
+  'sep',
+  'oct',
+  'nov',
+  'dec',
+];
 
-export const normalizeHeader = (header) => String(header ?? '').trim().toLowerCase()
-  .replace(/[\s-]+/g, '_').replace(/[^\w]/g, '_').replace(/_+/g, '_');
+export const normalizeHeader = (header) =>
+  String(header ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_')
+    .replace(/[^\w]/g, '_')
+    .replace(/_+/g, '_');
 
-export const isBlank = (value) => value === null || value === undefined || String(value).trim() === '';
+export const isBlank = (value) =>
+  value === null || value === undefined || String(value).trim() === '';
 
 const CURRENCY_SYMBOLS = /[$€£₹¥₺₽₴₸₨₩₪₫₦₡₣₤₧₯₰₱₲¥\u20b9]/g;
-const CURRENCY_CODES = /\b(?:usd|eur|gbp|inr|npr|cny|jpy|krw|aud|cad|chf|aed|qar|sar|thb|myr|sgd|nzd|brl|rub|zar)\b/gi;
+const CURRENCY_CODES =
+  /\b(?:usd|eur|gbp|inr|npr|cny|jpy|krw|aud|cad|chf|aed|qar|sar|thb|myr|sgd|nzd|brl|rub|zar)\b/gi;
 
 export function parseNumber(value) {
   if (typeof value === 'number') return Number.isFinite(value) ? value : null;
@@ -46,7 +92,10 @@ export function parseNumber(value) {
     if (!Number.isFinite(num)) return null;
     const suffix = magnitude[2].toLowerCase();
     const multipliers = {
-      k: 1e3, m: 1e6, b: 1e9, t: 1e12,
+      k: 1e3,
+      m: 1e6,
+      b: 1e9,
+      t: 1e12,
     };
     const result = num * multipliers[suffix];
     return negative ? -result : result;
@@ -70,7 +119,7 @@ export function parseDateValue(value) {
   const text = String(value).trim();
 
   // FY patterns: "FY2024", "FY 2024/25", "2024/25", "2024-25"
-  const fyMatch = text.match(/^(?:fy\s?)?(\d{2,4})\s*[/\-]\s*(\d{2,4})$/i);
+  const fyMatch = text.match(/^(?:fy\s?)?(\d{2,4})\s*[/-]\s*(\d{2,4})$/i);
   if (fyMatch) {
     const startYear = fyMatch[1].length === 2 ? 2000 + Number(fyMatch[1]) : Number(fyMatch[1]);
     return new Date(startYear, 3, 1); // April 1 of start year (Indian FY)
@@ -86,7 +135,9 @@ export function parseDateValue(value) {
   if (qMatch) {
     const quarter = Number(qMatch[1]) - 1;
     const year = qMatch[2]
-      ? (qMatch[2].length === 2 ? 2000 + Number(qMatch[2]) : Number(qMatch[2]))
+      ? qMatch[2].length === 2
+        ? 2000 + Number(qMatch[2])
+        : Number(qMatch[2])
       : 2000;
     return new Date(year, quarter * 3, 1);
   }
@@ -104,7 +155,7 @@ export function parseDateValue(value) {
   if (monthIdx >= 0) return new Date(2000, monthIdx, 1);
 
   // Month + Year: "Jan 2024", "January 2024", "Jan-2024"
-  const monthYearMatch = text.match(/^([a-z]{3,9})\s*[\-/]?\s*(\d{4})$/i);
+  const monthYearMatch = text.match(/^([a-z]{3,9})\s*[/-]?\s*(\d{4})$/i);
   if (monthYearMatch) {
     const mi = MONTH_NAMES.indexOf(monthYearMatch[1].toLowerCase());
     const mi2 = MONTH_ABBR.indexOf(monthYearMatch[1].toLowerCase().slice(0, 3));
@@ -113,7 +164,7 @@ export function parseDateValue(value) {
   }
 
   // ISO-like: "2024-01-15", "2024/01/15"
-  if (/^\d{4}[/\-]\d{1,2}[/\-]\d{1,2}$/.test(text)) {
+  if (/^\d{4}[/-]\d{1,2}[/-]\d{1,2}$/.test(text)) {
     const parsed = new Date(text);
     return Number.isNaN(parsed.getTime()) ? null : parsed;
   }
@@ -150,14 +201,19 @@ export function compareValues(first, second) {
   const firstNumber = parseNumber(first);
   const secondNumber = parseNumber(second);
   if (firstNumber !== null && secondNumber !== null) return firstNumber - secondNumber;
-  return String(first ?? '').localeCompare(String(second ?? ''), undefined, { numeric: true, sensitivity: 'base' });
+  return String(first ?? '').localeCompare(String(second ?? ''), undefined, {
+    numeric: true,
+    sensitivity: 'base',
+  });
 }
 
 export function inferColumnType(values) {
   const present = values.filter((value) => !isBlank(value));
   if (present.length === 0) return { type: 'empty', confidence: 1 };
   const total = present.length;
-  const boolCount = present.filter((value) => /^(true|false|yes|no)$/i.test(String(value).trim())).length;
+  const boolCount = present.filter((value) =>
+    /^(true|false|yes|no)$/i.test(String(value).trim())
+  ).length;
   if (boolCount / total >= 0.9) return { type: 'boolean', confidence: boolCount / total };
   const numericValues = present.map(parseNumber);
   const numberCount = numericValues.filter((value) => value !== null).length;
@@ -170,7 +226,8 @@ export function inferColumnType(values) {
   // A column of 4-digit values in the plausible year range is a time
   // dimension, not a numeric measure (e.g. "Year": 2015, 2016, …).
   const yearShare = present.filter(isPlausibleYear).length / total;
-  if (numericShare >= 0.9 && yearShare >= 0.9 && uniqueCount > 1) return { type: 'date', confidence: yearShare };
+  if (numericShare >= 0.9 && yearShare >= 0.9 && uniqueCount > 1)
+    return { type: 'date', confidence: yearShare };
   if (numericShare >= 0.9) return { type: 'numeric', confidence: numericShare };
   const dateCount = present.filter((value) => parseDateValue(value) !== null).length;
   const dateShare = dateCount / total;
@@ -207,12 +264,18 @@ export function profileDataset(headers = [], rows = [], typeOverrides = {}) {
       sample: uniqueValues.slice(0, 5),
       min: sortedNumbers.length ? sortedNumbers[0] : null,
       max: sortedNumbers.length ? sortedNumbers[sortedNumbers.length - 1] : null,
-      mean: sortedNumbers.length ? sortedNumbers.reduce((sum, value) => sum + value, 0) / sortedNumbers.length : null,
+      mean: sortedNumbers.length
+        ? sortedNumbers.reduce((sum, value) => sum + value, 0) / sortedNumbers.length
+        : null,
       median: sortedNumbers.length ? sortedNumbers[Math.floor(sortedNumbers.length / 2)] : null,
     };
   });
-  const numericColumns = columns.filter((column) => column.type === 'numeric').map((column) => column.name);
-  const dateColumns = columns.filter((column) => column.type === 'date').map((column) => column.name);
+  const numericColumns = columns
+    .filter((column) => column.type === 'numeric')
+    .map((column) => column.name);
+  const dateColumns = columns
+    .filter((column) => column.type === 'date')
+    .map((column) => column.name);
   const dimensionColumns = columns
     .filter((column) => ['date', 'categorical', 'text', 'boolean'].includes(column.type))
     .map((column) => column.name);
@@ -224,16 +287,28 @@ export function profileDataset(headers = [], rows = [], typeOverrides = {}) {
     numericColumns,
     dateColumns,
     dimensionColumns,
-    categoricalColumns: columns.filter((column) => column.type === 'categorical').map((column) => column.name),
+    categoricalColumns: columns
+      .filter((column) => column.type === 'categorical')
+      .map((column) => column.name),
     textColumns: columns.filter((column) => column.type === 'text').map((column) => column.name),
   };
 }
 
 export function getDimensionColumn(headers, names) {
-  return names.map((name) => headers.find((header) => {
-    const normalized = normalizeHeader(header);
-    return normalized === name || normalized.endsWith(`_${name}`) || normalized.endsWith(`_${name}s`);
-  })).find(Boolean) || '';
+  return (
+    names
+      .map((name) =>
+        headers.find((header) => {
+          const normalized = normalizeHeader(header);
+          return (
+            normalized === name ||
+            normalized.endsWith(`_${name}`) ||
+            normalized.endsWith(`_${name}s`)
+          );
+        })
+      )
+      .find(Boolean) || ''
+  );
 }
 
 export function sortDimensionValues(values, direction = 'asc') {
@@ -247,22 +322,36 @@ const matchesFilter = (value, filter = {}) => {
   const numericValue = parseNumber(value);
   const numericExpected = parseNumber(filter.value);
   switch (filter.operator || 'contains') {
-    case 'equals': return candidate === expected;
-    case 'not_equals': return candidate !== expected;
-    case 'starts_with': return candidate.startsWith(expected);
-    case 'ends_with': return candidate.endsWith(expected);
-    case 'gt': return numericValue !== null && numericExpected !== null && numericValue > numericExpected;
-    case 'gte': return numericValue !== null && numericExpected !== null && numericValue >= numericExpected;
-    case 'lt': return numericValue !== null && numericExpected !== null && numericValue < numericExpected;
-    case 'lte': return numericValue !== null && numericExpected !== null && numericValue <= numericExpected;
-    default: return candidate.includes(expected);
+    case 'equals':
+      return candidate === expected;
+    case 'not_equals':
+      return candidate !== expected;
+    case 'starts_with':
+      return candidate.startsWith(expected);
+    case 'ends_with':
+      return candidate.endsWith(expected);
+    case 'gt':
+      return numericValue !== null && numericExpected !== null && numericValue > numericExpected;
+    case 'gte':
+      return numericValue !== null && numericExpected !== null && numericValue >= numericExpected;
+    case 'lt':
+      return numericValue !== null && numericExpected !== null && numericValue < numericExpected;
+    case 'lte':
+      return numericValue !== null && numericExpected !== null && numericValue <= numericExpected;
+    default:
+      return candidate.includes(expected);
   }
 };
 
 export function applyFilters(rows = [], filters = []) {
-  return rows.filter((row) => filters.every((filter) => (
-    !filter?.column || !String(filter.value ?? '').trim() || matchesFilter(row[filter.column], filter)
-  )));
+  return rows.filter((row) =>
+    filters.every(
+      (filter) =>
+        !filter?.column ||
+        !String(filter.value ?? '').trim() ||
+        matchesFilter(row[filter.column], filter)
+    )
+  );
 }
 
 const minMax = (numbers, kind) => {
@@ -292,16 +381,19 @@ const aggregateValues = (values, aggregation) => {
  * Produce rows safe to hand to Recharts. Raw rows are never mutated and the
  * chart result is intentionally separate from the preview dataset.
  */
-export function runChartQuery(rows = [], {
-  xColumn = '',
-  yColumn = '',
-  seriesColumn = '',
-  aggregation = 'sum',
-  filters = [],
-  sortBy = 'x',
-  sortDirection = 'asc',
-  limit = 25,
-} = {}) {
+export function runChartQuery(
+  rows = [],
+  {
+    xColumn = '',
+    yColumn = '',
+    seriesColumn = '',
+    aggregation = 'sum',
+    filters = [],
+    sortBy = 'x',
+    sortDirection = 'asc',
+    limit = 25,
+  } = {}
+) {
   const filteredRows = applyFilters(rows, filters);
   const groups = new Map();
   filteredRows.forEach((row, index) => {
@@ -321,20 +413,23 @@ export function runChartQuery(rows = [], {
         : groupRows;
       result[seriesName] = aggregateValues(
         yColumn ? selected.map((row) => row[yColumn]) : selected,
-        yColumn ? aggregation : 'count',
+        yColumn ? aggregation : 'count'
       );
     });
     const detailRow = groupRows[0] || {};
-    result.__details = Object.fromEntries(Object.entries(detailRow).filter(([key]) => (
-      key !== xColumn && key !== yColumn && key !== seriesColumn
-    )));
+    result.__details = Object.fromEntries(
+      Object.entries(detailRow).filter(
+        ([key]) => key !== xColumn && key !== yColumn && key !== seriesColumn
+      )
+    );
     return result;
   });
   const valueKey = seriesColumn ? null : 'value';
   output.sort((first, second) => {
-    const comparison = sortBy === 'value' && valueKey
-      ? compareValues(first[valueKey], second[valueKey])
-      : compareValues(first[xColumn || 'label'], second[xColumn || 'label']);
+    const comparison =
+      sortBy === 'value' && valueKey
+        ? compareValues(first[valueKey], second[valueKey])
+        : compareValues(first[xColumn || 'label'], second[xColumn || 'label']);
     return sortDirection === 'desc' ? -comparison : comparison;
   });
   return output.slice(0, Math.max(1, Number(limit) || 25));
@@ -342,18 +437,41 @@ export function runChartQuery(rows = [], {
 
 export function groupByDimension(rows, xColumn, dimensionColumn, valueColumn) {
   const chartRows = runChartQuery(rows, {
-    xColumn, yColumn: valueColumn, seriesColumn: dimensionColumn, aggregation: 'sum', limit: rows.length || 25,
+    xColumn,
+    yColumn: valueColumn,
+    seriesColumn: dimensionColumn,
+    aggregation: 'sum',
+    limit: rows.length || 25,
   });
-  const dimensions = [...new Set(rows.map((row) => row[dimensionColumn]).filter((value) => !isBlank(value)).map(String))];
+  const dimensions = [
+    ...new Set(
+      rows
+        .map((row) => row[dimensionColumn])
+        .filter((value) => !isBlank(value))
+        .map(String)
+    ),
+  ];
   return { dimensions, groupedRows: chartRows };
 }
 
 export function recommendVisualization(profile) {
-  if (!profile || profile.rowCount === 0) return { chartType: 'table', reason: 'Upload rows to begin exploring.' };
+  if (!profile || profile.rowCount === 0)
+    return { chartType: 'table', reason: 'Upload rows to begin exploring.' };
   if (profile.numericColumns.length === 0) {
-    return { chartType: 'table', reason: 'This dataset has no numeric measure; use the searchable table to explore it.' };
+    return {
+      chartType: 'table',
+      reason: 'This dataset has no numeric measure; use the searchable table to explore it.',
+    };
   }
-  if (profile.dateColumns.length > 0) return { chartType: 'line', reason: 'A date column and numeric measure make a time trend.' };
-  if (profile.dimensionColumns.length > 0) return { chartType: 'bar', reason: 'A categorical dimension and numeric measure make a comparison.' };
-  return { chartType: 'histogram', reason: 'A numeric-only dataset is best explored as a distribution.' };
+  if (profile.dateColumns.length > 0)
+    return { chartType: 'line', reason: 'A date column and numeric measure make a time trend.' };
+  if (profile.dimensionColumns.length > 0)
+    return {
+      chartType: 'bar',
+      reason: 'A categorical dimension and numeric measure make a comparison.',
+    };
+  return {
+    chartType: 'histogram',
+    reason: 'A numeric-only dataset is best explored as a distribution.',
+  };
 }

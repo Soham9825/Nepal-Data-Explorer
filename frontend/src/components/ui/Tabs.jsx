@@ -1,4 +1,3 @@
-
 export const TabBtn = ({ active, onClick, children, className = '' }) => (
   <button
     onClick={onClick}

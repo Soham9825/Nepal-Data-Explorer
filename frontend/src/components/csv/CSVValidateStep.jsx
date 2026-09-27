@@ -5,14 +5,29 @@ import { BtnOutline, BtnPrimary } from '../ui/Button';
 import { Icon } from '../ui/Icon';
 
 export default function CSVValidateStep({
-  fileName, headers, rows, totalRowCount, isSampled, warning, error,
-  columns, overrides, missingStrategies, onOverride, onStrategy,
-  onBack, onNext, nextLoading,
+  fileName,
+  headers,
+  rows,
+  totalRowCount,
+  isSampled,
+  warning,
+  error,
+  columns,
+  overrides,
+  missingStrategies,
+  onOverride,
+  onStrategy,
+  onBack,
+  onNext,
+  nextLoading,
 }) {
   return (
     <div className="space-y-6">
       {error && (
-        <p className="flex items-center gap-2 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700" role="alert">
+        <p
+          className="flex items-center gap-2 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700"
+          role="alert"
+        >
           <Icon name="error" size={17} />
           {error}
         </p>

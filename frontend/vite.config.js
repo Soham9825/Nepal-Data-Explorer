@@ -1,5 +1,5 @@
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
 
 // In dev the SPA is served from :5173 and Django from :8000, which makes every
 // request cross-origin. Because the calls carry `Authorization: Bearer ...` (and

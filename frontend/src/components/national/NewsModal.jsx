@@ -22,7 +22,7 @@ export default function NewsModal({ news, onClose }) {
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-surface-container-lowest">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-surface-lowest">
           <div className="flex items-center gap-3">
             {news.icon && <span className="text-2xl">{news.icon}</span>}
             <h3 className="text-xl font-bold text-onSurface font-sans line-clamp-1">
