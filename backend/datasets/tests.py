@@ -165,3 +165,52 @@ class CSVPreprocessTests(TestCase):
 		self.client.logout()
 		response = self.prepare('year,value\n2024,10\n')
 		self.assertIn(response.status_code, (401, 403))
+
+
+class CSVQualityTests(TestCase):
+	def setUp(self):
+		self.client = APIClient()
+		user = CustomUser.objects.create_user(
+			username='qualitytester', email='quality.user@gmail.com', password='test-password'
+		)
+		self.client.force_authenticate(user=user)
+
+	def prepare(self, content, **post):
+		data = {'file': SimpleUploadedFile('dataset.csv', content.encode('utf-8'), content_type='text/csv')}
+		for name, value in post.items():
+			data[name] = value
+		return self.client.post(
+			reverse('datasets:prepare_uploaded_csv'),
+			data,
+			format='multipart',
+		)
+
+	def test_quality_analysis_detection_and_statuses(self):
+		content = (
+			'hotel_name,latitude,longitude,price,rating,check_in\n'
+			'Hotel Annapurna,27.712,85.318,4500,4.5,2025-01-15\n'
+			'Hotel Pokhara,28.209,83.985,3200,,2025-01-16\n'
+			'Bad Row,200.0,85.318,-500,12,not-a-date\n'
+			'=1+1,27.712,85.318,4500,4.5,2025-01-15\n'
+			'Hotel Annapurna,27.712,85.318,4500,4.5,2025-01-15\n'
+		)
+		response = self.prepare(content)
+		self.assertEqual(response.status_code, 200)
+		payload = response.json()
+		self.assertIn('quality', payload)
+		quality = payload['quality']
+
+		self.assertEqual(quality['summary']['records'], 5)
+		self.assertEqual(quality['summary']['invalid'], 1)  # Bad Row
+		self.assertGreaterEqual(quality['summary']['warning'], 2)  # Missing rating, formula, duplicate
+		self.assertGreaterEqual(quality['summary']['duplicates'], 1)
+		self.assertGreaterEqual(quality['summary']['formula_cells'], 1)
+
+		# Column detection
+		detected = quality['detected']
+		self.assertIn('latitude', detected['latitude_columns'])
+		self.assertIn('longitude', detected['longitude_columns'])
+		self.assertIn('price', detected['price_columns'])
+		self.assertIn('rating', detected['rating_columns'])
+		self.assertIn('check_in', detected['date_columns'])
+		self.assertIn('hotel_name', detected['name_columns'])

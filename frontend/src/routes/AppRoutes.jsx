@@ -23,6 +23,7 @@ import Admin from "../pages/Admin";
 import NotFound from "../pages/NotFound";
 
 import CSVExplorer from "../pages/CSVExplorer";
+import Hotels from "../pages/Hotels";
 
 const PAGE_TITLES = {
   "/": "National Dashboard",
@@ -39,6 +40,7 @@ const PAGE_TITLES = {
   "/support": "Support & Help",
   "/admin": "Admin Panel",
   "/csv-explorer": "CSV Explorer",
+  "/hotels": "Hotel Intelligence",
 };
 
 // Persistent shell: the sidebar and topbar stay mounted while the
@@ -168,6 +170,15 @@ export default function AppRoutes() {
             <CSVExplorer />
           </Protected>
         }
+        />
+
+        <Route
+          path="/hotels"
+          element={
+            <Protected>
+              <Hotels />
+            </Protected>
+          }
         />
 
         {/* Admin-only route (non-admins see the 404 page) */}

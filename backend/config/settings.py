@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "news",
     'analytics',
     'reports',
+    'hotels',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -231,3 +232,35 @@ GOOGLE_REDIRECT_URI = config('GOOGLE_REDIRECT_URI')
 GITHUB_CLIENT_ID = config('GITHUB_CLIENT_ID', default='')
 GITHUB_CLIENT_SECRET = config('GITHUB_CLIENT_SECRET', default='')
 GITHUB_REDIRECT_URI = config('GITHUB_REDIRECT_URI')
+
+# ---------------------------------------------------------------------------
+# Free / open data source configuration (no paid APIs required).
+# All endpoints are optional and replaceable; the app works without them.
+# ---------------------------------------------------------------------------
+OSM_USER_AGENT = config(
+    'OSM_USER_AGENT',
+    default='NepalDataExplorer/1.0 (+https://github.com/Soham9825/Nepal-Data-Explorer)',
+)
+OSM_CONTACT_EMAIL = config('OSM_CONTACT_EMAIL', default='nepaldataexplorer@gmail.com')
+OVERPASS_ENDPOINT = config('OVERPASS_ENDPOINT', default='https://overpass-api.de/api/interpreter')
+NOMINATIM_ENDPOINT = config('NOMINATIM_ENDPOINT', default='https://nominatim.openstreetmap.org/search')
+OSRM_ENDPOINT = config('OSRM_ENDPOINT', default='http://router.project-osrm.org/route/v1/driving')
+
+# Playwright hotel collection foundation. Disabled by default so existing
+# searches work without Playwright or browser binaries installed.
+PLAYWRIGHT_ENABLED = config('PLAYWRIGHT_ENABLED', default=False, cast=bool)
+PLAYWRIGHT_HEADLESS = config('PLAYWRIGHT_HEADLESS', default=True, cast=bool)
+PLAYWRIGHT_BROWSER = config('PLAYWRIGHT_BROWSER', default='chromium')
+PLAYWRIGHT_TIMEOUT_MS = config('PLAYWRIGHT_TIMEOUT_MS', default=30000, cast=int)
+PLAYWRIGHT_MAX_CONCURRENCY = config('PLAYWRIGHT_MAX_CONCURRENCY', default=2, cast=int)
+PLAYWRIGHT_PROXY_SERVER = config('PLAYWRIGHT_PROXY_SERVER', default='')
+PLAYWRIGHT_PROXY_USERNAME = config('PLAYWRIGHT_PROXY_USERNAME', default='')
+PLAYWRIGHT_PROXY_PASSWORD = config('PLAYWRIGHT_PROXY_PASSWORD', default='')
+
+PLAYWRIGHT_TIMEOUT_MS = max(1000, PLAYWRIGHT_TIMEOUT_MS)
+PLAYWRIGHT_MAX_CONCURRENCY = max(1, min(32, PLAYWRIGHT_MAX_CONCURRENCY))
+if PLAYWRIGHT_BROWSER not in {'chromium', 'firefox', 'webkit'}:
+    PLAYWRIGHT_BROWSER = 'chromium'
+if not PLAYWRIGHT_PROXY_SERVER:
+    PLAYWRIGHT_PROXY_USERNAME = ''
+    PLAYWRIGHT_PROXY_PASSWORD = ''

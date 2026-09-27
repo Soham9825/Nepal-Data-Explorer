@@ -20,6 +20,7 @@ from .csv_preprocess import (
 	parse_raw_rows,
 	parse_typed_rows,
 )
+from .csv_quality import analyze_quality
 
 logger = logging.getLogger(__name__)
 
@@ -201,6 +202,7 @@ def prepare_uploaded_csv(request):
 		resolved_types = {**inferred_types, **types}
 		typed_rows, coercion_errors, dropped_empty = parse_typed_rows(headers, raw_rows, resolved_types)
 		typed_rows, transforms_report = apply_strategies(typed_rows, headers, resolved_types, transforms)
+		quality_report = analyze_quality(headers, raw_rows)
 	except Exception:
 		logger.exception("Failed to preprocess uploaded CSV")
 		return JsonResponse(
@@ -251,6 +253,7 @@ def prepare_uploaded_csv(request):
 		"missing_cells": missing_cells,
 		"columns": columns,
 		"cleaning": cleaning,
+		"quality": quality_report,
 		"warnings": warnings,
 	})
 

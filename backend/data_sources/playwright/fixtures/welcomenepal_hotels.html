@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Hotels & Accommodations - Welcome Nepal</title>
+</head>
+<body>
+    <header>
+        <h1>Welcome Nepal - Official Accommodation Directory</h1>
+        <form class="search-form" action="/search" method="GET">
+            <input type="text" name="destination" class="search-input" placeholder="Search destination..." value="Pokhara" />
+            <button type="submit" class="search-submit">Search</button>
+        </form>
+    </header>
+
+    <main class="hotel-listings">
+        <!-- Hotel 1: Full information with room and observed price -->
+        <article class="hotel-card" data-hotel-id="nepal-htl-101">
+            <h2 class="hotel-name">Annapurna View Resort</h2>
+            <div class="hotel-location">
+                <span class="hotel-district">Kaski</span>,
+                <span class="hotel-province">Gandaki</span>
+                <p class="hotel-address">Lakeside Marg, Ward 6, Pokhara, Nepal</p>
+            </div>
+            <div class="hotel-meta">
+                <span class="hotel-stars" data-stars="4.0">4 Stars</span>
+                <span class="hotel-type">Resort</span>
+                <span class="hotel-rooms">45 Rooms</span>
+                <a class="hotel-website" href="https://annapurnaview.com.np">Official Website</a>
+                <span class="hotel-phone">+977-61-460000</span>
+            </div>
+            <div class="hotel-rates">
+                <div class="rate-option">
+                    <span class="room-type">Deluxe Lake View</span>
+                    <span class="rate-price" data-currency="NPR" data-amount="8500.00">NPR 8,500</span>
+                    <span class="rate-tax" data-tax="1105.00">Taxes: NPR 1,105</span>
+                    <span class="rate-fee" data-fee="850.00">Service Fee: NPR 850</span>
+                    <span class="rate-availability">Available</span>
+                </div>
+            </div>
+            <a class="hotel-detail-link" href="https://welcomenepal.com/places/annapurna-view-resort">View Details</a>
+        </article>
+
+        <!-- Hotel 2: Hotel with partial data, no phone, standard price with 0 tax/fee -->
+        <article class="hotel-card" data-hotel-id="nepal-htl-102">
+            <h2 class="hotel-name">Peace Guesthouse Pokhara</h2>
+            <div class="hotel-location">
+                <span class="hotel-district">Kaski</span>,
+                <span class="hotel-province">Gandaki</span>
+                <p class="hotel-address">Baidam Road, Pokhara</p>
+            </div>
+            <div class="hotel-meta">
+                <span class="hotel-stars">3</span>
+                <span class="hotel-type">Guest House</span>
+                <span class="hotel-rooms">18 Rooms</span>
+                <a class="hotel-website" href="https://peaceguesthouse.com">Website</a>
+            </div>
+            <div class="hotel-rates">
+                <div class="rate-option">
+                    <span class="room-type">Standard Double</span>
+                    <span class="rate-price" data-currency="NPR" data-amount="2500.00">NPR 2,500</span>
+                    <!-- No explicit tax/fee specified -->
+                </div>
+            </div>
+            <a class="hotel-detail-link" href="https://welcomenepal.com/places/peace-guesthouse">View Details</a>
+        </article>
+
+        <!-- Hotel 3: Accommodation with no published price (directory only listing) -->
+        <article class="hotel-card" data-hotel-id="nepal-htl-103">
+            <h2 class="hotel-name">Fishtail Heritage Lodge</h2>
+            <div class="hotel-location">
+                <span class="hotel-district">Kaski</span>,
+                <span class="hotel-province">Gandaki</span>
+                <p class="hotel-address">Sedibagar, Pokhara</p>
+            </div>
+            <div class="hotel-meta">
+                <span class="hotel-type">Lodge</span>
+                <span class="hotel-phone">+977-61-520111</span>
+            </div>
+            <div class="hotel-rates">
+                <!-- No prices published -->
+                <p class="no-rate-notice">Contact property directly for rates</p>
+            </div>
+            <a class="hotel-detail-link" href="https://welcomenepal.com/places/fishtail-heritage">View Details</a>
+        </article>
+
+        <!-- Malformed card: Missing required name -->
+        <article class="hotel-card" data-hotel-id="nepal-htl-104">
+            <div class="hotel-location">
+                <p class="hotel-address">Somewhere in Pokhara</p>
+            </div>
+        </article>
+    </main>
+</body>
+</html>

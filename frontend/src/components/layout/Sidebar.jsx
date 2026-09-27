@@ -17,6 +17,9 @@ const navItems = [
 
   // CSV Visualization
   { id: "csv-explorer", label: "CSV Explorer", icon: "upload_file", path: "/csv-explorer" },
+
+  // Hotel Intelligence (free / open data)
+  { id: "hotels", label: "Hotel Intelligence", icon: "hotel", path: "/hotels" },
 ];
 const bottomNav = [
   { id: "support", label: "Support", icon: "help_outline", path: "/support" },

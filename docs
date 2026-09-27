@@ -1,0 +1,472 @@
+# Hotel Playwright Architecture
+
+**Status:** Architecture proposal / inspection record  
+**Scope:** Playwright as a background collection engine for permitted hotel price and availability observations.  
+**Important:** This document describes the proposed design. No Playwright scraper, job worker, source adapter, migration, or API change is implemented yet.
+
+## 1. Current architecture
+
+The project is an existing Django 6 / Django REST Framework application with a Vite React frontend. The current hotel implementation is additive to the existing datasets and navigation architecture and must remain backward compatible.
+
+### Backend
+
+- `backend/hotels/models.py`
+  - `Hotel` is the canonical normalized accommodation record.
+  - `HotelPriceObservation` stores observed room prices tied to dates, occupancy, currency, and source.
+  - Missing values use `null`, empty strings, or `None`; unknown price is not represented as zero.
+  - `Hotel` has a conditional uniqueness constraint on `(source, external_id)` and indexes for name, geography, and source identity.
+  - `HotelPriceObservation` has a uniqueness constraint across hotel name, room type, dates, occupancy, currency, and source.
+- `backend/hotels/views.py`
+  - Authenticated list and viewport queries.
+  - `POST /api/hotels/search-area/` optionally refreshes OSM/Overpass data and returns local matches.
+  - Discovery, nearby search, geocoding, price CSV validation/import/comparison, and source transparency endpoints.
+  - Viewport and search-area responses aggregate the lowest observed price for a hotel and calculate straight-line distance.
+- `backend/hotels/urls.py` exposes the existing endpoints; no new search/status/job endpoints exist yet.
+- `backend/data_sources/`
+  - `client.py` provides an allowlisted, SSRF-checked HTTP client, timeouts, cache, bounded retries, and backoff.
+  - `geocoding.py` provides explicit, user-driven Nominatim geocoding, Nepal-only filtering, a 1.1-second request interval, and cache.
+  - `overpass.py` provides bounded OSM geographic discovery and caching.
+  - `normalizers.py` normalizes OSM records while preserving provenance and null values.
+  - `deduplication.py` conservatively matches same-source IDs, or normalized name plus close geography/address. It never merges only on a similar name.
+  - `pricing.py` validates positive prices, dates, occupancy, currency, taxes, fees, and source metadata. It deliberately leaves availability `None` unless explicitly supplied by a permitted source.
+- `backend/config/settings.py`
+  - Uses `python-decouple` for environment configuration.
+  - Uses Django’s local-memory cache by default.
+  - Uses JWT authentication and Django/DRF permissions.
+  - Has no Playwright, Celery, Django-Q, Huey, RQ, Redis, or other background worker dependency.
+- `backend/requirements.txt` does not currently include Playwright or a job queue.
+- Hotel tests use mocked external HTTP calls and cover the current API/data-quality behavior; no live third-party scraping tests are part of normal CI.
+
+### Frontend
+
+- `frontend/src/pages/Hotels.jsx` is a protected route with Search Hotels, Hotel Explorer, Nearby, Price Comparison, and Data Sources tabs. Search Hotels is the current default.
+- `frontend/src/components/hotels/HotelSearchTab.jsx`
+  - Explicit destination geocoding on submit/Enter; no keystroke autocomplete.
+  - Internal destination coordinates are used only to recenter the map.
+  - Search-area loading uses the current viewport and stale-boundary detection.
+  - Responsive list/map toggle and desktop split layout.
+  - Current filter/sort state is sent to existing viewport/search-area APIs.
+- `frontend/src/components/hotels/HotelMap.jsx`
+  - Leaflet with OpenStreetMap tiles and attribution.
+  - Pan/zoom, marker selection, card/marker synchronization, price markers when a real observed price exists, lightweight grid clustering, recenter-by-coordinate, and Search This Area.
+  - It currently does not expose a user-facing empty-map-click “Search hotels here” action or a separate visible recenter button.
+- `frontend/src/components/hotels/HotelSearchResults.jsx`
+  - Accessible result cards with name, location, stars, distance, observed price, source, and source link.
+  - Technical provenance is currently shown in the card and will be moved/condensed as the UX evolves.
+- `frontend/src/services/hotelAPI.js` calls the existing authenticated hotel endpoints and does not yet call a search-status or job-status endpoint.
+- `frontend/package.json` contains React, Leaflet, React Leaflet, and Vitest/testing-library tooling. It does not contain a Playwright frontend package or a browser-clustering dependency.
+
+## 2. Architectural decision
+
+Playwright will be a **background, permitted-source observation collector**, not a synchronous dependency of the hotel search request.
+
+The normal user search flow remains:
+
+```text
+User submits destination/dates/guests
+  -> Django validates and geocodes
+  -> database/local cache results are returned immediately
+  -> freshness is evaluated
+  -> if stale and enabled, a background refresh is scheduled
+  -> worker runs configured source adapters
+  -> normalized/validated/deduplicated observations are persisted
+  -> search cache is invalidated
+  -> frontend can poll status or refresh when new observations exist
+```
+
+The browser must never be launched from a normal request merely to populate the initial result list. A search request may return stale observations and a refresh state; it must not wait for page navigation or multiple third-party sites.
+
+## 3. Proposed subsystem
+
+The preferred location is below the existing data-source package, with no duplicate hotel domain model:
+
+```text
+backend/data_sources/playwright/
+    __init__.py
+    browser.py       # browser process/context/page lifecycle
+    manager.py       # bounded source orchestration and job execution
+    base.py          # adapter contract and search types
+    models.py        # scraper job and durable job state
+    normalizer.py    # source-neutral observation records
+    validators.py    # data quality and condition checks
+    exceptions.py    # blocked, timeout, navigation, parse, etc.
+    adapters/
+        __init__.py
+        <configured-source-adapter>.py
+    fixtures/        # deterministic HTML/JSON fixtures
+    tests/           # mocked browser/adapter/parser tests
+```
+
+This is a proposal. It should be adapted to the project’s actual migration and app conventions before implementation.
+
+### 3.1 Browser manager responsibilities
+
+`browser.py` should:
+
+- Lazily start one Chromium `Browser` process per worker process.
+- Reuse the process across jobs; create an isolated `BrowserContext` per source/job.
+- Create a new page for each search task and close it in `finally`.
+- Close contexts and the browser during worker shutdown.
+- Recreate a crashed browser once at the manager boundary, with bounded recovery.
+- Enforce configurable navigation and action timeouts.
+- Enforce configured browser type (`chromium` initially), headless/headed mode, concurrency, and optional legitimate proxy settings.
+- Reject navigation outside the adapter’s configured source-domain allowlist before opening a page.
+- Never accept a user-supplied arbitrary URL as a scrape target.
+
+The manager should be process-local and safe for a single worker. If multiple workers are introduced later, browser processes should not be shared across processes.
+
+### 3.2 Adapter contract
+
+A source adapter should implement a small async contract conceptually equivalent to:
+
+```python
+class HotelSourceAdapter:
+    name = "configured_source"
+    display_name = "Configured Source"
+    allowed_hosts = frozenset({"example.com"})
+    enabled = False
+    rate_limit_seconds = 30
+    timeout_ms = 30000
+    freshness_seconds = 1800
+
+    async def search(
+        self, destination, check_in, check_out, guests, rooms=1, filters=None
+    ) -> list[dict]:
+        raise NotImplementedError
+```
+
+The adapter owns source-specific interaction and extraction. It may use semantic roles, accessible labels, stable attributes, structured data, and page responses that are part of normal page operation. It must not call private/internal endpoints when doing so violates the source’s access rules.
+
+The generic manager should not know selectors. The generic normalizer should not know source-specific DOM details. The adapter returns raw/source-specific records plus provenance and search conditions; normalization and validation happen after collection.
+
+### 3.3 Registry and feature flags
+
+A configuration-driven registry should map source keys to adapter classes and settings:
+
+```text
+HOTEL_SOURCES = {
+    "source_a": {
+        "adapter": SourceAAdapter,
+        "enabled": ...,
+        "display_name": ...,
+        "rate_limit": ...,
+        "timeout": ...,
+        "freshness": ...,
+        "supported_fields": ...,
+    },
+}
+```
+
+A source is queried only when it is enabled, its adapter is configured, and the request’s source policy permits it. Disabled or unconfigured sources are never visited. A first source adapter must be selected only after confirming the site is publicly accessible and automation is permitted; no source URL or live result should be claimed in this document.
+
+## 4. Data flow and persistence
+
+```text
+Search conditions
+  -> Playwright source adapter
+  -> raw source records
+  -> source-neutral normalizer
+  -> validator (VALID / WARNING / INVALID)
+  -> existing conservative hotel deduplication
+  -> existing Hotel match/create
+  -> HotelPriceObservation upsert
+  -> cache invalidation
+  -> job completion/status
+  -> frontend refresh
+```
+
+### 4.1 Hotel matching
+
+Playwright results should match existing `Hotel` records using the existing conservative policy:
+
+1. Stable source identifier and source identity.
+2. Normalized source URL where it is a reliable stable identity.
+3. Normalized name plus close coordinates.
+4. Normalized name plus substantial address match.
+
+Name similarity alone is insufficient. Preserve source-specific hotel identities when a match is uncertain.
+
+### 4.2 Price observation conditions
+
+The existing `HotelPriceObservation` already stores hotel, name, room type, dates, occupancy, currency, base/taxes/fees/total, availability, source, source URL, and retrieval time. It is the first persistence target.
+
+A price observation must not be saved unless its price and required conditions are valid. Missing values remain `None`. The scraper must not convert “unknown availability” to false, convert “unknown price” to zero, or infer tax inclusion.
+
+If the required comparison conditions cannot be represented in the current schema, add narrowly scoped nullable fields in a later migration, for example:
+
+- `rooms`
+- `bed_type`
+- `cancellation_policy`
+- `breakfast_included`
+- `payment_condition`
+- `rating`
+- `review_count`
+- `search_conditions` (JSON)
+- `raw_source_key` or a constrained source metadata identifier if needed
+
+Do not add a second hotel model. Avoid over-indexing. Candidate indexes should be justified by actual search queries, especially hotel/date/source and retrieval time.
+
+### 4.3 Provenance
+
+Every saved observation must preserve:
+
+- source key/display name
+- source URL
+- retrieval timestamp
+- destination/dates/guests/rooms
+- adapter version or source configuration version if practical
+- validation status/warnings
+
+The existing Data Sources area can expose this metadata. Raw HTML or raw payloads should be optional, size-limited, retention-controlled, and must not contain credentials, cookies, tokens, payment data, or unnecessary personal information. Normalized records should be the default long-term storage.
+
+## 5. Background jobs and freshness
+
+The repository has no existing queue or worker infrastructure. The smallest maintainable initial implementation should therefore be a database-backed job model plus a separate worker process/management command, not a synchronous request and not an unneeded large framework.
+
+A future `HotelScrapeJob` may track:
+
+- source
+- destination
+- check-in/check-out
+- guests/rooms
+- status: `queued`, `running`, `completed`, `failed`, `blocked`, `partially_completed`
+- timestamps
+- result count
+- error code/message
+- retry count
+- freshness/cache key
+
+A job worker should claim queued jobs safely, run one adapter at a time within a source concurrency limit, and update state in transactions. A database uniqueness/claim strategy should prevent duplicate active jobs for the same normalized search conditions and source.
+
+Search freshness should be configurable rather than hardcoded. The proposed default categories are:
+
+- fresh: under 30 minutes
+- stale: 30 minutes to 6 hours
+- old: over 6 hours
+
+The exact thresholds must be settings/cache-policy values. A stale result should be returned immediately and may trigger a refresh. A failed or blocked refresh must not remove existing observations or break the hotel search response.
+
+## 6. Error, retry, and rate-limit policy
+
+The manager should classify failures into stable outcomes such as:
+
+- `TIMEOUT`
+- `NAVIGATION_ERROR`
+- `SELECTOR_MISSING`
+- `SOURCE_BLOCKED`
+- `FORBIDDEN`
+- `EMPTY_RESULT`
+- `MALFORMED_RECORD`
+- `BROWSER_CRASH`
+- `VALIDATION_ERROR`
+
+Retry only transient failures such as timeout, temporary navigation failure, or browser crash. Use bounded exponential backoff. Do not repeatedly retry `SOURCE_BLOCKED`, `FORBIDDEN`, CAPTCHA/login challenges, or policy violations. If a source blocks automation, record `SCRAPE_BLOCKED` and continue with other sources; never attempt to circumvent the block.
+
+Every source needs a configurable request delay and concurrency limit. The existing Nominatim one-second delay is not a general source rate-limit mechanism. The Playwright manager should provide per-source limits and should not use proxy rotation, stealth, CAPTCHA solving, or other controls designed to defeat access restrictions.
+
+## 7. Caching strategy
+
+Use the existing Django cache abstraction initially, but define stable normalized keys containing:
+
+- normalized destination/place identity
+- check-in and check-out
+- guests and rooms
+- relevant source/filter values
+- adapter/source version where output changes
+
+Example conceptual key:
+
+```text
+hotel-search:v1:<place-hash>:<checkin>:<checkout>:<guests>:<rooms>:<source-policy-hash>
+```
+
+The search response should be able to report:
+
+- observation age/freshness
+- whether a refresh is queued/running
+- last successful source collection
+- whether a source is blocked or failed
+
+A cache hit must not launch a browser. A cache miss may return database observations first and schedule background collection when the search API is extended. A database-backed freshness index or normalized observation query is required because local-memory cache is process-local and is lost on restart.
+
+## 8. API evolution
+
+Preserve all current endpoints and behavior:
+
+- `GET /api/hotels/`
+- `GET /api/hotels/viewport/`
+- `POST /api/hotels/search-area/`
+- discovery, nearby, geocoding, price, and source endpoints
+
+Only add APIs if needed for the background flow, following the current authenticated DRF conventions. A future search/status API could provide:
+
+- `POST /api/hotels/search/` with destination/dates/guests/rooms and optional filters
+- `GET /api/hotels/search-status/<job_id>/`
+- `GET /api/hotels/jobs/<id>/` for maintainers, subject to stricter permissions
+
+The initial implementation may use the existing viewport/search-area APIs and a management-command worker, avoiding a new public API until the job contract is settled. Any status endpoint must not reveal stack traces, credentials, internal URLs, or unrestricted scrape controls.
+
+All user-facing destination searches should accept text destinations and keep coordinates internal. Existing viewport/bounding-box behavior remains an internal map operation.
+
+## 9. Security and ethical constraints
+
+The current HTTP client’s SSRF defenses are a useful baseline, but browser navigation needs a separate allowlist. The server must choose configured source adapters; it must never expose a generic `POST /scrape?url=...` surface.
+
+Required controls:
+
+- configured source host/domain allowlist
+- HTTPS/HTTP policy per adapter
+- no redirects to unallowlisted hosts without revalidation
+- timeout and maximum result/page limits
+- no authentication bypass, CAPTCHA bypass, paywall bypass, or private API extraction
+- no proxy rotation or geographic restriction evasion
+- no secrets in logs, raw payload snapshots, or admin pages
+- sanitize source-derived text before rendering; escape map popup/card content
+- validate source URLs and image URLs if image support is later added
+- protect management commands/admin job visibility appropriately
+- structured logs with source/job/destination/duration/result count/status, excluding sensitive data
+- configurable per-source rate limits and concurrency
+- dry-run mode that collects/parses but does not write production observations
+
+Each adapter must document the source’s terms, permitted automation, attribution requirements, and data-use limitations. If permission is unclear, the source remains disabled.
+
+## 10. Observability and administration
+
+A future admin view should show job source, destination, dates, guests, status, start/completion, result count, retry count, and a sanitized error code. Raw page content and secrets should not be shown by default.
+
+Structured logs should use a stable prefix/event and safe fields, for example:
+
+```text
+[SCRAPER] source=example job_id=... destination="Sauraha" duration_ms=12400 result_count=18 status=success
+```
+
+Metrics should include source success/failure/blocked counts, queue age, job duration, records discovered/normalized/rejected/saved, duplicate rate, and browser restart count. These metrics must not include credentials or personal information.
+
+## 11. Testing strategy
+
+Normal CI must not contact live third-party hotel sites.
+
+### Backend unit tests
+
+- browser manager start/reuse/context/page cleanup using mocked Playwright
+- browser crash and timeout recovery
+- navigation allowlist and redirect policy
+- per-source concurrency and rate limiting
+- adapter destination/date/guest/room interaction
+- stable semantic/role locator extraction
+- price/currency/rating/cancellation/breakfast parsing
+- missing price/rating and malformed cards
+- blocked/forbidden source classification
+- bounded retry behavior
+- normalizer and validator status handling
+- source metadata and URL validation
+- existing hotel deduplication integration
+- hotel match/create and observation upsert
+- duplicate observations across refreshes
+- job lifecycle and duplicate active-job prevention
+- freshness classification and cache keys
+- API search returning cached/database results without launching Playwright
+
+### Fixtures
+
+Store small deterministic HTML/JSON fixtures under the proposed `data_sources/playwright/fixtures/` directory. They should cover valid results, missing fields, malformed prices, blocked states, and multiple sources. Mock browser pages and network responses rather than using live websites.
+
+### Frontend tests
+
+Using the existing Vitest/testing-library setup, test:
+
+- explicit destination submission
+- friendly geocoding labels
+- map recenter
+- loading/empty/error states
+- card and marker selection synchronization
+- Search This Area
+- freshness/stale indicator
+- filter and sorting behavior
+- list/map mobile toggle
+- condition-aware price display
+- accessible labels and keyboard focus
+
+## 12. Deployment and operational constraints
+
+Playwright requires browser binaries and OS libraries. A development setup would include:
+
+```text
+python -m pip install playwright
+python -m playwright install chromium
+```
+
+Production must install Chromium and required system dependencies in the worker image. A normal Django web request must not run a long browser session. Recommended deployment shape:
+
+```text
+Django web/frontend: fast API, authentication, database/cache
+                         |
+                         v
+                 job queue/worker service
+                         |
+                         v
+                 Playwright worker process
+```
+
+Operational concerns include browser memory, worker concurrency, timeouts, crash restarts, source-specific rate limits, and graceful shutdown. If the deployment platform cannot safely run persistent browser workers, keep the scraper disabled and run it as a controlled worker/management process until suitable infrastructure is available.
+
+## 13. Environment variables (proposed, not currently implemented)
+
+These values should be added to an example environment file, never to the secret `.env` file:
+
+```text
+PLAYWRIGHT_ENABLED=false
+PLAYWRIGHT_HEADLESS=true
+PLAYWRIGHT_BROWSER=chromium
+PLAYWRIGHT_TIMEOUT_MS=30000
+PLAYWRIGHT_MAX_CONCURRENCY=2
+SCRAPER_ENABLED=false
+SCRAPER_DRY_RUN=false
+SCRAPER_CACHE_TTL_SECONDS=1800
+SCRAPER_MAX_RETRIES=3
+PLAYWRIGHT_PROXY_SERVER=
+PLAYWRIGHT_PROXY_USERNAME=
+PLAYWRIGHT_PROXY_PASSWORD=
+```
+
+Proxy values are optional and may be used only for legitimate provider-supported routing/privacy purposes, never for evasion. Source enablement and per-source policy should be configuration-driven as well.
+
+## 14. UX and map integration points
+
+The existing map-first search should remain the primary user experience:
+
+- Replace the current “Destination” presentation with “Where are you going?” and a `Search hotels` primary action.
+- Keep dates, guests, and later rooms in the search bar.
+- Keep coordinates internal and out of normal inputs/cards; current selected-hotel details should stop displaying raw coordinates in the user-facing card.
+- Add quick destinations such as Sauraha, Pokhara, Kathmandu, Bharatpur, and Chitwan without hardcoding a large list.
+- On explicit destination submission, geocode, center the map, and load persisted/cached hotels.
+- After meaningful map movement, show Search This Area; do not query on every tiny move.
+- Add empty-map-click handling: a temporary marker plus “Search hotels here” without exposing coordinates.
+- Add a visible recenter control. Browser geolocation must be explicitly user initiated.
+- Keep selected marker/card synchronization and the existing desktop split/mobile toggle.
+- Add user-facing freshness text and condition-aware price labels only when the API provides them.
+- Keep technical provenance in Data Sources rather than overwhelming the main search cards.
+
+These are future implementation points; this inspection intentionally does not modify the current components.
+
+## 15. Recommended implementation sequence after approval
+
+1. Add Playwright dependency and browser-manager tests with a disabled default.
+2. Add a database-backed job model/migration and admin registration.
+3. Add the source registry, exceptions, manager, and dry-run management command with no live source enabled.
+4. Add one permitted source adapter only after its policy and selectors are confirmed.
+5. Add normalization/validation and persistence through existing hotel models and deduplication.
+6. Add freshness/cache keys and a non-blocking refresh endpoint/status contract.
+7. Add the source adapter, manager, and API tests using fixtures/mocks.
+8. Improve destination/map/card UX incrementally without changing existing hotel routes.
+9. Run hotel, dataset, scraper, frontend, compilation, and `git diff --check` regression checks.
+
+## 16. Known limitations of the current project
+
+- No Playwright package or browser manager exists.
+- No background job/worker infrastructure exists.
+- No durable distributed cache exists by default; Django local-memory cache is process-local.
+- Current `HotelPriceObservation` cannot represent every requested booking condition or review metadata without nullable schema extensions.
+- Current frontend does not yet expose a generic destination-search endpoint, freshness state, empty-map search action, or condition-aware comparison UI.
+- No live source has been selected, configured, or tested as part of this architecture inspection.
+- No application code, dependency, environment file, migration, or scraper was changed by this document.

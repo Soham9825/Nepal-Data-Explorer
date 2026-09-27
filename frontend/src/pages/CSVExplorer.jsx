@@ -106,6 +106,7 @@ export default function CSVExplorer() {
         isSampled: result.is_sampled,
         loading: false,
         profile,
+        quality: result.quality || null,
         warning: result.warnings?.length ? result.warnings.join(' ') : null,
       });
       setStep('validate');
@@ -209,6 +210,7 @@ export default function CSVExplorer() {
             onBack={resetToUpload}
             onNext={buildChart}
             nextLoading={nextLoading}
+            quality={dataset.quality}
           />
         )}
 

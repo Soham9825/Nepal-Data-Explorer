@@ -4,10 +4,12 @@ import CSVMissingStrategy from './CSVMissingStrategy';
 import { BtnOutline, BtnPrimary } from '../ui/Button';
 import { Icon } from '../ui/Icon';
 
+import CSVQualitySummary from './CSVQualitySummary';
+
 export default function CSVValidateStep({
   fileName, headers, rows, totalRowCount, isSampled, warning, error,
   columns, overrides, missingStrategies, onOverride, onStrategy,
-  onBack, onNext, nextLoading,
+  onBack, onNext, nextLoading, quality,
 }) {
   return (
     <div className="space-y-6">
@@ -17,6 +19,7 @@ export default function CSVValidateStep({
           {error}
         </p>
       )}
+      {quality && <CSVQualitySummary quality={quality} />}
       <CSVColumnTypes
         columns={columns}
         overrides={overrides}
@@ -35,6 +38,7 @@ export default function CSVValidateStep({
         totalRowCount={totalRowCount}
         isSampled={isSampled}
         onReplace={onBack}
+        quality={quality}
       />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <BtnOutline onClick={onBack}>
