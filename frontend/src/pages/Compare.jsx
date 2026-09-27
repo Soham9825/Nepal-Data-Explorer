@@ -38,26 +38,60 @@ function correlationLabel(r) {
 }
 
 function seriesStats(rows, key) {
-  const values = rows.map((d) => Number(d[key])).filter(Number.isFinite);
-  if (!values.length) return null;
-  const first = values[0];
-  const last = values[values.length - 1];
+  // Index the *period* alongside each value: `values` is filtered for
+  // finiteness, so an index into it does not line up with `rows` once any row is
+  // dropped and the reported peak/trough period is silently wrong.
+  const pairs = rows
+    .map((d) => ({ period: d?.period, value: Number(d?.[key]) }))
+    .filter((p) => Number.isFinite(p.value));
+  if (!pairs.length) return null;
+  const first = pairs[0].value;
+  const last = pairs[pairs.length - 1].value;
   const change = first !== 0 ? ((last - first) / Math.abs(first)) * 100 : null;
-  const minIndex = values.indexOf(Math.min(...values));
-  const maxIndex = values.indexOf(Math.max(...values));
+  const lowest = pairs.reduce((acc, p) => (p.value < acc.value ? p : acc), pairs[0]);
+  const highest = pairs.reduce((acc, p) => (p.value > acc.value ? p : acc), pairs[0]);
   return {
     first,
     last,
     change,
-    min: values[minIndex],
-    max: values[maxIndex],
-    troughPeriod: rows[minIndex]?.period ?? null,
-    peakPeriod: rows[maxIndex]?.period ?? null,
+    min: lowest.value,
+    max: highest.value,
+    troughPeriod: lowest.period ?? null,
+    peakPeriod: highest.period ?? null,
   };
 }
 
 function fmt(n) {
   return Number(n).toLocaleString(undefined, { maximumFractionDigits: 0 });
+}
+
+// Hoisted out of Compare: defining it inside the component made its type a new
+// function on every render, so React unmounted and remounted both Series
+// <select>s each time — dropping the open dropdown and any in-flight
+// interaction state.
+function SeriesSelect({ value, options, onChange, label, format }) {
+  return (
+    <div className="relative">
+      <select
+        value={value}
+        aria-label={label}
+        onChange={(e) => onChange(e.target.value)}
+        className="appearance-none px-3 py-2 pr-8 border border-outline-variant rounded-sm font-sans text-sm font-bold text-onSurface bg-surface cursor-pointer outline-none"
+      >
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {format(option)}
+          </option>
+        ))}
+      </select>
+      <Icon
+        name="expand_more"
+        size={14}
+        color="#5c403c"
+        className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none"
+      />
+    </div>
+  );
 }
 
 function SeriesStats({ label, stats, color }) {
@@ -110,8 +144,37 @@ export default function Compare() {
   const apiBaseUrl = API_BASE_URL;
   const dataset = catalog.find((item) => item.id === datasetId) || null;
   const seriesLabel = (value) => String(value).replaceAll('_', ' ');
-  const availableSeries =
-    dataset?.series_by_filters?.statistic_type?.[filters.statistic_type] || dataset?.series || [];
+
+  // Only offer series that actually exist for the current filter selection.
+  // The catalog names its own filter fields per dataset (`statistic_type` for
+  // tourism-statistics, `series_type` for global-economy), so this has to be
+  // derived from the dataset rather than hardcoding one field name — previously
+  // it did, so changing the filter left stale series in the dropdowns and the
+  // charts silently rendered empty.
+  const availableSeries = useMemo(() => {
+    const all = Array.isArray(dataset?.series) ? dataset.series : [];
+    if (!all.length) return [];
+    const activeLists = (dataset?.filters || [])
+      .map((filter) => dataset?.series_by_filters?.[filter.field]?.[filters[filter.field]])
+      .filter((list) => Array.isArray(list));
+    if (!activeLists.length) return all;
+    // Intersect, so a series is offered only when it exists for every active
+    // filter rather than for any one of them.
+    return all.filter((series) => activeLists.every((list) => list.includes(series)));
+  }, [dataset, filters]);
+
+  // Changing a filter can invalidate the current A/B pick. Re-point it at
+  // something that exists instead of leaving a pair that returns no rows.
+  useEffect(() => {
+    if (!availableSeries.length) return;
+    const nextA = availableSeries.includes(a) ? a : availableSeries[0];
+    const nextB = availableSeries.includes(b)
+      ? b
+      : availableSeries.find((series) => series !== nextA) || availableSeries[0];
+    if (nextA !== a) setA(nextA);
+    if (nextB !== b) setB(nextB);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availableSeries]);
 
   const correlation = useMemo(() => {
     if (!comparison?.data?.length) return null;
@@ -124,7 +187,7 @@ export default function Compare() {
   const direction = hasCorrelation && correlation >= 0 ? 'positive' : 'inverse';
   const strength = hasCorrelation ? correlationLabel(correlation) : 'unavailable';
   const periodDescription = comparison?.data?.length
-    ? `${comparison.data[0].period} to ${comparison.data.at(-1).period}`
+    ? `${comparison.data[0]?.period} to ${comparison.data.at(-1)?.period}`
     : 'the selected periods';
 
   // Index both series to a common base (start = 100) so trends are comparable
@@ -194,30 +257,13 @@ export default function Compare() {
     );
   };
 
-  const Sel = ({ val, onChange }) => (
-    <div className="relative">
-      <select
-        value={val}
-        onChange={(e) => onChange(e.target.value)}
-        className="appearance-none px-3 py-2 pr-8 border border-outline-variant rounded-sm font-sans text-sm font-bold text-onSurface bg-surface cursor-pointer outline-none"
-      >
-        {availableSeries.map((value) => (
-          <option key={value} value={value}>
-            {seriesLabel(value)}
-          </option>
-        ))}
-      </select>
-      <Icon
-        name="expand_more"
-        size={14}
-        color="#5c403c"
-        className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none"
-      />
-    </div>
-  );
-
   const generateComparison = () => {
     if (!dataset || !a || !b) return;
+    // Cancel any pending debounced auto-refresh first. Without this, clicking
+    // "Generate Comparison" within 350 ms of touching a dropdown fired the
+    // identical request twice: once from the click and once again when the
+    // timer from the useEffect below came due.
+    clearTimeout(refreshTimerRef.current);
     hasGeneratedRef.current = true;
     const id = ++requestIdRef.current;
     setLoading(true);
@@ -230,7 +276,10 @@ export default function Compare() {
       })
       .then((data) => {
         if (id !== requestIdRef.current) return;
-        setComparison(data);
+        // Only trust a payload that actually has a row array — a shape change
+        // downstream would otherwise reach the charts as undefined and throw
+        // during render.
+        setComparison(Array.isArray(data?.data) ? data : { ...data, data: [] });
         setDone(true);
       })
       .catch((requestError) => {
@@ -299,14 +348,14 @@ export default function Compare() {
               <div className="text-xs font-bold uppercase text-onSurface-variant mb-2">
                 Series A
               </div>
-              <Sel val={a} onChange={setA} />
+              <SeriesSelect label="Series A" value={a} options={availableSeries} onChange={setA} format={seriesLabel} />
             </div>
             <div className="text-lg text-onSurface-variant font-bold pb-2">vs</div>
             <div>
               <div className="text-xs font-bold uppercase text-onSurface-variant mb-2">
                 Series B
               </div>
-              <Sel val={b} onChange={setB} />
+              <SeriesSelect label="Series B" value={b} options={availableSeries} onChange={setB} format={seriesLabel} />
             </div>
             {(dataset?.filters || []).map((filter) => (
               <div key={filter.field}>
@@ -315,20 +364,13 @@ export default function Compare() {
                 </div>
                 <select
                   value={filters[filter.field] || ''}
+                  aria-label={seriesLabel(filter.field)}
                   onChange={(event) => {
-                    const nextFilters = { ...filters, [filter.field]: event.target.value };
-                    const nextSeries =
-                      dataset?.series_by_filters?.[filter.field]?.[event.target.value] ||
-                      dataset?.series ||
-                      [];
-                    setFilters(nextFilters);
-                    if (
-                      nextSeries.length > 1 &&
-                      (!nextSeries.includes(a) || !nextSeries.includes(b))
-                    ) {
-                      setA(nextSeries[0]);
-                      setB(nextSeries[1]);
-                    }
+                    // Just record the filter: `availableSeries` recomputes and the
+                    // effect above re-points A/B at a valid pair. Doing that
+                    // remapping here as well meant the dropdowns and the charts
+                    // could disagree.
+                    setFilters({ ...filters, [filter.field]: event.target.value });
                   }}
                   className="px-3 py-2 border border-outline-variant rounded-sm font-sans text-sm font-bold text-onSurface bg-surface cursor-pointer outline-none"
                 >

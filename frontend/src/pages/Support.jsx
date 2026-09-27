@@ -3,6 +3,7 @@ import { SectionCard } from '../components/ui/Card';
 import { BtnPrimary } from '../components/ui/Button';
 import { Icon } from '../components/ui/Icon';
 import auth from '../services/auth';
+import { API_BASE_URL } from '../config';
 
 export default function Support() {
   const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' });
@@ -52,7 +53,7 @@ export default function Support() {
     setSending(true);
     setFeedback(null);
     try {
-      const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const apiBaseUrl = API_BASE_URL;
       if (!auth.getAccessToken()) {
         throw new Error('Please sign in again before sending a message.');
       }

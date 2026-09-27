@@ -4,6 +4,7 @@ import { SectionCard } from '../ui/Card';
 import { BtnOutline } from '../ui/Button';
 import { Icon } from '../ui/Icon';
 import auth from '../../services/auth';
+import { API_BASE_URL } from '../../config';
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024;
 const MAX_COLUMNS = 5000;
@@ -176,7 +177,7 @@ export async function validateCSV(file) {
 }
 
 export async function validateCSVOnServer(file) {
-  const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  const apiBaseUrl = API_BASE_URL;
   const formData = new FormData();
   formData.append('file', file);
   const response = await fetch(`${apiBaseUrl}/api/datasets/files/validate-upload/`, {
@@ -199,7 +200,7 @@ export async function validateCSVOnServer(file) {
  * visualisation always has renderable data even when the file has gaps.
  */
 export async function prepareCSV(file, options = {}) {
-  const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  const apiBaseUrl = API_BASE_URL;
   const formData = new FormData();
   formData.append('file', file);
   if (options.types && Object.keys(options.types).length) {

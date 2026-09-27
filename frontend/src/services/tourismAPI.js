@@ -13,7 +13,6 @@ export const tourismAPI = {
       const response = await fetch(`${ANALYTICS_API}/tourism/`, {
         method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
           'Accept': 'application/json',
           ...auth.authenticatedHeaders(),
         },
@@ -41,7 +40,6 @@ export const tourismAPI = {
       const response = await fetch(`${ANALYTICS_API}/dashboard/`, {
         method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
           'Accept': 'application/json',
           ...auth.authenticatedHeaders(),
         },
@@ -64,7 +62,6 @@ export const tourismAPI = {
       const response = await fetch(`${ANALYTICS_API}/tourism/year/${year}/`, {
         method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
           ...auth.authenticatedHeaders(),
         },
         credentials: 'include',
@@ -94,7 +91,6 @@ export const tourismAPI = {
       const response = await fetch(url, {
         method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
           ...auth.authenticatedHeaders(),
         },
         credentials: 'include',

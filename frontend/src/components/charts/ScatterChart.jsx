@@ -563,7 +563,7 @@ onClick={() => {
             {yLabel}: <strong className="text-onSurface">{fmt(pinnable.y)}</strong>
           </span>
           <span className="text-onSurface-variant">
-            Residual: <strong className="text-onSurface">{fmt(analysis.residuals[pinnedIndex].toFixed(1))}</strong>
+            Residual: <strong className="text-onSurface">{fmt(analysis.residuals?.[pinnedIndex]?.toFixed(1) ?? '—')}</strong>
           </span>
           <button
             type="button"

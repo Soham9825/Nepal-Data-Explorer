@@ -72,7 +72,6 @@ export default function National() {
         const response = await fetch(POPULATION_API_URL, {
           method: 'GET',
           headers: {
-            'Content-Type': 'application/json',
             Accept: 'application/json',
           },
           credentials: 'include',
@@ -101,7 +100,6 @@ export default function National() {
         const response = await fetch(PROVINCE_POPULATION_API_URL, {
           method: 'GET',
           headers: {
-            'Content-Type': 'application/json',
             Accept: 'application/json',
           },
           credentials: 'include',
@@ -137,7 +135,6 @@ export default function National() {
         const response = await fetch(ECONOMIC_API_URL, {
           method: 'GET',
           headers: {
-            'Content-Type': 'application/json',
             Accept: 'application/json',
           },
           credentials: 'include',
@@ -191,7 +188,6 @@ export default function National() {
         const response = await fetch(ECONOMIC_COMPACT_API_URL, {
           method: 'GET',
           headers: {
-            'Content-Type': 'application/json',
             Accept: 'application/json',
           },
           credentials: 'include',
@@ -226,7 +222,6 @@ export default function National() {
         const response = await fetch(NEWS_API_URL, {
           method: 'GET',
           headers: {
-            'Content-Type': 'application/json',
             Accept: 'application/json',
           },
           credentials: 'include',

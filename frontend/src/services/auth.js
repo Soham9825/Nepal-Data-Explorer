@@ -3,6 +3,12 @@ const USER_STORAGE_KEY = 'nepal-data-current-user';
 const ACCESS_TOKEN_KEY = 'nepal-data-access-token';
 const REFRESH_TOKEN_KEY = 'nepal-data-refresh-token';
 
+// How long a successful /me/ answer is reused before we revalidate. The previous
+// code had no cache at all, so every mounted consumer (ProtectedRoute,
+// DashboardLayout, AdminRoute, Support) issued its own request, and StrictMode
+// doubled that in dev — four identical GETs plus four preflights per page load.
+const ME_CACHE_TTL_MS = 30000;
+
 const csrfHeader = (csrf) => ({
   'Content-Type': 'application/json',
   'X-CSRFToken': csrf.csrfToken || csrf.csrf_token,
@@ -13,6 +19,102 @@ const parseError = async (response, fallback) => {
   throw new Error(data.detail || fallback);
 };
 
+// Single-flight guards: concurrent callers share one in-flight request instead
+// of each firing their own.
+let mePromise = null;
+let refreshPromise = null;
+let meCache = null;
+let meCachedAt = 0;
+
+const readStored = (key) => {
+  try {
+    return window.localStorage.getItem(key) || null;
+  } catch {
+    return null;
+  }
+};
+
+const writeStored = (key, value) => {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    /* private mode / quota — auth still works for this tab */
+  }
+};
+
+const removeStored = (key) => {
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    /* ignore */
+  }
+};
+
+/**
+ * SimpleJWT tokens are `header.payload.signature`. Anything else in storage is
+ * garbage — most often the literal text "undefined" written by the old
+ * storeTokens, or a truncated/corrupted value.
+ *
+ * This matters more than it looks: JWTAuthentication *raises* InvalidToken for a
+ * malformed header rather than falling back to anonymous, so a single bogus
+ * token turns every AllowAny endpoint into a 401. That is the mechanism behind
+ * "the app says I'm unauthorized even though I logged in" — a request that
+ * works with no Authorization header fails once a junk one is attached.
+ */
+const looksLikeJwt = (token) =>
+  typeof token === 'string' && token !== 'undefined' && token !== 'null' && token.split('.').length === 3;
+
+const readToken = (key) => {
+  const token = readStored(key);
+  if (token === null) return null;
+  if (looksLikeJwt(token)) return token;
+  // Drop it so the refresh path can take over instead of sending `Bearer undefined`.
+  removeStored(key);
+  return null;
+};
+
+const cacheUser = (user) => {
+  meCache = user;
+  meCachedAt = user ? Date.now() : 0;
+  if (user) writeStored(USER_STORAGE_KEY, JSON.stringify(user));
+};
+
+// Exchange the still-valid refresh token for a new access token. The backend has
+// ROTATE_REFRESH_TOKENS/BLACKLIST_AFTER_ROTATION on, so the response carries a
+// replacement refresh token that must be stored or the next refresh is dead.
+const refreshAccessToken = async () => {
+  if (refreshPromise) return refreshPromise;
+
+  const refresh = readStored(REFRESH_TOKEN_KEY);
+  if (!refresh) return null;
+
+  refreshPromise = (async () => {
+    try {
+      const res = await fetch(`${AUTH_BASE}/token/refresh/`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh }),
+      });
+      if (!res.ok) {
+        auth.clearTokens();
+        return null;
+      }
+      const data = await res.json();
+      if (!data?.access) return null;
+      writeStored(ACCESS_TOKEN_KEY, data.access);
+      if (data.refresh) writeStored(REFRESH_TOKEN_KEY, data.refresh);
+      return data.access;
+    } catch {
+      return null;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
+};
+
 export const auth = {
   getCSRF: async () => {
     const res = await fetch(`${AUTH_BASE}/csrf/`, { credentials: 'include' });
@@ -20,7 +122,9 @@ export const auth = {
     return res.json();
   },
 
-  getAccessToken: () => window.localStorage.getItem(ACCESS_TOKEN_KEY),
+  getAccessToken: () => readToken(ACCESS_TOKEN_KEY),
+
+  getRefreshToken: () => readToken(REFRESH_TOKEN_KEY),
 
   authenticatedHeaders: () => {
     const token = auth.getAccessToken();
@@ -28,15 +132,25 @@ export const auth = {
   },
 
   storeTokens: (data) => {
-    window.localStorage.setItem(ACCESS_TOKEN_KEY, data.access);
-    window.localStorage.setItem(REFRESH_TOKEN_KEY, data.refresh);
+    // Only ever persist real, well-formed tokens. Storing a missing field used
+    // to write the literal text "undefined", which is truthy — so
+    // `authenticatedHeaders()` happily sent `Authorization: Bearer undefined`
+    // and *every* endpoint answered 401 with no obvious cause.
+    if (looksLikeJwt(data?.access)) writeStored(ACCESS_TOKEN_KEY, data.access);
+    if (looksLikeJwt(data?.refresh)) writeStored(REFRESH_TOKEN_KEY, data.refresh);
+    meCache = null;
+    meCachedAt = 0;
   },
 
   clearTokens: () => {
-    window.localStorage.removeItem(ACCESS_TOKEN_KEY);
-    window.localStorage.removeItem(REFRESH_TOKEN_KEY);
-    window.localStorage.removeItem(USER_STORAGE_KEY);
+    removeStored(ACCESS_TOKEN_KEY);
+    removeStored(REFRESH_TOKEN_KEY);
+    removeStored(USER_STORAGE_KEY);
+    meCache = null;
+    meCachedAt = 0;
   },
+
+  refreshAccessToken,
 
   login: async ({ username, password }) => {
     const csrf = await auth.getCSRF();
@@ -58,7 +172,7 @@ export const auth = {
 
     const user = await res.json();
     auth.storeTokens(user);
-    window.localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+    cacheUser(user);
     return user;
   },
 
@@ -86,27 +200,73 @@ export const auth = {
     const user = await res.json();
     if (user.access) {
       auth.storeTokens(user);
-      window.localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+      cacheUser(user);
     }
     return user;
   },
 
-  getCurrentUser: async () => {
-    const res = await fetch(`${AUTH_BASE}/me/`, {
-      headers: auth.authenticatedHeaders(), credentials: 'include',
-    });
-    if (!res.ok) {
-      auth.clearTokens();
+  getCurrentUser: async ({ force = false } = {}) => {
+    // No access token but a refresh token means the 30-minute access token
+    // simply expired: refresh instead of treating the user as signed out.
+    if (!auth.getAccessToken() && !auth.getRefreshToken()) {
+      meCache = null;
+      meCachedAt = 0;
       return null;
     }
-    const user = await res.json();
-    window.localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
-    return user;
+
+    if (!force && meCache && Date.now() - meCachedAt < ME_CACHE_TTL_MS) return meCache;
+    if (mePromise) return mePromise;
+
+    mePromise = (async () => {
+      try {
+        let res = await fetch(`${AUTH_BASE}/me/`, {
+          headers: auth.authenticatedHeaders(),
+          credentials: 'include',
+        });
+
+        // A 401 here used to immediately wipe the stored tokens — including the
+        // still-valid refresh token — so one expired access token turned into a
+        // hard logout that looked like "I logged in but it says unauthorized".
+        if (res.status === 401) {
+          const fresh = await refreshAccessToken();
+          if (!fresh) {
+            cacheUser(null);
+            return null;
+          }
+          res = await fetch(`${AUTH_BASE}/me/`, {
+            headers: { Authorization: `Bearer ${fresh}` },
+            credentials: 'include',
+          });
+        }
+
+        if (!res.ok) {
+          cacheUser(null);
+          if (res.status === 401) auth.clearTokens();
+          return null;
+        }
+
+        const user = await res.json();
+        cacheUser(user);
+        return user;
+      } catch {
+        // Network blip: keep whatever is cached rather than signing the user
+        // out. Fall back to the persisted copy too, since the in-memory cache
+        // is empty on a fresh page load.
+        return meCache || auth.getCachedUser();
+      } finally {
+        mePromise = null;
+      }
+    })();
+
+    return mePromise;
   },
+
+  cacheUser,
 
   getCachedUser: () => {
     try {
-      return JSON.parse(window.localStorage.getItem(USER_STORAGE_KEY) || 'null');
+      const raw = readStored(USER_STORAGE_KEY);
+      return raw ? JSON.parse(raw) : null;
     } catch {
       auth.clearTokens();
       return null;

@@ -247,6 +247,15 @@ export default function LineChart({
 
   chartRef.current = chart;
 
+  // Hover state can outlive the data it was captured against: a new response can
+  // arrive with fewer rows while the pointer is still over the old chart (the
+  // Compare page swaps in whatever two series currently share periods, so the
+  // row count changes on every filter/series change). `activeIndex` is only
+  // cleared by onMouseLeave, so it can point past the end of the new `data` and
+  // every `data[activeIndex]` dereference below would throw. Clamp it once here
+  // and use the clamped value everywhere.
+  const safeIndex = activeIndex != null && activeIndex >= 0 && activeIndex < data.length ? activeIndex : null;
+
   // Indices with at least one visible (non-faint) series value -> hover targets.
   const hoverableIndices = chart
     ? data
@@ -259,11 +268,11 @@ export default function LineChart({
     : [];
 
   const activePoints =
-    activeIndex != null && chart
+    safeIndex != null && chart
       ? chart.seriesData.flatMap((s) =>
           !s.faint
             ? s.points
-                .filter((p) => p.index === activeIndex)
+                .filter((p) => p.index === safeIndex)
                 .map((p) => ({ ...p, seriesKey: s.key, seriesLabel: s.label, color: s.color }))
             : []
         )
@@ -279,6 +288,11 @@ export default function LineChart({
       setTip((prev) => (prev === null ? prev : null));
       return;
     }
+    const active = d[activeIndex];
+    if (!active) {
+      setTip((prev) => (prev === null ? prev : null));
+      return;
+    }
     const containerRect = containerRef.current.getBoundingClientRect();
     const tooltipRect = tooltipRef.current.getBoundingClientRect();
     const points = c.seriesData.flatMap((s) =>
@@ -289,7 +303,7 @@ export default function LineChart({
       return;
     }
 
-    const xPct = (c.xForValue(d[activeIndex][xk], activeIndex) / VB_WIDTH) * 100;
+    const xPct = (c.xForValue(active[xk], activeIndex) / VB_WIDTH) * 100;
     const markerTopY = Math.min(...points.map((p) => p.y));
     const markerX = (xPct / 100) * containerRect.width;
     const markerY = (markerTopY / VB_HEIGHT) * containerRect.height;
@@ -371,9 +385,14 @@ export default function LineChart({
     );
   }
 
-  const activeItem = activeIndex != null ? data[activeIndex] : null;
-  const activeX = activeIndex != null ? chart.xForValue(data[activeIndex][xKey], activeIndex) : null;
-  const hasHover = activeIndex != null && activePoints.length > 0;
+  // `safeIndex` (clamped against the current row count) is used instead of the
+  // raw `activeIndex` here: the old `data[activeIndex][xKey]` threw
+  // "Cannot read properties of undefined" whenever a shorter dataset landed
+  // under a still-hovered point, which unmounted the whole app because there is
+  // no error boundary above this tree.
+  const activeItem = safeIndex != null ? data[safeIndex] : null;
+  const activeX = safeIndex != null ? chart.xForValue(activeItem[xKey], safeIndex) : null;
+  const hasHover = safeIndex != null && activePoints.length > 0;
 
   return (
     <div

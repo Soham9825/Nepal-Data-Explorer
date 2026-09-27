@@ -69,6 +69,9 @@ export default function Login() {
     auth.exchangeOAuthCode(oauthCode)
       .then((user) => {
         auth.storeTokens(user);
+        // Seed the user cache so the first protected route renders immediately
+        // instead of firing a /me/ round-trip (and a possible 401 flash).
+        auth.cacheUser(user);
         navigate("/national", { replace: true });
       })
       .catch((err) => alert(err.message || "Google sign-in failed"))
