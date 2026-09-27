@@ -9,7 +9,7 @@ A national data platform for Nepal's economy, tourism, and demographics, built w
 
 - National and provincial dashboards for economic, tourism, and demographic data
 - AI-powered forecasting with ARIMA/SARIMA models and confidence intervals
-- Province comparison, dataset exploration, and PDF/CSV report exports
+- Province comparison, dataset exploration, and PDF/CSV report exports, with the dataset catalogue filterable by Tourism, Economic, or both
 - Authentication via Google and GitHub OAuth, JWT sessions, and email verification
 - Custom toxicity moderation for support messages, backed by a DistilBERT classifier (trained for Nepali and English) with an additional bilingual profanity filter
 
@@ -166,6 +166,6 @@ npm install
 npm run dev
 ```
 
-The frontend runs at `http://localhost:5173` and expects the API at `http://localhost:8000`.
+The frontend runs at `http://localhost:5173` and calls the API on the same origin. The Vite dev server proxies `/api`, `/accounts`, `/admin` and `/static` to the backend at `http://localhost:8000`, so no API base URL needs configuring and no CORS preflight is issued.
 
 Private project.

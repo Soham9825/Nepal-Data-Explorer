@@ -45,7 +45,7 @@ export default function ReportRow({ report, isLast, onSelect, onDownload }) {
       tabIndex={0}
       onClick={() => onSelect(report)}
       onKeyDown={handleKeyDown}
-      className={`grid ${REPORT_COLUMNS} cursor-pointer items-center gap-4 px-6 py-3.5 transition-colors duration-150 hover:bg-surface-lowest focus:bg-surface-lowest focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40 ${
+      className={`grid ${REPORT_COLUMNS} cursor-pointer items-center gap-4 bg-surface px-6 py-3.5 transition-colors duration-150 hover:bg-surface-lowest focus:bg-surface-lowest focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40 ${
         !isLast ? 'border-b border-outline-variant' : ''
       }`}
     >

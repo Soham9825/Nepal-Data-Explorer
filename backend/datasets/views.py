@@ -42,6 +42,27 @@ DATASET_ROOTS = (
 	Path(settings.BASE_DIR) / "analytics" / "ml",
 )
 
+# The Reports page filters the catalogue into Tourism and Economic. Matched against the
+# path too, since generically named files only reveal their theme from their folder.
+TOURISM_KEYWORDS = (
+	"touris", "tourist", "trekker", "trekking", "purpose-of-visit",
+)
+ECONOMIC_KEYWORDS = (
+	"gdp", "trade", "economi", "salary", "wage", "sectoral", "sector",
+	"inflation", "producer-price", "wholesale", "price-index", "appi",
+	"growth",
+)
+
+
+def _dataset_category(path):
+	"""Returns "tourism", "economic" or "general" for a catalogue file."""
+	haystack = f"{path.stem} {path.as_posix()}".lower().replace("_", "-")
+	if any(keyword in haystack for keyword in TOURISM_KEYWORDS):
+		return "tourism"
+	if any(keyword in haystack for keyword in ECONOMIC_KEYWORDS):
+		return "economic"
+	return "general"
+
 
 def _csv_files():
 	files = []
@@ -67,6 +88,7 @@ def _file_metadata(path):
 		"id": _file_id(path),
 		"title": path.stem.replace("_", " ").replace("-", " ").title(),
 		"type": "CSV",
+		"category": _dataset_category(path),
 		"size": f"{path.stat().st_size / 1024:.0f} KB",
 		"date": "Available now",
 		"icon": "auto_awesome" if "forecast" in path.name.lower() else "table_chart",
