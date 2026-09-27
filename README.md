@@ -11,7 +11,7 @@ A national data platform for Nepal's economy, tourism, and demographics, built w
 - AI-powered forecasting with ARIMA/SARIMA models and confidence intervals
 - Province comparison, dataset exploration, and PDF/CSV report exports
 - Authentication via Google and GitHub OAuth, JWT sessions, and email verification
-- Custom toxicity moderation for support messages, backed by a fine-tuned DistilBERT classifier (trained for Nepali and English) with an additional bilingual profanity filter
+- Custom toxicity moderation for support messages, backed by a DistilBERT classifier (trained for Nepali and English) with an additional bilingual profanity filter
 
 ## Technology Stack
 
@@ -19,7 +19,7 @@ A national data platform for Nepal's economy, tourism, and demographics, built w
 | --------- | ----------------------------------------------------------- |
 | Backend   | Django, Django REST Framework, SimpleJWT, PostgreSQL        |
 | Frontend  | React 18, Vite, TailwindCSS, Recharts, React Router, Leaflet |
-| ML        | Custom DistilBERT toxicity classifier (fine-tuned in Colab), ARIMA/SARIMA |
+| ML        | Custom DistilBERT toxicity classifier , ARIMA/SARIMA |
 
 ## Prerequisites
 
