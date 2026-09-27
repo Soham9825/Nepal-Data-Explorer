@@ -1,23 +1,28 @@
 import { useState } from 'react';
+import { PROVINCE_COLORS } from '../../theme/chartPalette';
 
+// Fills come from the shared province palette rather than being written here, so
+// this map, the Provinces page map and the province GDP bars cannot drift apart.
 const provinces = [
-  { cx: 90, cy: 200, rx: 80, ry: 55, name: 'Sudurpashchim', id: 7, fill: '#7a5100' },
-  { cx: 190, cy: 185, rx: 75, ry: 60, name: 'Karnali', id: 6, fill: '#5c403c' },
-  { cx: 300, cy: 175, rx: 80, ry: 65, name: 'Lumbini', id: 5, fill: '#0051d5' },
-  { cx: 410, cy: 165, rx: 70, ry: 70, name: 'Gandaki', id: 4, fill: '#316bf3' },
-  { cx: 520, cy: 155, rx: 85, ry: 75, name: 'Bagmati', id: 3, fill: '#b70011' },
-  { cx: 645, cy: 175, rx: 95, ry: 60, name: 'Madhesh', id: 2, fill: '#dc2626' },
-  { cx: 765, cy: 170, rx: 50, ry: 65, name: 'Koshi', id: 1, fill: '#9a6800' },
-];
+  { cx: 90, cy: 200, rx: 80, ry: 55, name: 'Sudurpashchim', id: 7 },
+  { cx: 190, cy: 185, rx: 75, ry: 60, name: 'Karnali', id: 6 },
+  { cx: 300, cy: 175, rx: 80, ry: 65, name: 'Lumbini', id: 5 },
+  { cx: 410, cy: 165, rx: 70, ry: 70, name: 'Gandaki', id: 4 },
+  { cx: 520, cy: 155, rx: 85, ry: 75, name: 'Bagmati', id: 3 },
+  { cx: 645, cy: 175, rx: 95, ry: 60, name: 'Madhesh', id: 2 },
+  { cx: 765, cy: 170, rx: 50, ry: 65, name: 'Koshi', id: 1 },
+].map((province) => ({ ...province, fill: PROVINCE_COLORS[province.name] }));
 
 export default function ProvinceMap({ onProvinceSelect, selectedProvince }) {
   const [showFullscreen, setShowFullscreen] = useState(false);
 
   return (
-    <div className={`bg-surface border border-outline-variant rounded-sm overflow-hidden flex flex-col relative card-shadow ${
-      showFullscreen ? 'fixed inset-0 z-50' : ''
-    }`}>
-      <div className="p-6 border-b border-outline-variant flex justify-between items-center bg-surface-container-lowest">
+    <div
+      className={`bg-surface border border-outline-variant rounded-sm overflow-hidden flex flex-col relative card-shadow ${
+        showFullscreen ? 'fixed inset-0 z-50' : ''
+      }`}
+    >
+      <div className="p-6 border-b border-outline-variant flex justify-between items-center bg-surface-lowest">
         <div>
           <h3 className="font-bold text-on-surface text-xl font-sans">
             Provincial Population Density
@@ -32,10 +37,10 @@ export default function ProvinceMap({ onProvinceSelect, selectedProvince }) {
           )}
         </div>
         <div className="flex space-x-2">
-          <button className="bg-surface border border-outline-variant px-4 py-1.5 rounded-sm text-[12px] text-on-surface hover:bg-surface-container-highest font-bold font-sans">
+          <button className="bg-surface border border-outline-variant px-4 py-1.5 rounded-sm text-[12px] text-on-surface hover:bg-surface-highest font-bold font-sans">
             Filter
           </button>
-          <button 
+          <button
             onClick={() => setShowFullscreen(!showFullscreen)}
             className="bg-primary-container text-on-primary px-4 py-1.5 rounded-sm text-[12px] font-bold shadow-sm hover:brightness-110 transition-all font-sans"
           >
@@ -44,17 +49,17 @@ export default function ProvinceMap({ onProvinceSelect, selectedProvince }) {
         </div>
       </div>
 
-      <div className="flex-1 min-h-[500px] bg-surface-container-highest relative overflow-hidden cursor-crosshair">
+      <div className="flex-1 min-h-[500px] bg-surface-highest relative overflow-hidden cursor-crosshair">
         <svg viewBox="0 0 820 380" className="w-full h-full">
           {provinces.map((p) => {
             const isSelected = selectedProvince?.id === p.id;
             return (
-              <g 
-                key={p.id} 
+              <g
+                key={p.id}
                 className="cursor-pointer transition-all duration-200"
                 onClick={() => onProvinceSelect(p.id)}
-                onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
-                onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
+                onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
               >
                 <ellipse
                   cx={p.cx}
@@ -111,7 +116,7 @@ export default function ProvinceMap({ onProvinceSelect, selectedProvince }) {
             Density (p/km²)
           </h4>
           <div className="flex items-center space-x-1">
-            <div className="w-8 h-2 bg-surface-container-high" />
+            <div className="w-8 h-2 bg-surface-high" />
             <div className="w-8 h-2 bg-secondary/40" />
             <div className="w-8 h-2 bg-secondary" />
             <div className="w-8 h-2 bg-primary" />

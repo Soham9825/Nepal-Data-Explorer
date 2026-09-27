@@ -1,5 +1,4 @@
 import { API_BASE_URL } from '../config';
-import { auth } from './auth';
 
 function filenameFromHeaders(headers, fallback) {
   const disposition = headers.get('Content-Disposition') || '';
@@ -17,12 +16,14 @@ function filenameFromHeaders(headers, fallback) {
   return headers.get('X-Report-Filename') || fallback;
 }
 
+// The reports endpoints are `@permission_classes([AllowAny])`, so no
+// Authorization header is sent. DRF authenticates ahead of the permission
+// check, so a stale token here would 401 an otherwise public download.
 async function downloadReport(endpoint, dashboardState, fallbackFilename) {
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...auth.authenticatedHeaders(),
     },
     body: JSON.stringify(dashboardState),
   });

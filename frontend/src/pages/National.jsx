@@ -388,7 +388,7 @@ export default function National() {
 
   return (
     <>
-    <div className="space-y-6">
+      <div className="space-y-6">
         {/* Hero Metrics */}
         <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {metrics.map((m) => (
@@ -406,7 +406,7 @@ export default function National() {
 
           {/* News Feed */}
           <div className="bg-surface border border-outline-variant rounded-sm flex flex-col card-shadow hover:border-primary transition-colors duration-200">
-            <div className="p-6 border-b border-outline-variant bg-surface-container-lowest">
+            <div className="p-6 border-b border-outline-variant bg-surface-lowest">
               <h3 className="font-bold text-on-surface text-xl font-sans flex items-center gap-2">
                 <Icon name="newspaper" size={24} color="#b70011" />
                 National Headlines
@@ -416,7 +416,7 @@ export default function National() {
               </p>
             </div>
 
-<div className="flex-1 overflow-y-auto p-4 space-y-3 max-h-[500px] scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 max-h-[500px] scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
               {newsLoading ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader size="sm" />
@@ -454,7 +454,7 @@ export default function National() {
               )}
             </div>
 
-            <button className="w-full py-4 bg-surface-container-lowest border-t border-outline-variant text-[12px] font-bold text-primary hover:bg-surface-container-high transition-colors font-sans flex items-center justify-center gap-2">
+            <button className="w-full py-4 bg-surface-lowest border-t border-outline-variant text-[12px] font-bold text-primary hover:bg-surface-high transition-colors font-sans flex items-center justify-center gap-2">
               <Icon name="arrow_forward" size={16} color="#b70011" />
             </button>
           </div>
@@ -505,7 +505,7 @@ export default function National() {
                   By Province (2021 Census)
                 </p>
               </div>
-              <span className="text-xs bg-surface-container-lowest px-3 py-1 rounded-sm border border-outline-variant text-on-surface-variant font-sans">
+              <span className="text-xs bg-surface-lowest px-3 py-1 rounded-sm border border-outline-variant text-on-surface-variant font-sans">
                 Total:{' '}
                 {populationTotal ? `${(populationTotal / 1000000).toFixed(2)}M` : 'Loading...'}
               </span>

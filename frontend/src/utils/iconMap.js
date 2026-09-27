@@ -2,10 +2,19 @@ const DEFAULT_ICON = 'location_on';
 
 // Keyword => Material Symbols icon rules for place/province names.
 const ICON_RULES = [
-  { icon: 'forest', keywords: ['mountain', 'himal', 'forest', 'hill', 'nature', 'wildlife', 'trek'] },
+  {
+    icon: 'forest',
+    keywords: ['mountain', 'himal', 'forest', 'hill', 'nature', 'wildlife', 'trek'],
+  },
   { icon: 'water', keywords: ['lake', 'river', 'pond', 'kunda', 'taal', 'water'] },
-  { icon: 'temple', keywords: ['temple', 'mandir', 'pagoda', 'monastery', 'gompa', 'stupa', 'gumba'] },
-  { icon: 'palace', keywords: ['palace', 'durbar', 'fort', 'kot', 'museum', 'heritage', 'gallery'] },
+  {
+    icon: 'temple',
+    keywords: ['temple', 'mandir', 'pagoda', 'monastery', 'gompa', 'stupa', 'gumba'],
+  },
+  {
+    icon: 'palace',
+    keywords: ['palace', 'durbar', 'fort', 'kot', 'museum', 'heritage', 'gallery'],
+  },
   { icon: 'park', keywords: ['park', 'garden', 'bagan', 'zoo', 'picnic', 'botanic'] },
   { icon: 'flight', keywords: ['airport', 'air', 'flight', 'runway'] },
   { icon: 'bed', keywords: ['hotel', 'resort', 'lodge', 'guest', 'homestay', 'inn'] },

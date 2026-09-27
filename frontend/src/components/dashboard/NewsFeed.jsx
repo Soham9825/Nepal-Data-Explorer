@@ -6,26 +6,26 @@ const categories = ['All', 'Economy', 'Tourism', 'Finance', 'Government', 'Agric
 export default function NewsFeed({ news = [] }) {
   const [filter, setFilter] = useState('All');
 
-  const filteredNews = filter === 'All' 
-    ? news 
-    : news.filter(n => n.category === filter);
+  const filteredNews = filter === 'All' ? news : news.filter((n) => n.category === filter);
 
   return (
     <div className="bg-surface border border-outline-variant rounded-sm flex flex-col card-shadow">
-      <div className="p-6 border-b border-outline-variant bg-surface-container-lowest">
+      <div className="p-6 border-b border-outline-variant bg-surface-lowest">
         <h3 className="font-bold text-on-surface text-xl font-sans">National Headlines</h3>
-        <p className="text-on-surface-variant text-[12px] font-sans">Latest policy updates &amp; reports</p>
+        <p className="text-on-surface-variant text-[12px] font-sans">
+          Latest policy updates &amp; reports
+        </p>
       </div>
-      
-      <div className="px-4 py-2 border-b border-outline-variant flex flex-wrap gap-1.5 bg-surface-container-lowest/50">
+
+      <div className="px-4 py-2 border-b border-outline-variant flex flex-wrap gap-1.5 bg-surface-lowest/50">
         {categories.map((cat) => (
           <button
             key={cat}
             onClick={() => setFilter(cat)}
             className={`px-2.5 py-1 rounded-sm text-[10px] font-bold transition-colors font-sans ${
-              filter === cat 
-                ? 'bg-primary text-white' 
-                : 'bg-surface border border-outline-variant text-on-surface-variant hover:bg-surface-container-highest'
+              filter === cat
+                ? 'bg-primary text-white'
+                : 'bg-surface border border-outline-variant text-on-surface-variant hover:bg-surface-highest'
             }`}
           >
             {cat}
@@ -42,8 +42,8 @@ export default function NewsFeed({ news = [] }) {
           </div>
         )}
       </div>
-      
-      <button className="w-full py-4 bg-surface-container-lowest border-t border-outline-variant text-[12px] font-bold text-primary hover:bg-surface-container-high transition-colors font-sans">
+
+      <button className="w-full py-4 bg-surface-lowest border-t border-outline-variant text-[12px] font-bold text-primary hover:bg-surface-high transition-colors font-sans">
         View All Feed
       </button>
     </div>

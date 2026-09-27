@@ -14,23 +14,6 @@
       href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap"
       rel="stylesheet"
     />
-    <script>
-      (function () {
-        var root = document.documentElement;
-        var revealed = false;
-        function reveal() {
-          if (revealed) return;
-          revealed = true;
-          root.classList.remove("fonts-loading");
-        }
-        root.classList.add("fonts-loading");
-        if (document.fonts && document.fonts.ready) {
-          document.fonts.ready.then(reveal);
-        }
-        window.addEventListener("load", reveal);
-        setTimeout(reveal, 3000);
-      })();
-    </script>
     <style>
       ::-webkit-scrollbar { width: 6px; }
       ::-webkit-scrollbar-track { background: #f0f0f0; }

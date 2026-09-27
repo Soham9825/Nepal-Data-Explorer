@@ -1,9 +1,8 @@
-
 import ProgressBar from '../cards/ProgressBar';
 
 export default function PopulationDistribution({ data = [] }) {
   const total = data.reduce((sum, p) => sum + parseInt(p.population.replace(/,/g, '')), 0);
-  
+
   return (
     <div className="bg-surface border border-outline-variant rounded-sm p-6 card-shadow">
       <div className="flex justify-between items-center mb-6">

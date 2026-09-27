@@ -691,7 +691,7 @@ def tourism_sex_chart(dataset):
         rows = [roster for roster in rows if roster.get("year") == year]
     rows = sorted(rows, key=lambda roster: roster.get("value") or 0)
     names = [roster["gender"] for roster in rows]
-    values = [roster.get("value") or 0 for roster in rows]
+    values = [float(roster.get("value") or 0) for roster in rows]
     if not names:
         return None
 

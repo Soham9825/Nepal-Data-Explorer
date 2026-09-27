@@ -2,7 +2,8 @@
 // src/layout/TopBar.jsx
 // ============================================================
 import { useEffect, useState } from 'react';
-import UserCard from "../common/UserCard";
+import UserCard from '../common/UserCard';
+import TopBarSearch from './TopBarSearch';
 
 export default function TopBar({ pageTitle, user }) {
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -15,44 +16,46 @@ export default function TopBar({ pageTitle, user }) {
     return () => clearInterval(timer);
   }, []);
 
-  const formattedDate = currentTime.toLocaleDateString("en-US", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    year: "numeric",
+  const formattedDate = currentTime.toLocaleDateString('en-US', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
   });
 
-  const formattedTime = currentTime.toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
+  const formattedTime = currentTime.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
     hour12: true,
   });
 
   return (
-    <div className="max-w-7xl w-full mx-auto h-full px-8 flex items-center justify-between">
-      {/* Left */}
-      <div className="flex items-center gap-3">
-        <h2 className="text-xl font-bold text-onSurface">{pageTitle}</h2>
+    // From `lg` up both side groups are flex-1, so they take equal width and the
+    // search sits dead centre instead of being shoved right by the title. Below
+    // `lg` the title still competes for space with the user card, so the sides
+    // shrink to their content and the search flexes to fill what is left.
+    <div className="flex h-full w-full items-center gap-3 px-8">
+      <div className="flex min-w-0 flex-none items-center gap-3 lg:flex-1">
+        <h2 className="hidden truncate text-xl font-bold text-onSurface sm:block">{pageTitle}</h2>
 
-        <span className="text-xs bg-surface-container-lowest px-3 py-1 rounded-sm border border-outline-variant text-onSurface-variant">
+        <span className="hidden rounded-sm border border-outline-variant bg-surface-lowest px-3 py-1 text-xs text-onSurface-variant md:inline-flex">
           FY 2082/83
         </span>
       </div>
 
-      {/* Right */}
-      <div className="flex items-center gap-5">
-        {/* Live Date & Time */}
-        <div className="hidden lg:flex flex-col items-end leading-tight min-w-[140px]">
-          <span className="text-sm font-semibold text-onSurface">
-            {formattedTime}
-          </span>
-          <span className="text-xs text-onSurface-variant">
-            {formattedDate}
-          </span>
+      <TopBarSearch />
+
+      {/* min-w-0 lets this group yield when the bar is tight, so the search keeps
+          a usable width instead of the card being crushed to nothing. */}
+      <div className="flex min-w-0 shrink-0 items-center justify-end gap-3 lg:flex-1 lg:shrink">
+        {/* The clock is decorative and wide, so it only appears once the bar
+            has room for it without pushing the search off centre. */}
+        <div className="hidden min-w-[140px] flex-col items-end leading-tight xl:flex">
+          <span className="text-sm font-semibold text-onSurface">{formattedTime}</span>
+          <span className="text-xs text-onSurface-variant">{formattedDate}</span>
         </div>
 
-        {/* User */}
         <UserCard user={user} variant="compact" />
       </div>
     </div>

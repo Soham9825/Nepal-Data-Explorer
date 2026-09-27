@@ -1,4 +1,3 @@
-
 export default function NewsCard({ tag, tagColor, tagBg, time, headline, onClick }) {
   const handleKeyDown = (event) => {
     if ((event.key === 'Enter' || event.key === ' ') && onClick) {
@@ -9,7 +8,7 @@ export default function NewsCard({ tag, tagColor, tagBg, time, headline, onClick
 
   return (
     <div
-      className="flex gap-4 p-4 border border-outline-variant rounded-sm transition-colors duration-150 hover:bg-surface-container-lowest cursor-pointer group"
+      className="flex gap-4 p-4 border border-outline-variant rounded-sm transition-colors duration-150 hover:bg-surface-lowest cursor-pointer group"
       onClick={onClick}
       onKeyDown={handleKeyDown}
       tabIndex={0}

@@ -117,7 +117,10 @@ export default function ScatterChart({
     if (den === 0) return null;
     const slope = num / den;
     const intercept = meanY - slope * meanX;
-    const rValue = pearsonCorrelation(points.map((p) => p.x), points.map((p) => p.y));
+    const rValue = pearsonCorrelation(
+      points.map((p) => p.x),
+      points.map((p) => p.y)
+    );
     return {
       points,
       slope,
@@ -136,7 +139,9 @@ export default function ScatterChart({
     if (!model) return null;
     const meanX = model.points.reduce((s, p) => s + p.x, 0) / model.points.length;
     const meanY = model.points.reduce((s, p) => s + p.y, 0) / model.points.length;
-    const residuals = model.points.map((p) => Math.abs(p.y - (model.slope * p.x + model.intercept)));
+    const residuals = model.points.map((p) =>
+      Math.abs(p.y - (model.slope * p.x + model.intercept))
+    );
     const outlierIndex = residuals.length ? residuals.indexOf(Math.max(...residuals)) : null;
     const quadrants = { highHigh: 0, highLow: 0, lowHigh: 0, lowLow: 0 };
     model.points.forEach((p) => {
@@ -155,7 +160,8 @@ export default function ScatterChart({
     [model, innerW]
   );
   const yFor = useCallback(
-    (y) => (model ? PAD_T + innerH - ((y - model.minY) / (model.maxY - model.minY || 1)) * innerH : 0),
+    (y) =>
+      model ? PAD_T + innerH - ((y - model.minY) / (model.maxY - model.minY || 1)) * innerH : 0,
     [model, innerH]
   );
 
@@ -163,12 +169,20 @@ export default function ScatterChart({
   const yTicks = [];
   if (model) {
     const xStep = niceStep((model.maxX - model.minX) / 4 || 1);
-    for (let v = Math.floor(model.minX / xStep) * xStep; v <= model.maxX + xStep * 1e-6; v += xStep) {
+    for (
+      let v = Math.floor(model.minX / xStep) * xStep;
+      v <= model.maxX + xStep * 1e-6;
+      v += xStep
+    ) {
       xTicks.push(v);
       if (xTicks.length > 9) break;
     }
     const yStep = niceStep((model.maxY - model.minY) / 4 || 1);
-    for (let v = Math.floor(model.minY / yStep) * yStep; v <= model.maxY + yStep * 1e-6; v += yStep) {
+    for (
+      let v = Math.floor(model.minY / yStep) * yStep;
+      v <= model.maxY + yStep * 1e-6;
+      v += yStep
+    ) {
       yTicks.push(v);
       if (yTicks.length > 9) break;
     }
@@ -195,7 +209,9 @@ export default function ScatterChart({
       Math.max(TOOLTIP_MARGIN, rect.height - box.height - TOOLTIP_MARGIN)
     );
     setTip((prev) =>
-      prev && prev.left === left && prev.top === top && prev.flipBelow === flipBelow ? prev : { left, top, flipBelow }
+      prev && prev.left === left && prev.top === top && prev.flipBelow === flipBelow
+        ? prev
+        : { left, top, flipBelow }
     );
   }, [hoverIndex, model, xFor, yFor]);
 
@@ -245,11 +261,21 @@ export default function ScatterChart({
           const f = seg === 0 ? 0 : dist / seg;
           const a = g.pts[i];
           const b = g.pts[i + 1];
-          return { x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f, index: i, label: f >= 0.5 ? b.label : a.label };
+          return {
+            x: a.x + (b.x - a.x) * f,
+            y: a.y + (b.y - a.y) * f,
+            index: i,
+            label: f >= 0.5 ? b.label : a.label,
+          };
         }
         dist -= seg;
       }
-      return { x: g.pts[last + 1].x, y: g.pts[last + 1].y, index: last + 1, label: g.pts[last + 1].label };
+      return {
+        x: g.pts[last + 1].x,
+        y: g.pts[last + 1].y,
+        index: last + 1,
+        label: g.pts[last + 1].label,
+      };
     },
     [trailGeom]
   );
@@ -326,7 +352,8 @@ export default function ScatterChart({
     options.trail && playhead && trailGeom
       ? (() => {
           let d = `M ${trailGeom.pts[0].x} ${trailGeom.pts[0].y}`;
-          for (let i = 1; i <= playhead.index; i++) d += ` L ${trailGeom.pts[i].x} ${trailGeom.pts[i].y}`;
+          for (let i = 1; i <= playhead.index; i++)
+            d += ` L ${trailGeom.pts[i].x} ${trailGeom.pts[i].y}`;
           d += ` L ${playhead.x} ${playhead.y}`;
           return d;
         })()
@@ -348,7 +375,9 @@ export default function ScatterChart({
             onClick={() => toggleOption('fit')}
             aria-pressed={options.fit}
             className={`flex items-center gap-1.5 rounded-sm border px-3 py-1.5 text-xs font-semibold transition-colors ${
-              options.fit ? 'border-transparent text-white' : 'border-outline-variant bg-white text-onSurface-variant hover:bg-surface-container-highest'
+              options.fit
+                ? 'border-transparent text-white'
+                : 'border-outline-variant bg-white text-onSurface-variant hover:bg-surface-highest'
             }`}
             style={options.fit ? { backgroundColor: fitColor } : undefined}
           >
@@ -359,7 +388,9 @@ export default function ScatterChart({
             onClick={() => toggleOption('guides')}
             aria-pressed={options.guides}
             className={`flex items-center gap-1.5 rounded-sm border px-3 py-1.5 text-xs font-semibold transition-colors ${
-              options.guides ? 'border-transparent text-white' : 'border-outline-variant bg-white text-onSurface-variant hover:bg-surface-container-highest'
+              options.guides
+                ? 'border-transparent text-white'
+                : 'border-outline-variant bg-white text-onSurface-variant hover:bg-surface-highest'
             }`}
             style={options.guides ? { backgroundColor: '#334155' } : undefined}
           >
@@ -370,7 +401,9 @@ export default function ScatterChart({
             onClick={() => toggleOption('trail')}
             aria-pressed={options.trail}
             className={`flex items-center gap-1.5 rounded-sm border px-3 py-1.5 text-xs font-semibold transition-colors ${
-              options.trail ? 'border-transparent text-white' : 'border-outline-variant bg-white text-onSurface-variant hover:bg-surface-container-highest'
+              options.trail
+                ? 'border-transparent text-white'
+                : 'border-outline-variant bg-white text-onSurface-variant hover:bg-surface-highest'
             }`}
             style={options.trail ? { backgroundColor: '#64748b' } : undefined}
           >
@@ -379,77 +412,223 @@ export default function ScatterChart({
           {options.trail && trailGeom && (
             <button
               type="button"
-onClick={() => {
-                  if (playingRef.current) {
-                    playingRef.current = false;
-                    setPlaying(false);
-                  } else {
-                    if (progressRef.current >= 1) {
-                      progressRef.current = 0;
-                      setPlayhead(pointAt(0));
-                    }
-                    playingRef.current = true;
-                    setPlaying(true);
-                    setPlayNonce((n) => n + 1);
+              onClick={() => {
+                if (playingRef.current) {
+                  playingRef.current = false;
+                  setPlaying(false);
+                } else {
+                  if (progressRef.current >= 1) {
+                    progressRef.current = 0;
+                    setPlayhead(pointAt(0));
                   }
-                }}
-              className="flex items-center gap-1.5 rounded-sm border border-outline-variant bg-white px-3 py-1.5 text-xs font-semibold text-onSurface-variant transition-colors hover:bg-surface-container-highest"
+                  playingRef.current = true;
+                  setPlaying(true);
+                  setPlayNonce((n) => n + 1);
+                }
+              }}
+              className="flex items-center gap-1.5 rounded-sm border border-outline-variant bg-white px-3 py-1.5 text-xs font-semibold text-onSurface-variant transition-colors hover:bg-surface-highest"
             >
               {playing ? 'Pause' : '▶ Play'}
             </button>
           )}
-          <span className="ml-auto text-xs font-semibold text-onSurface-variant">Hover a dot · click to pin</span>
+          <span className="ml-auto text-xs font-semibold text-onSurface-variant">
+            Hover a dot · click to pin
+          </span>
         </div>
       )}
 
       <div ref={containerRef} className="relative w-full">
         <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="auto" style={{ display: 'block' }}>
           <defs>
-            <marker id="scatter-trail-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <marker
+              id="scatter-trail-arrow"
+              viewBox="0 0 10 10"
+              refX="8"
+              refY="5"
+              markerWidth="6"
+              markerHeight="6"
+              orient="auto-start-reverse"
+            >
               <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8" />
             </marker>
           </defs>
 
           {yTicks.map((t) => (
             <g key={`y-${t}`}>
-              <line x1={PAD_L} y1={yFor(t)} x2={W - PAD_R} y2={yFor(t)} stroke="#EDEFF3" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-              <text x={PAD_L - 10} y={yFor(t) + 4} fontSize="11" fill="#5A6472" fontWeight="600" textAnchor="end">{compactTick(t)}</text>
+              <line
+                x1={PAD_L}
+                y1={yFor(t)}
+                x2={W - PAD_R}
+                y2={yFor(t)}
+                stroke="#EDEFF3"
+                strokeWidth="1"
+                vectorEffect="non-scaling-stroke"
+              />
+              <text
+                x={PAD_L - 10}
+                y={yFor(t) + 4}
+                fontSize="11"
+                fill="#5A6472"
+                fontWeight="600"
+                textAnchor="end"
+              >
+                {compactTick(t)}
+              </text>
             </g>
           ))}
           {xTicks.map((t) => (
             <g key={`x-${t}`}>
-              <line x1={xFor(t)} y1={PAD_T} x2={xFor(t)} y2={H - PAD_B} stroke="#EDEFF3" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-              <text x={xFor(t)} y={H - PAD_B + 18} fontSize="11" fill="#5A6472" fontWeight="600" textAnchor="middle">{compactTick(t)}</text>
+              <line
+                x1={xFor(t)}
+                y1={PAD_T}
+                x2={xFor(t)}
+                y2={H - PAD_B}
+                stroke="#EDEFF3"
+                strokeWidth="1"
+                vectorEffect="non-scaling-stroke"
+              />
+              <text
+                x={xFor(t)}
+                y={H - PAD_B + 18}
+                fontSize="11"
+                fill="#5A6472"
+                fontWeight="600"
+                textAnchor="middle"
+              >
+                {compactTick(t)}
+              </text>
             </g>
           ))}
-          <line x1={PAD_L} y1={H - PAD_B} x2={W - PAD_R} y2={H - PAD_B} stroke="#CBD5E1" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-          <line x1={PAD_L} y1={PAD_T} x2={PAD_L} y2={H - PAD_B} stroke="#CBD5E1" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-          <text x={PAD_L + innerW / 2} y={H - 8} fontSize="12" fill="#39424E" fontWeight="600" textAnchor="middle">{xLabel}</text>
-          <text x={14} y={PAD_T + innerH / 2} fontSize="12" fill="#39424E" fontWeight="600" textAnchor="middle" transform={`rotate(-90 14 ${PAD_T + innerH / 2})`}>{yLabel}</text>
+          <line
+            x1={PAD_L}
+            y1={H - PAD_B}
+            x2={W - PAD_R}
+            y2={H - PAD_B}
+            stroke="#CBD5E1"
+            strokeWidth="1"
+            vectorEffect="non-scaling-stroke"
+          />
+          <line
+            x1={PAD_L}
+            y1={PAD_T}
+            x2={PAD_L}
+            y2={H - PAD_B}
+            stroke="#CBD5E1"
+            strokeWidth="1"
+            vectorEffect="non-scaling-stroke"
+          />
+          <text
+            x={PAD_L + innerW / 2}
+            y={H - 8}
+            fontSize="12"
+            fill="#39424E"
+            fontWeight="600"
+            textAnchor="middle"
+          >
+            {xLabel}
+          </text>
+          <text
+            x={14}
+            y={PAD_T + innerH / 2}
+            fontSize="12"
+            fill="#39424E"
+            fontWeight="600"
+            textAnchor="middle"
+            transform={`rotate(-90 14 ${PAD_T + innerH / 2})`}
+          >
+            {yLabel}
+          </text>
 
           {/* Average guide lines split the plot into four mean quadrants */}
           {options.guides && (
             <g>
-              <line x1={xFor(analysis.meanX)} y1={PAD_T} x2={xFor(analysis.meanX)} y2={H - PAD_B} stroke="#334155" strokeWidth="1" strokeDasharray="4 4" strokeOpacity="0.5" vectorEffect="non-scaling-stroke" />
-              <text x={xFor(analysis.meanX) + 6} y={PAD_T + 14} fontSize="10" fontWeight="700" fill="#334155">avg</text>
-              <line x1={PAD_L} y1={yFor(analysis.meanY)} x2={W - PAD_R} y2={yFor(analysis.meanY)} stroke="#334155" strokeWidth="1" strokeDasharray="4 4" strokeOpacity="0.5" vectorEffect="non-scaling-stroke" />
-              <text x={xFor(analysis.meanX) + 6} y={yFor(analysis.meanY) - 8} fontSize="10" fontWeight="700" fill="#334155">avg</text>
+              <line
+                x1={xFor(analysis.meanX)}
+                y1={PAD_T}
+                x2={xFor(analysis.meanX)}
+                y2={H - PAD_B}
+                stroke="#334155"
+                strokeWidth="1"
+                strokeDasharray="4 4"
+                strokeOpacity="0.5"
+                vectorEffect="non-scaling-stroke"
+              />
+              <text
+                x={xFor(analysis.meanX) + 6}
+                y={PAD_T + 14}
+                fontSize="10"
+                fontWeight="700"
+                fill="#334155"
+              >
+                avg
+              </text>
+              <line
+                x1={PAD_L}
+                y1={yFor(analysis.meanY)}
+                x2={W - PAD_R}
+                y2={yFor(analysis.meanY)}
+                stroke="#334155"
+                strokeWidth="1"
+                strokeDasharray="4 4"
+                strokeOpacity="0.5"
+                vectorEffect="non-scaling-stroke"
+              />
+              <text
+                x={xFor(analysis.meanX) + 6}
+                y={yFor(analysis.meanY) - 8}
+                fontSize="10"
+                fontWeight="700"
+                fill="#334155"
+              >
+                avg
+              </text>
             </g>
           )}
 
           {/* Hover guide line */}
           {hoverIndex != null && model.points[hoverIndex] && (
-            <line x1={xFor(model.points[hoverIndex].x)} y1={PAD_T} x2={xFor(model.points[hoverIndex].x)} y2={H - PAD_B} stroke={color} strokeWidth="1" strokeDasharray="3 4" strokeOpacity="0.45" vectorEffect="non-scaling-stroke" />
+            <line
+              x1={xFor(model.points[hoverIndex].x)}
+              y1={PAD_T}
+              x2={xFor(model.points[hoverIndex].x)}
+              y2={H - PAD_B}
+              stroke={color}
+              strokeWidth="1"
+              strokeDasharray="3 4"
+              strokeOpacity="0.45"
+              vectorEffect="non-scaling-stroke"
+            />
           )}
 
           {/* Time trail: consecutive periods linked with direction arrows */}
-          {options.trail && trailSegments.map((s, i) => (
-            <line key={i} x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2} stroke="#94a3b8" strokeWidth="1.4" strokeOpacity="0.55" markerEnd="url(#scatter-trail-arrow)" vectorEffect="non-scaling-stroke" />
-          ))}
+          {options.trail &&
+            trailSegments.map((s, i) => (
+              <line
+                key={i}
+                x1={s.x1}
+                y1={s.y1}
+                x2={s.x2}
+                y2={s.y2}
+                stroke="#94a3b8"
+                strokeWidth="1.4"
+                strokeOpacity="0.55"
+                markerEnd="url(#scatter-trail-arrow)"
+                vectorEffect="non-scaling-stroke"
+              />
+            ))}
 
           {/* Trail already covered by the playhead, drawn in the accent color */}
           {coveredPath && (
-            <path d={coveredPath} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" vectorEffect="non-scaling-stroke" />
+            <path
+              d={coveredPath}
+              fill="none"
+              stroke={color}
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              pointerEvents="none"
+              vectorEffect="non-scaling-stroke"
+            />
           )}
 
           {/* Fit line */}
@@ -472,9 +651,27 @@ onClick={() => {
             const outlier = analysis.outlierIndex === i;
             return (
               <g key={`${p.label}-${i}`}>
-                {(hovered || pinned) && <circle cx={xFor(p.x)} cy={yFor(p.y)} r={11} fill={color} fillOpacity={hovered ? 0.14 : 0.07} vectorEffect="non-scaling-stroke" />}
+                {(hovered || pinned) && (
+                  <circle
+                    cx={xFor(p.x)}
+                    cy={yFor(p.y)}
+                    r={11}
+                    fill={color}
+                    fillOpacity={hovered ? 0.14 : 0.07}
+                    vectorEffect="non-scaling-stroke"
+                  />
+                )}
                 {outlier && !hovered && !pinned && (
-                  <circle cx={xFor(p.x)} cy={yFor(p.y)} r={9} fill="none" stroke="#d97706" strokeWidth="1.5" strokeDasharray="3 3" vectorEffect="non-scaling-stroke" />
+                  <circle
+                    cx={xFor(p.x)}
+                    cy={yFor(p.y)}
+                    r={9}
+                    fill="none"
+                    stroke="#d97706"
+                    strokeWidth="1.5"
+                    strokeDasharray="3 3"
+                    vectorEffect="non-scaling-stroke"
+                  />
                 )}
                 <circle
                   cx={xFor(p.x)}
@@ -505,8 +702,25 @@ onClick={() => {
           {options.trail && playhead && (
             <g pointerEvents="none">
               <circle cx={playhead.x} cy={playhead.y} r={10} fill={color} fillOpacity="0.18" />
-              <circle cx={playhead.x} cy={playhead.y} r={5.5} fill="#ffffff" stroke={color} strokeWidth="2.5" vectorEffect="non-scaling-stroke" />
-              <text x={playhead.x} y={playhead.y - 14} fontSize="11" fontWeight="700" fill="#334155" textAnchor="middle">{String(playhead.label)}</text>
+              <circle
+                cx={playhead.x}
+                cy={playhead.y}
+                r={5.5}
+                fill="#ffffff"
+                stroke={color}
+                strokeWidth="2.5"
+                vectorEffect="non-scaling-stroke"
+              />
+              <text
+                x={playhead.x}
+                y={playhead.y - 14}
+                fontSize="11"
+                fontWeight="700"
+                fill="#334155"
+                textAnchor="middle"
+              >
+                {String(playhead.label)}
+              </text>
             </g>
           )}
         </svg>
@@ -528,42 +742,77 @@ onClick={() => {
           >
             <p className="text-xs font-bold text-onSurface">{String(hoveredPoint.label)}</p>
             <p className="mt-1 text-xs text-onSurface-variant">
-              <span className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle" style={{ backgroundColor: color }} />
+              <span
+                className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle"
+                style={{ backgroundColor: color }}
+              />
               {xLabel}: <strong className="text-onSurface">{fmt(hoveredPoint.x)}</strong>
-              {hoverIndex > 0 && model.points[hoverIndex - 1] && (() => {
-                const d = deltaPct(hoveredPoint.x, model.points[hoverIndex - 1].x);
-                return d != null ? <span className={`ml-1 text-[11px] ${d >= 0 ? 'text-onSurface-variant' : 'text-danger'}`}>({d >= 0 ? '+' : ''}{d.toFixed(1)}%)</span> : null;
-              })()}
+              {hoverIndex > 0 &&
+                model.points[hoverIndex - 1] &&
+                (() => {
+                  const d = deltaPct(hoveredPoint.x, model.points[hoverIndex - 1].x);
+                  return d != null ? (
+                    <span
+                      className={`ml-1 text-[11px] ${d >= 0 ? 'text-onSurface-variant' : 'text-danger'}`}
+                    >
+                      ({d >= 0 ? '+' : ''}
+                      {d.toFixed(1)}%)
+                    </span>
+                  ) : null;
+                })()}
             </p>
             <p className="mt-1 text-xs text-onSurface-variant">
-              <span className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle" style={{ backgroundColor: fitColor }} />
+              <span
+                className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle"
+                style={{ backgroundColor: fitColor }}
+              />
               {yLabel}: <strong className="text-onSurface">{fmt(hoveredPoint.y)}</strong>
-              {hoverIndex > 0 && model.points[hoverIndex - 1] && (() => {
-                const d = deltaPct(hoveredPoint.y, model.points[hoverIndex - 1].y);
-                return d != null ? <span className={`ml-1 text-[11px] ${d >= 0 ? 'text-onSurface-variant' : 'text-danger'}`}>({d >= 0 ? '+' : ''}{d.toFixed(1)}%)</span> : null;
-              })()}
+              {hoverIndex > 0 &&
+                model.points[hoverIndex - 1] &&
+                (() => {
+                  const d = deltaPct(hoveredPoint.y, model.points[hoverIndex - 1].y);
+                  return d != null ? (
+                    <span
+                      className={`ml-1 text-[11px] ${d >= 0 ? 'text-onSurface-variant' : 'text-danger'}`}
+                    >
+                      ({d >= 0 ? '+' : ''}
+                      {d.toFixed(1)}%)
+                    </span>
+                  ) : null;
+                })()}
             </p>
             {analysis.outlierIndex === hoverIndex && (
-              <p className="mt-1.5 text-[11px] font-bold text-[#d97706]">Farthest from the fit line (outlier)</p>
+              <p className="mt-1.5 text-[11px] font-bold text-[#d97706]">
+                Farthest from the fit line (outlier)
+              </p>
             )}
           </div>
         )}
       </div>
 
       {pinnable && (
-        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-sm border border-outline-variant bg-surface-container-highest px-4 py-3 text-sm">
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-sm border border-outline-variant bg-surface-highest px-4 py-3 text-sm">
           <span className="text-xs font-bold uppercase text-onSurface-variant">Pinned</span>
           <span className="font-bold text-onSurface">{String(pinnable.label)}</span>
           <span className="text-onSurface-variant">
-            <span className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle" style={{ backgroundColor: color }} />
+            <span
+              className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle"
+              style={{ backgroundColor: color }}
+            />
             {xLabel}: <strong className="text-onSurface">{fmt(pinnable.x)}</strong>
           </span>
           <span className="text-onSurface-variant">
-            <span className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle" style={{ backgroundColor: fitColor }} />
+            <span
+              className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle"
+              style={{ backgroundColor: fitColor }}
+            />
             {yLabel}: <strong className="text-onSurface">{fmt(pinnable.y)}</strong>
           </span>
           <span className="text-onSurface-variant">
-            Residual: <strong className="text-onSurface">{fmt(analysis.residuals[pinnedIndex].toFixed(1))}</strong>
+            Residual:{' '}
+            <strong className="text-onSurface">
+              {fmt(analysis.residuals[pinnedIndex].toFixed(1))}
+            </strong>
           </span>
           <button
             type="button"
@@ -575,7 +824,10 @@ onClick={() => {
         </div>
       )}
 
-      <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm" style={{ color: '#39424E' }}>
+      <div
+        className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm"
+        style={{ color: '#39424E' }}
+      >
         <span className="flex items-center gap-1.5">
           <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: color }} />
           {xLabel} vs {yLabel} · {model.points.length} shared periods
@@ -583,12 +835,17 @@ onClick={() => {
         {options.fit && (
           <span className="flex items-center gap-1.5">
             <span className="inline-block h-0.5 w-6" style={{ backgroundColor: fitColor }} />
-            Fit: y = {fmt(model.slope)}·x {model.intercept >= 0 ? '+' : '−'} {fmt(Math.abs(model.intercept))}
+            Fit: y = {fmt(model.slope)}·x {model.intercept >= 0 ? '+' : '−'}{' '}
+            {fmt(Math.abs(model.intercept))}
           </span>
         )}
         {model.r != null && (
-          <span className="flex items-center gap-1.5 rounded-sm px-2 py-1 font-bold" style={{ backgroundColor: '#eef3ee', color: '#1b7f3b' }}>
-            r = {model.r.toFixed(2)} · {rStrength} {model.r >= 0 ? 'positive' : 'inverse'} correlation
+          <span
+            className="flex items-center gap-1.5 rounded-sm px-2 py-1 font-bold"
+            style={{ backgroundColor: '#eef3ee', color: '#1b7f3b' }}
+          >
+            r = {model.r.toFixed(2)} · {rStrength} {model.r >= 0 ? 'positive' : 'inverse'}{' '}
+            correlation
           </span>
         )}
         {options.trail && (
@@ -602,11 +859,17 @@ onClick={() => {
       {options.guides && (
         <div className="mt-2 flex flex-wrap gap-2 text-xs">
           {quadrantChips.map((chip) => (
-            <span key={chip.key} className="rounded-sm border border-outline-variant px-2 py-1 font-semibold" style={{ backgroundColor: chip.bg, color: chip.fg }}>
+            <span
+              key={chip.key}
+              className="rounded-sm border border-outline-variant px-2 py-1 font-semibold"
+              style={{ backgroundColor: chip.bg, color: chip.fg }}
+            >
               {chip.label}: {analysis.quadrants[chip.key]}
             </span>
           ))}
-          <span className="ml-auto self-center font-bold text-onSurface-variant">of {model.points.length} periods</span>
+          <span className="ml-auto self-center font-bold text-onSurface-variant">
+            of {model.points.length} periods
+          </span>
         </div>
       )}
     </div>

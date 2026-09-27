@@ -1,6 +1,6 @@
-import { Navigate, Link } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { auth } from "../services/auth";
+import { Navigate, Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { auth } from '../services/auth';
 
 export default function ProtectedRoute({ children }) {
   const [authed, setAuthed] = useState(() => !!auth.getCachedUser() || !!auth.getAccessToken());
@@ -14,7 +14,7 @@ export default function ProtectedRoute({ children }) {
         if (mounted) setAuthed(!!user);
       })
       .catch((err) => {
-        console.warn("Auth check failed", err);
+        console.warn('Auth check failed', err);
         if (mounted && !auth.getCachedUser()) setError(err);
       });
     return () => (mounted = false);
@@ -25,7 +25,9 @@ export default function ProtectedRoute({ children }) {
       <div className="min-h-screen flex items-center justify-center p-6">
         <div className="bg-white rounded shadow p-6 max-w-lg text-center">
           <h3 className="text-lg font-bold mb-2">Unable to verify session</h3>
-          <p className="text-sm text-gray-600 mb-4">The application could not contact the authentication service.</p>
+          <p className="text-sm text-gray-600 mb-4">
+            The application could not contact the authentication service.
+          </p>
           <div className="flex justify-center gap-3">
             <button
               className="px-4 py-2 bg-primary text-white rounded"

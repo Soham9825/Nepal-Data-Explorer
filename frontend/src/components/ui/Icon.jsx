@@ -1,5 +1,4 @@
-
-export const Icon = ({ name, size = 20, color, className = '', style = {} }) => (
+export const Icon = ({ name, size = 20, color, className = '', style = {}, ...rest }) => (
   <span
     className={`material-symbols-outlined ${className}`}
     style={{
@@ -9,6 +8,7 @@ export const Icon = ({ name, size = 20, color, className = '', style = {} }) => 
       fontVariationSettings: "'FILL' 0, 'wght' 400",
       ...style,
     }}
+    {...rest}
   >
     {name}
   </span>

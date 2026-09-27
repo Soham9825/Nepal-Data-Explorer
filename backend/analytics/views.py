@@ -223,6 +223,18 @@ OFFICIAL_DESTINATION_MAP = {
 	},
 }
 
+TOURISM_SCOPE_LABELS = {
+	"foreign_visitors_to_protected_area": "Foreign visitors to protected areas",
+	"visitors_excluding_Indian_citizens": "Visitors excluding Indian citizens",
+	"Nepal+India+third_country_visitors": "Nepal, India and third-country visitors",
+	"trekkers": "Trekkers",
+}
+
+
+def _tourism_scope_label(scope):
+	return TOURISM_SCOPE_LABELS.get(scope, scope.replace("_", " ").strip().title() if scope else "Scope not specified")
+
+
 GDP_DETAIL_FIELDS = (
 	"gdp_basic_current",
 	"taxes_subsidies_current",
@@ -569,62 +581,112 @@ def dashboard_overview(request):
 
 
 def _province_tourism_block():
-	"""Province-level tourism roll-ups from `ProvinceTourismVisit`.
-
-	Mirrors the structure consumed by `report_data.build_tourism_dataset` so the
-	report and the dashboard agree.
-	"""
+	"""Province-level destination records from `ProvinceTourismVisit`."""
 	rows = list(ProvinceTourismVisit.objects.order_by("province", "year", "destination"))
 	provinces = PROVINCE_GDP_ORDER
 	years = sorted({row.year for row in rows})
 	latest_year = years[-1] if years else None
 
 	by_year_totals = {}
+	by_province_rows = {}
+	by_destination_rows = {}
+	national_arrivals = {}
 	for row in rows:
-		key = (row.province, row.year)
-		by_year_totals[key] = by_year_totals.get(key, 0) + (row.visitor_count or 0)
-	by_province_totals = {}
-	for row in rows:
-		key = (row.province, row.year)
-		by_province_totals.setdefault(row.province, {})
-		by_province_totals[row.province].setdefault(row.year, []).append(row)
+		year_key = (row.province, row.year)
+		if year_key not in by_year_totals:
+			by_year_totals[year_key] = None
+		if row.visitor_count is not None:
+			by_year_totals[year_key] = (by_year_totals[year_key] or 0) + row.visitor_count
+		by_province_rows.setdefault(row.province, {}).setdefault(row.year, []).append(row)
+		destination_key = (row.province, row.destination, row.visitor_scope or "")
+		by_destination_rows.setdefault(destination_key, []).append(row)
+		if row.year not in national_arrivals and row.national_total_arrivals is not None:
+			national_arrivals[row.year] = {
+				"year": row.year,
+				"arrivals": row.national_total_arrivals,
+				"percent_change": _decimal(row.national_arrival_pct_change),
+				"pandemic_period": row.pandemic_period,
+				"recovery_period": row.recovery_period,
+				"post_recovery_period": row.post_recovery_period,
+			}
 
 	latest = []
 	if latest_year:
 		for province in provinces:
-			visitors = by_year_totals.get((province, latest_year), 0)
+			destination_rows = by_province_rows.get(province, {}).get(latest_year, [])
 			dest_rows = sorted(
-				by_province_totals.get(province, {}).get(latest_year, []),
-				key=lambda row: (row.visitor_count or 0),
+				destination_rows,
+				key=lambda row: (row.visitor_count if row.visitor_count is not None else -1),
 				reverse=True,
 			)
-			dest_total = sum(row.visitor_count or 0 for row in dest_rows)
+			scope_totals = {}
+			scope_labels = {}
+			for row in dest_rows:
+				scope = row.visitor_scope or ""
+				scope_labels.setdefault(scope, _tourism_scope_label(scope))
+				if row.visitor_count is not None:
+					scope_totals[scope] = scope_totals.get(scope, 0) + row.visitor_count
+			metadata_row = dest_rows[0] if dest_rows else None
 			latest.append(
 				{
 					"province": province,
-					"visitors": visitors,
+					"visitors": by_year_totals.get((province, latest_year)),
+					"available_scopes": [
+						{"key": scope, "label": scope_labels[scope]}
+						for scope in scope_labels
+					],
+					"national_total_arrivals": metadata_row.national_total_arrivals if metadata_row else None,
+					"national_arrival_pct_change": (
+						_decimal(metadata_row.national_arrival_pct_change) if metadata_row else None
+					),
+					"pandemic_period": metadata_row.pandemic_period if metadata_row else False,
+					"recovery_period": metadata_row.recovery_period if metadata_row else False,
+					"post_recovery_period": metadata_row.post_recovery_period if metadata_row else False,
 					"destinations": [
 						{
-							"name": row.destination,
-							"visitors": row.visitor_count or 0,
-							"share": round((row.visitor_count or 0) / dest_total * 100, 1) if dest_total else 0,
+							"name": (OFFICIAL_DESTINATION_MAP.get(row.destination) or {}).get("name", row.destination),
+							"source_name": row.destination,
+							"visitor_scope": row.visitor_scope or "",
+							"visitor_scope_label": _tourism_scope_label(row.visitor_scope),
+							"visitors": row.visitor_count,
+							"share": (
+								round(row.visitor_count / scope_totals[row.visitor_scope or ""] * 100, 1)
+								if row.visitor_count is not None and scope_totals.get(row.visitor_scope or "")
+								else 0
+							),
 						}
 						for row in dest_rows
 					],
 				}
 			)
-		national_total = sum(item["visitors"] for item in latest)
-		for item in latest:
-			item["share"] = round(item["visitors"] / national_total * 100, 1) if national_total else 0
+
+	by_destination = [
+		{
+			"province": province,
+			"destination": destination,
+			"name": (OFFICIAL_DESTINATION_MAP.get(destination) or {}).get("name", destination),
+			"visitor_scope": scope,
+			"visitor_scope_label": _tourism_scope_label(scope),
+			"observations": [
+				{"year": row.year, "visitors": row.visitor_count}
+				for row in sorted(destination_rows, key=lambda item: item.year)
+			],
+		}
+		for (province, destination, scope), destination_rows in by_destination_rows.items()
+	]
 
 	return {
 		"years": years,
 		"latest_year": latest_year,
+		"unit": "recorded destination visits",
+		"measure_note": "Destination visits are not unique arrivals and use source-specific visitor scopes.",
+		"national_arrivals": [national_arrivals[year] for year in sorted(national_arrivals)],
 		"by_year": [
-			{"province": province, "year": year, "visitors": by_year_totals.get((province, year), 0)}
+			{"province": province, "year": year, "visitors": by_year_totals.get((province, year))}
 			for province in provinces
 			for year in years
 		],
+		"by_destination": by_destination,
 		"latest": latest,
 	}
 
@@ -632,7 +694,7 @@ def _province_tourism_block():
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def tourism_dashboard(request):
-	cached_tourism = cache.get("analytics-tourism-dashboard-v6")
+	cached_tourism = cache.get("analytics-tourism-dashboard-v7")
 	if cached_tourism is not None:
 		return Response(cached_tourism)
 
@@ -680,7 +742,7 @@ def tourism_dashboard(request):
 					"fiscal_year": item.fiscal_year,
 					"metric": item.metric,
 					"value": _decimal(item.value),
-					"unit": item.unit,
+					"unit": item.unit or "US$ million",
 				}
 				for item in TourismRevenue.objects.filter(metric="US$_Million").order_by("fiscal_year")
 			],
@@ -688,7 +750,7 @@ def tourism_dashboard(request):
 				{
 					"year": item.year,
 					"value": _decimal(item.value),
-					"unit": item.unit,
+					"unit": item.unit or "days",
 				}
 				for item in TourismStatistic.objects.filter(metric="Avg_Stay").order_by("year")
 			],
@@ -729,7 +791,7 @@ def tourism_dashboard(request):
 			"province_tourism": _province_tourism_block(),
 			"popular_destinations": [],
 	}
-	cache.set("analytics-tourism-dashboard-v6", payload, timeout=60)
+	cache.set("analytics-tourism-dashboard-v7", payload, timeout=60)
 	return Response(payload)
 
 
@@ -852,8 +914,16 @@ def economic_dashboard(request):
 					).order_by("fiscal_year", "group")
 				],
 				"sectoral_growth": [
-					{"year": item.fiscal_year, "sector": item.sector, "value": _decimal(item.value)}
-					for item in SectoralGrowth.objects.exclude(sector="Overall").order_by("fiscal_year", "sector")
+					{
+						"year": item.fiscal_year,
+						"group": item.group,
+						"subgroup": item.subgroup,
+						"sector": item.sector,
+						"value": _decimal(item.value),
+					}
+					for item in SectoralGrowth.objects.order_by(
+						"fiscal_year", "group", "subgroup", "sector"
+					)
 				],
 				"economies_growth": economies_growth,
 				"overall_growth": overall_growth,

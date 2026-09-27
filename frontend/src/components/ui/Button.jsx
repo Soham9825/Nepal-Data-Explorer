@@ -9,10 +9,21 @@ export const BtnPrimary = ({ children, onClick, className = '', style = {}, disa
   </button>
 );
 
-export const BtnOutline = ({ children, onClick, className = '', style = {}, disabled = false }) => (
+export const BtnOutline = ({
+  children,
+  onClick,
+  className = '',
+  style = {},
+  disabled = false,
+  ...rest
+}) => (
   <button
     onClick={onClick}
     disabled={disabled}
+    // `rest` carries labelling and data attributes through to the element. Without it an
+    // `aria-label` passed by a caller was dropped on the floor, which left icon-only and
+    // repeated-label buttons announcing only their visible text.
+    {...rest}
     className={`ui-button rounded-sm bg-white border border-outline-variant text-onSurface font-hanken font-bold text-[12px] uppercase tracking-[0.05em] px-4 py-2 cursor-pointer flex items-center gap-1.5 transition-colors duration-150 hover:bg-surface-high disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
     style={style}
   >

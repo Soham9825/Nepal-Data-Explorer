@@ -1,4 +1,3 @@
-
 function getInitials(name = '') {
   return name
     .trim()
@@ -15,23 +14,22 @@ function getInitials(name = '') {
  * variant="compact"  -> avatar + name/role only (TopBar style, no card bg)
  * variant="card"     -> avatar + name/role + logout button, in a bg card (Sidebar style)
  */
-export default function UserCard({
-  user,
-  variant = 'compact',
-  onLogout,
-  className = '',
-}) {
+export default function UserCard({ user, variant = 'compact', onLogout, className = '' }) {
   const currentUser = user || { name: 'Guest User', role: 'Viewer' };
   const initials = getInitials(currentUser.name);
 
   if (variant === 'card') {
     return (
       <div
-        className={`flex items-center gap-3 rounded-xl bg-surface-container-lowest p-3 min-w-0 ${className}`}
+        className={`flex items-center gap-3 rounded-xl bg-surface-lowest p-3 min-w-0 ${className}`}
       >
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-sm font-bold text-white overflow-hidden">
           {currentUser.avatarUrl ? (
-            <img src={currentUser.avatarUrl} alt={currentUser.name} className="w-full h-full object-cover" />
+            <img
+              src={currentUser.avatarUrl}
+              alt={currentUser.name}
+              className="w-full h-full object-cover"
+            />
           ) : (
             initials
           )}
@@ -45,7 +43,7 @@ export default function UserCard({
         {onLogout && (
           <button
             onClick={onLogout}
-            className="shrink-0 rounded-lg p-2 hover:bg-surface-container-highest transition-colors"
+            className="shrink-0 rounded-lg p-2 hover:bg-surface-highest transition-colors"
             aria-label="Log out"
           >
             <span className="material-symbols-outlined text-[18px] text-onSurface-variant">
@@ -59,7 +57,9 @@ export default function UserCard({
 
   // compact variant (TopBar)
   return (
-    <div className={`flex items-center gap-2 pl-4 border-l border-outline-variant min-w-0 ${className}`}>
+    <div
+      className={`flex items-center gap-2 pl-4 border-l border-outline-variant min-w-0 ${className}`}
+    >
       {currentUser.avatarUrl ? (
         <img
           src={currentUser.avatarUrl}
@@ -75,9 +75,7 @@ export default function UserCard({
         <p className="text-sm font-semibold text-onSurface leading-tight truncate">
           {currentUser.name}
         </p>
-        <p className="text-xs text-onSurface-variant leading-tight truncate">
-          {currentUser.role}
-        </p>
+        <p className="text-xs text-onSurface-variant leading-tight truncate">{currentUser.role}</p>
       </div>
     </div>
   );

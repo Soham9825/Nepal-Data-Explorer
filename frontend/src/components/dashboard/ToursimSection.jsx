@@ -1,3 +1,3 @@
-import Tourism from '../../pages/Tourism';
+import Tourism from '../../pages/tourism/Tourism';
 
 export default Tourism;

@@ -1,13 +1,5 @@
-import React, { useMemo } from 'react';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts';
+import { useMemo } from 'react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { SectionCard } from '../ui/Card';
 import { Icon } from '../ui/Icon';
 
@@ -17,14 +9,15 @@ export default function CSVHistogram({
   fileName,
   headers,
   chartData,
-  xColumn,
   xOptions = [],
   yColumn,
   onYColumnChange,
 }) {
-  const numericHeaders = headers.filter((header) => !xOptions.includes(header) && chartData.some(
-    (row) => typeof row[header] === 'number' && !Number.isNaN(row[header]),
-  ));
+  const numericHeaders = headers.filter(
+    (header) =>
+      !xOptions.includes(header) &&
+      chartData.some((row) => typeof row[header] === 'number' && !Number.isNaN(row[header]))
+  );
 
   const histogramData = useMemo(() => {
     const values = chartData
@@ -86,7 +79,11 @@ export default function CSVHistogram({
           onChange={(event) => onYColumnChange(event.target.value)}
           className="min-w-48 rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm text-onSurface outline-none focus:border-primary"
         >
-          {numericHeaders.map((header) => <option key={header} value={header}>{header}</option>)}
+          {numericHeaders.map((header) => (
+            <option key={header} value={header}>
+              {header}
+            </option>
+          ))}
         </select>
       </div>
       <div className="h-96 w-full">

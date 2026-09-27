@@ -21,12 +21,225 @@ function resolveColumns(rows = []) {
   return [...new Set(rows.flatMap((row) => Object.keys(row)))];
 }
 
-function formatCell(value) {
-  if (value == null) return '';
-  if (typeof value === 'number') {
-    return Number.isInteger(value) ? String(value) : value.toLocaleString('en-US');
+/** Values that stand in for "no figure" rather than being text. */
+const BLANK_CELLS = new Set(['', '-', '–', '—', 'n/a', 'na', 'null', 'none', '.']);
+
+function isBlankCell(value) {
+  return BLANK_CELLS.has(
+    String(value ?? '')
+      .trim()
+      .toLowerCase()
+  );
+}
+
+/**
+ * Is this cell a plain figure, possibly signed, grouped, decimal or a percentage?
+ *
+ * Deliberately narrow. Years, counts and rates qualify; "Trekking & Mountaineering" does
+ * not. The check only gates alignment and padding, so a false positive costs whitespace
+ * rather than corrupting a value.
+ */
+function isNumericValue(value) {
+  return /^[+-]?[\d,]*\.?\d+\s*%?$/.test(String(value).trim());
+}
+
+/** Split a figure into the parts that have to line up separately. */
+function splitNumeric(value) {
+  const text = String(value).trim();
+  const match = text.match(/^([+-]?)([\d,]*)\.?(\d*)\s*(%?)$/);
+  if (!match) return { sign: match?.[1] ?? '', int: text, dec: '', suffix: '' };
+  return {
+    sign: match[1],
+    int: match[2].replace(/,/g, '') || '0',
+    dec: match[3],
+    suffix: match[4],
+  };
+}
+
+/**
+ * Should thousands separators be added to this column?
+ *
+ * No for years. Grouping a year turns 1993 into "1,993", which is wrong rather than
+ * merely inelegant, so a column of four-digit values in a plausible year range is left
+ * alone, as is any column whose header says it holds years or fiscal years.
+ */
+function shouldGroupThousands(column, parts) {
+  if (/year|yr\b|fiscal/i.test(column)) return false;
+  return !parts.every(
+    (part) => part.int.length === 4 && Number(part.int) >= 1900 && Number(part.int) <= 2100
+  );
+}
+
+/**
+ * Decide how every column in the document should be typeset.
+ *
+ * Built once from *all* rows, not per table, so every table in one export agrees on where
+ * a column sits. Deriving widths table by table made two tables from the same dashboard
+ * disagree about where "Year" began, which reads as the data being scrambled rather than
+ * as two tables being laid out separately.
+ *
+ * A numeric column records the widest integer part and the deepest decimal, which is what
+ * lets every figure be padded to one width with the decimal points stacked — the vertical
+ * rule a reader actually uses to compare magnitudes.
+ *
+ * Placeholders are skipped when deciding whether a column is numeric. A year column with
+ * one missing value is still a year column, and should not collapse to left-aligned text
+ * because of a single "-".
+ */
+function buildColumnProfile(columns, rows) {
+  return columns.map((column) => {
+    const values = rows.map((row) => row[column]).filter((value) => !isBlankCell(value));
+    const text = values.map((value) => String(value).trim());
+    const figures = text.filter(isNumericValue);
+    const profile = {
+      column,
+      numeric: values.length > 0 && figures.length === values.length,
+      group: false,
+      intWidth: 0,
+      decWidth: 0,
+      suffix: '',
+      width: 0,
+    };
+
+    if (profile.numeric) {
+      const parts = figures.map(splitNumeric);
+      profile.group = shouldGroupThousands(column, parts);
+      for (const part of parts) {
+        const digits = Number(part.int);
+        // The width has to be measured on the *rendered* integer, since adding separators
+        // makes a value wider than the digits it came from.
+        const rendered =
+          profile.group && Number.isFinite(digits) ? digits.toLocaleString('en-US') : part.int;
+        profile.intWidth = Math.max(profile.intWidth, rendered.length);
+        profile.decWidth = Math.max(profile.decWidth, part.dec.length);
+        if (part.suffix) profile.suffix = part.suffix;
+      }
+      profile.width =
+        profile.intWidth +
+        (profile.decWidth ? 1 + profile.decWidth : 0) +
+        profile.suffix.length +
+        6;
+    } else {
+      // A text column is measured by its longest single word, because that is what decides
+      // the wrap width; measuring whole cells would let one long sentence set the width.
+      const longestWord = text.reduce(
+        (longest, value) =>
+          Math.max(
+            longest,
+            value.split(/\s+/).reduce((best, part) => Math.max(best, part.length), 0)
+          ),
+        column.length
+      );
+      profile.width = longestWord + 6;
+    }
+    return profile;
+  });
+}
+
+/**
+ * Share `total` points across the columns in proportion to what each needs.
+ *
+ * Two constraints fight each other here, and both have to hold at once:
+ *
+ * - No column may be narrower than `MIN_WIDTH`, or its figures become unreadable.
+ * - No column may be wider than `MAX_WIDTH`, or one long free-text column swallows the
+ *   table and squeezes the figures beside it.
+ *
+ * The cap is therefore derived from the column count rather than fixed. A hard 200pt cap
+ * is unsatisfiable for a three-column table on a 762pt content width — three capped
+ * columns can only ever reach 600pt, so any allocator asked to fill the width has to
+ * either leave a gap or drive a column negative. Scaling the cap with the available width
+ * keeps the range reachable for any number of columns.
+ *
+ * Weights are turned into point shares *before* clamping, so two columns needing 9 and 19
+ * characters do not both land on the same floor and come out identical. Whatever the
+ * clamps take or give is then redistributed across the columns that still have headroom
+ * in the needed direction, so the widths fill `total` exactly and the table ends flush
+ * with the margin.
+ */
+function allocateColumnWidths(profile, total) {
+  const count = profile.length;
+  if (!count) return [];
+  const MIN_WIDTH = 44;
+  // Comfortably above the even share, so a text column can grow without the caps making
+  // the target unreachable, but never so high that it can take the whole table.
+  const MAX_WIDTH = Math.max(220, (total / count) * 2.2);
+
+  const weights = profile.map((column) => Math.max(1, column.width));
+  const weightSum = weights.reduce((sum, weight) => sum + weight, 0);
+  const widths = weights.map((weight) => (weight / weightSum) * total);
+  const pinned = widths.map((width) => width < MIN_WIDTH || width > MAX_WIDTH);
+  widths.forEach((width, index) => {
+    if (pinned[index]) widths[index] = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, width));
+  });
+
+  for (let pass = 0; pass < count + 2; pass += 1) {
+    const residual = total - widths.reduce((sum, width) => sum + width, 0);
+    if (Math.abs(residual) < 0.01) break;
+    const growing = residual > 0;
+
+    // Only columns with room in the direction we need can absorb the correction.
+    const free = widths
+      .map((width, index) => ({ index, headroom: growing ? MAX_WIDTH - width : width - MIN_WIDTH }))
+      .filter(({ index, headroom }) => !pinned[index] && headroom > 0.01);
+    if (!free.length) break;
+    const headroomSum = free.reduce((sum, entry) => sum + entry.headroom, 0);
+    if (headroomSum <= 0) break;
+
+    for (const { index, headroom } of free) {
+      widths[index] += (headroom / headroomSum) * residual;
+      if (Math.abs(widths[index] - (growing ? MAX_WIDTH : MIN_WIDTH)) < 0.01) pinned[index] = true;
+    }
   }
-  return String(value);
+
+  const rounded = widths.map((width) => Math.floor(width * 100) / 100);
+  // Fold the sub-point rounding drift into the widest column so the total is exact.
+  const drift = Math.round((total - rounded.reduce((sum, width) => sum + width, 0)) * 100) / 100;
+  rounded[rounded.indexOf(Math.max(...rounded))] += drift;
+  return rounded;
+}
+
+/**
+ * Render one value into the fixed shape its column was profiled for.
+ *
+ * Numeric cells are grouped (unless the column holds years), padded to a fixed number of
+ * decimals, and left-padded to the column's integer width, so every figure in a column is
+ * the same width and the decimal points sit on one vertical line. Text is passed through
+ * with the underscores cleaned up, to match the column headers.
+ */
+function formatForColumn(value, column) {
+  if (isBlankCell(value)) {
+    // Keep a visible placeholder so a missing figure still holds its column's alignment.
+    return value == null || String(value).trim() === '' ? '' : String(value).trim();
+  }
+  if (!column.numeric) return String(value).replace(/_/g, ' ');
+
+  const parts = splitNumeric(value);
+  const digits = Number(parts.int);
+  const intText =
+    column.group && Number.isFinite(digits) ? digits.toLocaleString('en-US') : parts.int;
+  const paddedInt = intText.padStart(column.intWidth, ' ');
+  const decText = column.decWidth
+    ? `.${(parts.dec || '').padEnd(column.decWidth, '0')}`.slice(0, column.decWidth + 1)
+    : '';
+  return `${paddedInt}${decText}${column.suffix}`;
+}
+
+/**
+ * The shared autotable column configuration: an explicit width and alignment per column,
+ * which is what turns auto-widthed cells into a table with a straight left edge, a
+ * straight right edge and figures sitting against the decimal rule.
+ */
+function tableLayout(profile, widths) {
+  return {
+    columnStyles: profile.reduce((styles, column, index) => {
+      styles[index] = {
+        cellWidth: widths[index],
+        halign: column.numeric ? 'right' : 'left',
+      };
+      return styles;
+    }, {}),
+  };
 }
 
 function formatDate() {
@@ -162,6 +375,11 @@ function drawHeader(doc, { title, subtitle }) {
   doc.setFillColor(ACCENT);
   doc.rect(0, 0, PAGE_WIDTH, 72, 'F');
 
+  const stamp = `Generated on ${formatDate()}`;
+  // The band behind this header is ACCENT, so every line drawn on it has to be light. The
+  // stamp used to be set in TEXT_DARK, which put near-black text on the red band.
+  const STAMP_WIDTH = 150;
+
   doc.setTextColor(TEXT_LIGHT);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(20);
@@ -170,11 +388,14 @@ function drawHeader(doc, { title, subtitle }) {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
   const subtitleText = subtitle || `Generated ${formatDate()}`;
-  doc.text(subtitleText, MARGIN, 54);
+  // Capped short of the stamp so a long subtitle cannot run underneath it.
+  doc.text(subtitleText, MARGIN, 54, {
+    maxWidth: PAGE_WIDTH - MARGIN * 2 - STAMP_WIDTH,
+  });
 
-  doc.setTextColor(TEXT_DARK);
+  doc.setTextColor('#fbeaea');
   doc.setFontSize(9);
-  doc.text(`Generated on ${formatDate()}`, PAGE_WIDTH - MARGIN, 52, { align: 'right' });
+  doc.text(stamp, PAGE_WIDTH - MARGIN, 52, { align: 'right' });
 }
 
 function drawPageFrame(doc) {
@@ -300,7 +521,11 @@ export function exportDataTablePdf(csvData = [], options = {}) {
   if (!csvData.length) return;
   const { title = 'Data Export', subtitle = '', filename } = options;
   const columns = resolveColumns(csvData);
-  const rows = csvData.map((row) => columns.map((column) => formatCell(row[column])));
+  const profile = buildColumnProfile(columns, csvData);
+  const widths = allocateColumnWidths(profile, CONTENT_WIDTH);
+  const rows = csvData.map((row) =>
+    columns.map((column, index) => formatForColumn(row[column], profile[index]))
+  );
 
   const doc = createDoc();
   drawHeader(doc, { title, subtitle });
@@ -319,9 +544,15 @@ export function exportDataTablePdf(csvData = [], options = {}) {
       lineColor: '#e9e2e0',
       lineWidth: 0.4,
     },
-    headStyles: { fillColor: ACCENT, textColor: TEXT_LIGHT, fontStyle: 'bold', fontSize: 8 },
+    headStyles: {
+      fillColor: ACCENT,
+      textColor: TEXT_LIGHT,
+      fontStyle: 'bold',
+      fontSize: 8,
+      halign: 'left',
+    },
     alternateRowStyles: { fillColor: ROW_ALT },
-    columnStyles: {},
+    ...tableLayout(profile, widths),
   });
 
   drawPageFrame(doc);
@@ -340,6 +571,13 @@ export async function exportComprehensiveReportPdf(csvData = [], options = {}) {
   } = options;
 
   const columns = resolveColumns(csvData);
+  // One profile and one width set for the whole document. Every group table below reuses
+  // them, so a reader moving between two tables in the same PDF finds each column where
+  // they last left it.
+  const profile = buildColumnProfile(columns, csvData);
+  const widths = allocateColumnWidths(profile, CONTENT_WIDTH);
+  const layout = tableLayout(profile, widths);
+
   const hasDatasetColumn = columns.includes('Dataset');
   const groups = hasDatasetColumn
     ? Array.from(new Set(csvData.map((row) => row.Dataset ?? '')))
@@ -425,8 +663,12 @@ export async function exportComprehensiveReportPdf(csvData = [], options = {}) {
       startY: y,
     });
 
+    // Columns are profiled across the whole document, so a group that happens to be short
+    // is still typeset to the same widths as one with long values in it.
     const groupColumns = resolveColumns(groupRows);
-    const bodyRows = groupRows.map((row) => groupColumns.map((column) => formatCell(row[column])));
+    const bodyRows = groupRows.map((row) =>
+      groupColumns.map((column) => formatForColumn(row[column], profile[columns.indexOf(column)]))
+    );
 
     autoTable(doc, {
       startY: y,
@@ -442,8 +684,22 @@ export async function exportComprehensiveReportPdf(csvData = [], options = {}) {
         lineColor: '#e9e2e0',
         lineWidth: 0.4,
       },
-      headStyles: { fillColor: ACCENT, textColor: TEXT_LIGHT, fontStyle: 'bold', fontSize: 8 },
+      headStyles: {
+        fillColor: ACCENT,
+        textColor: TEXT_LIGHT,
+        fontStyle: 'bold',
+        fontSize: 8,
+        halign: 'left',
+      },
       alternateRowStyles: { fillColor: ROW_ALT },
+      // A group is missing the `Dataset` column it was split on, so its own indices are
+      // remapped onto the document-wide widths rather than reusing the first N of them.
+      columnStyles: groupColumns.reduce((styles, column, index) => {
+        const source = columns.indexOf(column);
+        const template = source === -1 ? {} : layout.columnStyles[source];
+        styles[index] = { ...template, cellWidth: widths[source === -1 ? 0 : source] };
+        return styles;
+      }, {}),
     });
 
     y = doc.lastAutoTable.finalY + 26;

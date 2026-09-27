@@ -1,44 +1,44 @@
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
-import ProtectedRoute from "./ProtectedRoute";
-import AdminRoute from "./AdminRoute";
-import DashboardLayout from "../components/layout/DashboardLayout";
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import ProtectedRoute from './ProtectedRoute';
+import AdminRoute from './AdminRoute';
+import DashboardLayout from '../components/layout/DashboardLayout';
 
-import National from "../pages/National";
-import Economic from "../pages/Economic";
-import Tourism from "../pages/Tourism";
-import Predictions from "../pages/Predictions";
-import Compare from "../pages/Compare";
-import Provinces from "../pages/Provinces";
-import News from "../pages/News";
-import Reports from "../pages/Reports";
-import Research from "../pages/Research";
-import Login from "../pages/Login";
-import Signup from "../pages/Signup";
-import ForgotPassword from "../pages/ForgotPassword";
-import VerifyOtp from "../pages/VerifyOtp";
-import ResetPassword from "../pages/ResetPassword";
-import VerifyEmail from "../pages/VerifyEmail";
-import Support from "../pages/Support";
-import Admin from "../pages/Admin";
-import NotFound from "../pages/NotFound";
+import National from '../pages/National';
+import Economic from '../pages/economic/Economic';
+import Tourism from '../pages/tourism/Tourism';
+import Predictions from '../pages/Predictions';
+import Compare from '../pages/Compare';
+import Provinces from '../pages/Provinces';
+import News from '../pages/News';
+import Reports from '../pages/Reports';
+import Research from '../pages/Research';
+import Login from '../pages/auth/Login';
+import Signup from '../pages/auth/Signup';
+import ForgotPassword from '../pages/auth/ForgotPassword';
+import VerifyOtp from '../pages/auth/VerifyOtp';
+import ResetPassword from '../pages/auth/ResetPassword';
+import VerifyEmail from '../pages/auth/VerifyEmail';
+import Support from '../pages/Support';
+import Admin from '../pages/Admin';
+import NotFound from '../pages/NotFound';
 
-import CSVExplorer from "../pages/CSVExplorer";
+import CSVExplorer from '../pages/CSVExplorer';
 
 const PAGE_TITLES = {
-  "/": "National Dashboard",
-  "/national": "National Dashboard",
-  "/economic": "Economic Data",
-  "/tourism": "Tourism",
-  "/predictions": "AI Predictions",
-  "/compare": "Compare Indicators",
-  "/provinces": "Province Explorer",
-  "/provinces/:id": "Province Explorer",
-  "/news": "National Headlines",
-  "/reports": "Reports & Exports",
-  "/research": "Research Data Access",
-  "/support": "Support & Help",
-  "/admin": "Admin Panel",
-  "/csv-explorer": "CSV Explorer",
+  '/': 'National Dashboard',
+  '/national': 'National Dashboard',
+  '/economic': 'Economic Data',
+  '/tourism': 'Tourism',
+  '/predictions': 'AI Predictions',
+  '/compare': 'Compare Indicators',
+  '/provinces': 'Province Explorer',
+  '/provinces/:id': 'Province Explorer',
+  '/news': 'National Headlines',
+  '/reports': 'Reports & Exports',
+  '/research': 'Research Data Access',
+  '/support': 'Support & Help',
+  '/admin': 'Admin Panel',
+  '/csv-explorer': 'CSV Explorer',
 };
 
 // Persistent shell: the sidebar and topbar stay mounted while the
@@ -47,7 +47,7 @@ function ProtectedLayout({ children }) {
   const { pathname } = useLocation();
   const pageTitle =
     PAGE_TITLES[pathname] ||
-    (/^\/provinces\//.test(pathname) ? "Province Explorer" : PAGE_TITLES["/"]);
+    (/^\/provinces\//.test(pathname) ? 'Province Explorer' : PAGE_TITLES['/']);
 
   return <DashboardLayout pageTitle={pageTitle}>{children}</DashboardLayout>;
 }
@@ -161,13 +161,13 @@ export default function AppRoutes() {
           }
         />
 
-       <Route
-        path="/csv-explorer"
-        element={
-          <Protected>
-            <CSVExplorer />
-          </Protected>
-        }
+        <Route
+          path="/csv-explorer"
+          element={
+            <Protected>
+              <CSVExplorer />
+            </Protected>
+          }
         />
 
         {/* Admin-only route (non-admins see the 404 page) */}

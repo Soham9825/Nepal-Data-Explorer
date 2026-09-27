@@ -1,7 +1,21 @@
 import { useMemo, useState, useRef, useLayoutEffect, useCallback } from 'react';
+import { MUTED_SERIES_COLOR } from '../../theme/chartPalette';
 
 const MS_MONTH = 30.44 * 24 * 60 * 60 * 1000;
-const MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTHS_SHORT = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
 
 const TOOLTIP_MARGIN = 10;
 const TOOLTIP_GAP = 12;
@@ -12,11 +26,20 @@ const ARROW_SIZE = 8;
 // invalidate the chart memo (which caused an infinite tooltip update loop).
 const NO_DATA = [];
 const NO_BANDS = [];
-const DEFAULT_SERIES = [{ key: "value", color: "#b70011", label: "Value" }];
+const DEFAULT_SERIES = [{ key: 'value', color: '#b70011', label: 'Value' }];
+
+// Charts with at least this many overlapping lines get hover-to-isolate by
+// default: below it the lines stay readable side by side, above it tracing a
+// single series through the crossings is the problem worth solving.
+const HIGHLIGHT_SERIES_THRESHOLD = 5;
+const MUTED_OPACITY = 0.9;
+
+/** Left gutter: tick labels need ~46px, a y-axis caption needs a wider one. */
+const yGutter = (yAxisTitle) => (yAxisTitle ? 76 : 46);
 
 // Compact axis labels: 81234 -> "81.2K", 2400000 -> "2.4M", 0.25 -> "0.3".
 function formatTick(value) {
-  const trim = (text) => text.replace(/\.0+$/, "");
+  const trim = (text) => text.replace(/\.0+$/, '');
   const abs = Math.abs(value);
   if (abs >= 1e6) return `${trim((value / 1e6).toFixed(2))}M`;
   if (abs >= 1e3) return `${trim((value / 1e3).toFixed(1))}K`;
@@ -26,7 +49,7 @@ function formatTick(value) {
 // Tooltip values keep decimals for small numbers so e.g. 0.25 doesn't read "0".
 function formatValue(value) {
   const num = Number(value);
-  if (!Number.isFinite(num)) return "—";
+  if (!Number.isFinite(num)) return '—';
   return num.toLocaleString(undefined, {
     maximumFractionDigits: Math.abs(num) < 100 ? 2 : 0,
   });
@@ -45,25 +68,34 @@ function niceStep(rawVal) {
 
 export default function LineChart({
   data = NO_DATA,
-  xKey = "year",
+  xKey = 'year',
   labelKey = xKey,
   tooltipKey = labelKey,
   timeScale = false,
   xDomainStart,
   xDomainEnd,
   yDomain = [null, null], // Optional fixed [min, max]; null/undefined bounds auto-scale
+  yAxisTitle = '', // Optional rotated y-axis caption, e.g. "Real growth (%)"
+  showZeroGridline = false, // Light solid line at 0% alongside the dashed zero line
   zoneStart,
-  zoneLabel = "Forecast",
+  zoneLabel = 'Forecast',
   bands = NO_BANDS, // Shaded min/max range bands: [{ keyMin, keyMax, color, opacity }]
   series = DEFAULT_SERIES,
   height = 380,
-  unit = "",
+  unit = '',
   showZeroLine = false,
   fillArea = true,
+  valueFormatter = null,
+  showLegend = true,
+  highlightOnHover, // Defaults to on for charts with 5+ series
+  ariaLabel,
+  tooltipExtra = null, // Optional render prop: (activeItem) => extra tooltip rows
 }) {
   const [activeIndex, setActiveIndex] = useState(null);
   const [tip, setTip] = useState(null);
   const [plotWidth, setPlotWidth] = useState(0);
+  const [plotHeight, setPlotHeight] = useState(0);
+  const [highlightedKey, setHighlightedKey] = useState(null);
 
   const containerRef = useRef(null);
   const tooltipRef = useRef(null);
@@ -76,19 +108,27 @@ export default function LineChart({
   dataRef.current = data;
   xKeyRef.current = xKey;
 
-  const VB_WIDTH = 1000;
-  const VB_HEIGHT = 500;
-  const PADDING_X = 70;
-  const PADDING_Y = 52;
+  // The viewBox mirrors the measured plot box in CSS pixels (1 viewBox unit = 1px),
+  // so geometry, strokes, markers and text keep a 1:1 scale at any container size.
+  // Using the measured box as the viewBox (instead of a fixed 1000x500 one) is what
+  // prevents wide/short charts from stretching glyphs and markers.
+  const VB_WIDTH_FALLBACK = 1000;
+  const VB_HEIGHT_FALLBACK = 380;
+  const vbWidth = plotWidth || VB_WIDTH_FALLBACK;
+  const vbHeight = plotHeight || VB_HEIGHT_FALLBACK;
+  const PADDING_Y = 34;
+  const PADDING_X = yGutter(yAxisTitle);
+  const highlightEnabled = highlightOnHover ?? series.length >= HIGHLIGHT_SERIES_THRESHOLD;
 
   const toTimeValue = useCallback((value) => {
-    if (typeof value === "number") return value;
+    if (typeof value === 'number') return value;
     const timestamp = Date.parse(String(value));
     return Number.isNaN(timestamp) ? null : timestamp;
   }, []);
 
   const chart = useMemo(() => {
     if (!data.length) return null;
+    const PADDING_X = yGutter(yAxisTitle);
 
     // Include band values (e.g. forecast confidence bounds) in the domain so
     // the shaded range never clips against the plot edges.
@@ -100,7 +140,9 @@ export default function LineChart({
       ...bandKeys.flatMap((k) =>
         data.map((d) => d[k]).filter((v) => v !== null && v !== undefined)
       ),
-    ].map(Number).filter(Number.isFinite);
+    ]
+      .map(Number)
+      .filter(Number.isFinite);
 
     // Optional fixed [min, max] bounds override the data-derived domain so
     // multiple charts can share one scale (used by the Compare page).
@@ -126,7 +168,7 @@ export default function LineChart({
         ? (period - firstPeriod) / periodRange
         : index / Math.max(data.length - 1, 1);
       const clamped = Math.max(0, Math.min(1, position));
-      return PADDING_X + clamped * (VB_WIDTH - PADDING_X * 2);
+      return PADDING_X + clamped * (vbWidth - PADDING_X * 2);
     };
 
     // Nice, evenly-spaced Y ticks within the data min..max range.
@@ -149,19 +191,38 @@ export default function LineChart({
       const points = rawPoints.map(({ raw, index }) => {
         const value = Number(raw);
         const x = xForValue(data[index][xKey], index);
-        const y =
-          VB_HEIGHT - PADDING_Y - ((value - min) / range) * (VB_HEIGHT - PADDING_Y * 2);
+        const y = vbHeight - PADDING_Y - ((value - min) / range) * (vbHeight - PADDING_Y * 2);
         return { x, y, value, index };
       });
 
-      const path = points
-        .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`)
-        .join(" ");
+      const pointRuns = [];
+      let currentRun = [];
+      data.forEach((item, index) => {
+        const raw = item[s.key];
+        if (raw !== null && raw !== undefined && Number.isFinite(Number(raw))) {
+          const value = Number(raw);
+          const x = xForValue(item[xKey], index);
+          const y = vbHeight - PADDING_Y - ((value - min) / range) * (vbHeight - PADDING_Y * 2);
+          currentRun.push({ x, y, value, index });
+        } else if (currentRun.length) {
+          pointRuns.push(currentRun);
+          currentRun = [];
+        }
+      });
+      if (currentRun.length) pointRuns.push(currentRun);
 
-      const area = points.length
-        ? path +
-          ` L ${points[points.length - 1].x} ${VB_HEIGHT - PADDING_Y} L ${points[0].x} ${VB_HEIGHT - PADDING_Y} Z`
-        : "";
+      const path = pointRuns
+        .map((run) =>
+          run.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ')
+        )
+        .join(' ');
+
+      const area = pointRuns
+        .map(
+          (run) =>
+            `${run.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ')} L ${run[run.length - 1].x} ${vbHeight - PADDING_Y} L ${run[0].x} ${vbHeight - PADDING_Y} Z`
+        )
+        .join(' ');
 
       return { ...s, points, path, area };
     });
@@ -205,17 +266,11 @@ export default function LineChart({
       // enforce a minimum index gap of 2 when sub-sampling so rounded tick
       // positions never land two labels on neighbouring points (which collided
       // on dense series such as the salary index).
-      const maxLabelLength = Math.max(
-        ...data.map((item) => String(item[labelKey]).length),
-        1
-      );
+      const maxLabelLength = Math.max(...data.map((item) => String(item[labelKey]).length), 1);
       const plotWidthPx = plotWidth || 760;
       const labelPx = maxLabelLength * 7.1 + 6; // ~56px for "2012/13" at 12px semibold
-      const spanPx = plotWidthPx * (1 - (2 * PADDING_X) / VB_WIDTH);
-      const maxLabels = Math.max(
-        3,
-        Math.min(10, Math.floor(spanPx / labelPx) + 1)
-      );
+      const spanPx = plotWidthPx * (1 - (2 * PADDING_X) / vbWidth);
+      const maxLabels = Math.max(3, Math.min(10, Math.floor(spanPx / labelPx) + 1));
       if (data.length <= maxLabels) {
         for (let i = 0; i < data.length; i++) {
           labelTicks.push({ index: i, label: String(data[i][labelKey]) });
@@ -242,8 +297,35 @@ export default function LineChart({
     }
     if (!labelTicks.length) labelTicks.push({ index: 0, label: String(data[0][labelKey]) });
 
-    return { min, max, ticks, zoneX, seriesData, xForValue, labelTicks, bandKeys };
-  }, [data, series, xKey, labelKey, timeScale, xDomainStart, xDomainEnd, yDomain, zoneStart, bands, toTimeValue, plotWidth]);
+    return {
+      min,
+      max,
+      ticks,
+      zoneX,
+      seriesData,
+      xForValue,
+      labelTicks,
+      bandKeys,
+      vbWidth,
+      vbHeight,
+    };
+  }, [
+    data,
+    series,
+    xKey,
+    labelKey,
+    timeScale,
+    xDomainStart,
+    xDomainEnd,
+    yDomain,
+    yAxisTitle,
+    zoneStart,
+    bands,
+    toTimeValue,
+    plotWidth,
+    vbWidth,
+    vbHeight,
+  ]);
 
   chartRef.current = chart;
 
@@ -252,9 +334,7 @@ export default function LineChart({
     ? data
         .map((_, idx) => idx)
         .filter((idx) =>
-          chart.seriesData.some(
-            (s) => !s.faint && s.points.some((p) => p.index === idx)
-          )
+          chart.seriesData.some((s) => !s.faint && s.points.some((p) => p.index === idx))
         )
     : [];
 
@@ -289,10 +369,10 @@ export default function LineChart({
       return;
     }
 
-    const xPct = (c.xForValue(d[activeIndex][xk], activeIndex) / VB_WIDTH) * 100;
+    const xPct = (c.xForValue(d[activeIndex][xk], activeIndex) / c.vbWidth) * 100;
     const markerTopY = Math.min(...points.map((p) => p.y));
     const markerX = (xPct / 100) * containerRect.width;
-    const markerY = (markerTopY / VB_HEIGHT) * containerRect.height;
+    const markerY = (markerTopY / c.vbHeight) * containerRect.height;
 
     const half = tooltipRect.width / 2;
     const clampedLeft = Math.min(
@@ -301,9 +381,7 @@ export default function LineChart({
     );
 
     const flipBelow = markerY - tooltipRect.height - TOOLTIP_GAP - ARROW_SIZE < TOOLTIP_MARGIN;
-    const rawTop = flipBelow
-      ? markerY + TOOLTIP_GAP
-      : markerY - tooltipRect.height - TOOLTIP_GAP;
+    const rawTop = flipBelow ? markerY + TOOLTIP_GAP : markerY - tooltipRect.height - TOOLTIP_GAP;
     const clampedTop = Math.min(
       Math.max(rawTop, TOOLTIP_MARGIN),
       Math.max(TOOLTIP_MARGIN, containerRect.height - tooltipRect.height - TOOLTIP_MARGIN)
@@ -336,11 +414,14 @@ export default function LineChart({
   useLayoutEffect(() => {
     const node = containerRef.current;
     if (!node) return undefined;
-    const update = () => setPlotWidth(node.clientWidth);
+    const update = () => {
+      setPlotWidth(node.clientWidth);
+      setPlotHeight(node.clientHeight);
+    };
     update();
-    if (typeof ResizeObserver === "undefined") {
-      window.addEventListener("resize", update);
-      return () => window.removeEventListener("resize", update);
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', update);
+      return () => window.removeEventListener('resize', update);
     }
     const observer = new ResizeObserver(update);
     observer.observe(node);
@@ -350,8 +431,8 @@ export default function LineChart({
   useLayoutEffect(() => {
     if (activeIndex == null) return undefined;
     const handle = () => recomputeTooltipPosition();
-    window.addEventListener("resize", handle);
-    return () => window.removeEventListener("resize", handle);
+    window.addEventListener('resize', handle);
+    return () => window.removeEventListener('resize', handle);
   }, [activeIndex, recomputeTooltipPosition]);
 
   if (!data.length || !chart || chart.seriesData.every((s) => s.points.length === 0)) {
@@ -360,9 +441,9 @@ export default function LineChart({
         className="flex items-center justify-center text-sm"
         style={{
           height,
-          width: "100%",
-          border: "1px solid #e2e2e2",
-          color: "#8a8a8a",
+          width: '100%',
+          border: '1px solid #e2e2e2',
+          color: '#8a8a8a',
           fontFamily: "'Hanken Grotesk', sans-serif",
         }}
       >
@@ -372,32 +453,51 @@ export default function LineChart({
   }
 
   const activeItem = activeIndex != null ? data[activeIndex] : null;
-  const activeX = activeIndex != null ? chart.xForValue(data[activeIndex][xKey], activeIndex) : null;
+  const activeX =
+    activeIndex != null ? chart.xForValue(data[activeIndex][xKey], activeIndex) : null;
   const hasHover = activeIndex != null && activePoints.length > 0;
+
+  // Hover-to-isolate: with 5+ overlapping lines only the hovered series keeps
+  // its colour and weight, everything else drops to light grey.
+  const focusedSeries =
+    highlightEnabled && highlightedKey != null
+      ? chart.seriesData.find((s) => s.key === highlightedKey) || null
+      : null;
+  const isMuted = (s) => focusedSeries != null && s.key !== focusedSeries.key;
+  const hoverColor =
+    focusedSeries?.color || chart.seriesData.find((s) => !s.faint)?.color || '#0051d5';
+  const zeroInRange = chart.min <= 0 && chart.max >= 0;
+  const zeroY =
+    vbHeight -
+    PADDING_Y -
+    ((0 - chart.min) / (chart.max - chart.min || 1)) * (vbHeight - PADDING_Y * 2);
+  const isTickAtZero = chart.ticks.some((tick) => Math.abs(tick) < 1e-9);
 
   return (
     <div
-      className={`flex w-full min-h-0 flex-col ${typeof height === "number" ? "" : "h-full"}`}
+      className={`flex w-full min-h-0 flex-col ${typeof height === 'number' ? '' : 'h-full'}`}
       style={{
-        height: typeof height === "number" ? height : undefined,
-        backgroundColor: "#ffffff",
+        height: typeof height === 'number' ? height : undefined,
+        backgroundColor: '#ffffff',
         fontFamily: "'Hanken Grotesk', sans-serif",
-        boxSizing: "border-box",
-        overflow: "hidden",
+        boxSizing: 'border-box',
+        overflow: 'hidden',
       }}
     >
       {/* Plot area. position:relative so the HTML tooltip can be measured/placed in real pixels. */}
       <div
         ref={containerRef}
         className="relative min-h-0 flex-1"
-        style={{ position: "relative", flex: "1 1 auto" }}
+        style={{ position: 'relative', flex: '1 1 auto' }}
       >
         <svg
-          viewBox={`0 0 ${VB_WIDTH} ${VB_HEIGHT}`}
-          preserveAspectRatio="none"
+          viewBox={`0 0 ${chart.vbWidth} ${chart.vbHeight}`}
+          role={ariaLabel ? 'img' : undefined}
+          aria-label={ariaLabel}
+          preserveAspectRatio="xMidYMid meet"
           width="100%"
           height="100%"
-          style={{ display: "block" }}
+          style={{ display: 'block' }}
         >
           <defs>
             {chart.seriesData.map((s) => (
@@ -409,49 +509,90 @@ export default function LineChart({
           </defs>
 
           {/* Horizontal grid + y tick labels */}
-          {chart.ticks.map((tick) => {
-            const y = VB_HEIGHT - PADDING_Y - ((tick - chart.min) / (chart.max - chart.min || 1)) * (VB_HEIGHT - PADDING_Y * 2);
+          {chart.ticks.map((tick, tickIndex) => {
+            const y =
+              vbHeight -
+              PADDING_Y -
+              ((tick - chart.min) / (chart.max - chart.min || 1)) * (vbHeight - PADDING_Y * 2);
             const isEdgemost = tick === chart.ticks[chart.ticks.length - 1];
             return (
-              <g key={tick}>
+              <g key={`${tick}-${tickIndex}`}>
                 <line
                   x1={PADDING_X}
                   y1={y}
-                  x2={VB_WIDTH - PADDING_X}
+                  x2={chart.vbWidth - PADDING_X}
                   y2={y}
-                  stroke={isEdgemost ? "#CBD5E1" : "#EDEFF3"}
+                  stroke={isEdgemost ? '#D0D5DD' : '#E4E7EC'}
                   strokeWidth="1"
                   vectorEffect="non-scaling-stroke"
                 />
-                <text x={PADDING_X - 12} y={y + 4} fontSize="11" fill="#5A6472" fontWeight="600" textAnchor="end">
-                  {formatTick(tick)}{unit}
+                <text
+                  x={PADDING_X - 12}
+                  y={y + 4}
+                  fontSize={11}
+                  fill="#667085"
+                  fontWeight="600"
+                  textAnchor="end"
+                >
+                  {formatTick(tick)}
+                  {unit}
                 </text>
               </g>
             );
           })}
 
+          {/* Zero reference: a light solid gridline for reading the 0% mark,
+              plus the existing dashed line when the caller asks for it. */}
+          {showZeroGridline && zeroInRange && !isTickAtZero && (
+            <line
+              x1={PADDING_X}
+              y1={zeroY}
+              x2={chart.vbWidth - PADDING_X}
+              y2={zeroY}
+              stroke="#D0D5DD"
+              strokeWidth="1"
+              vectorEffect="non-scaling-stroke"
+            />
+          )}
+
           {/* Baseline axis */}
           <line
             x1={PADDING_X}
-            y1={VB_HEIGHT - PADDING_Y}
-            x2={VB_WIDTH - PADDING_X}
-            y2={VB_HEIGHT - PADDING_Y}
-            stroke="#CBD5E1"
+            y1={vbHeight - PADDING_Y}
+            x2={chart.vbWidth - PADDING_X}
+            y2={vbHeight - PADDING_Y}
+            stroke="#D0D5DD"
             strokeWidth="1"
             vectorEffect="non-scaling-stroke"
           />
 
-          {showZeroLine && chart.min <= 0 && chart.max >= 0 && (
+          {showZeroLine && zeroInRange && (
             <line
               x1={PADDING_X}
-              y1={VB_HEIGHT - PADDING_Y - ((0 - chart.min) / (chart.max - chart.min || 1)) * (VB_HEIGHT - PADDING_Y * 2)}
-              x2={VB_WIDTH - PADDING_X}
-              y2={VB_HEIGHT - PADDING_Y - ((0 - chart.min) / (chart.max - chart.min || 1)) * (VB_HEIGHT - PADDING_Y * 2)}
+              y1={zeroY}
+              x2={chart.vbWidth - PADDING_X}
+              y2={zeroY}
               stroke="#64748B"
               strokeWidth="1"
               strokeDasharray="4 4"
               vectorEffect="non-scaling-stroke"
             />
+          )}
+
+          {/* Y-axis caption */}
+          {yAxisTitle && (
+            <text
+              transform={`translate(14 ${vbHeight / 2}) rotate(-90)`}
+              x={0}
+              y={0}
+              textAnchor="middle"
+              fontSize={11}
+              fontWeight="700"
+              fill="#475467"
+              style={{ letterSpacing: '0.04em' }}
+            >
+              {yAxisTitle}
+            </text>
           )}
 
           {/* Forecast zone: subtle tint + clean dashed divider + label chip */}
@@ -460,15 +601,15 @@ export default function LineChart({
               <rect
                 x={chart.zoneX}
                 y={PADDING_Y}
-                width={VB_WIDTH - PADDING_X - chart.zoneX}
-                height={VB_HEIGHT - PADDING_Y * 2}
+                width={chart.vbWidth - PADDING_X - chart.zoneX}
+                height={vbHeight - PADDING_Y * 2}
                 fill="#F4F7F6"
               />
               <line
                 x1={chart.zoneX}
                 y1={PADDING_Y}
                 x2={chart.zoneX}
-                y2={VB_HEIGHT - PADDING_Y}
+                y2={vbHeight - PADDING_Y}
                 stroke="#94A3B8"
                 strokeWidth="1.5"
                 strokeDasharray="5 4"
@@ -477,7 +618,7 @@ export default function LineChart({
               <g>
                 {(() => {
                   const chipWidth = zoneLabel.length * 7.2 + 18;
-                  const chipX = Math.min(chart.zoneX + 8, VB_WIDTH - PADDING_X - chipWidth);
+                  const chipX = Math.min(chart.zoneX + 8, chart.vbWidth - PADDING_X - chipWidth);
                   return (
                     <>
                       <rect
@@ -489,7 +630,13 @@ export default function LineChart({
                         fill="#334155"
                         opacity="0.92"
                       />
-                      <text x={chipX + 9} y={PADDING_Y + 24} fontSize="11" fontWeight="700" fill="#ffffff">
+                      <text
+                        x={chipX + 9}
+                        y={PADDING_Y + 24}
+                        fontSize={11}
+                        fontWeight="700"
+                        fill="#ffffff"
+                      >
                         {zoneLabel}
                       </text>
                     </>
@@ -509,8 +656,16 @@ export default function LineChart({
               if (Number.isFinite(bandLo) && Number.isFinite(bandHi)) {
                 current.push({
                   x: chart.xForValue(data[idx][xKey], idx),
-                  yHi: VB_HEIGHT - PADDING_Y - ((bandHi - chart.min) / (chart.max - chart.min || 1)) * (VB_HEIGHT - PADDING_Y * 2),
-                  yLo: VB_HEIGHT - PADDING_Y - ((bandLo - chart.min) / (chart.max - chart.min || 1)) * (VB_HEIGHT - PADDING_Y * 2),
+                  yHi:
+                    vbHeight -
+                    PADDING_Y -
+                    ((bandHi - chart.min) / (chart.max - chart.min || 1)) *
+                      (vbHeight - PADDING_Y * 2),
+                  yLo:
+                    vbHeight -
+                    PADDING_Y -
+                    ((bandLo - chart.min) / (chart.max - chart.min || 1)) *
+                      (vbHeight - PADDING_Y * 2),
                 });
               } else if (current.length) {
                 runs.push(current);
@@ -522,7 +677,7 @@ export default function LineChart({
               let d = `M ${run[0].x} ${run[0].yHi}`;
               for (let i = 1; i < run.length; i++) d += ` L ${run[i].x} ${run[i].yHi}`;
               for (let i = run.length - 1; i >= 0; i--) d += ` L ${run[i].x} ${run[i].yLo}`;
-              d += " Z";
+              d += ' Z';
               return <path key={`${bi}-${ri}`} d={d} fill={b.color} fillOpacity={b.opacity} />;
             });
           })}
@@ -530,44 +685,52 @@ export default function LineChart({
           {/* Areas + lines (faint series first so bold ones sit on top). Area
               fills are only drawn for single-series charts: stacked fills on
               multi-line charts turn the plot muddy and hide the other lines. */}
-          {[...chart.seriesData.filter((s) => s.faint), ...chart.seriesData.filter((s) => !s.faint)].map((s) => (
-            <g key={s.key}>
-              {s.area && !s.faint && fillArea && chart.seriesData.length === 1 && (
-                <path d={s.area} fill={`url(#fill-${s.key})`} />
-              )}
-              <path
-                d={s.path}
-                fill="none"
-                stroke={s.color}
-                strokeWidth={s.bold ? 3 : s.faint ? 1.2 : 2}
-                strokeOpacity={s.faint ? 0.35 : 1}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeDasharray={s.dashed ? "6 5" : undefined}
-                vectorEffect="non-scaling-stroke"
-              />
-            </g>
-          ))}
+          {[
+            ...chart.seriesData.filter((s) => s.faint),
+            ...chart.seriesData.filter((s) => !s.faint),
+          ].map((s) => {
+            const muted = isMuted(s);
+            return (
+              <g key={s.key} style={{ transition: 'opacity 150ms ease' }}>
+                {s.area && !s.faint && fillArea && chart.seriesData.length === 1 && (
+                  <path d={s.area} fill={`url(#fill-${s.key})`} />
+                )}
+                <path
+                  d={s.path}
+                  fill="none"
+                  stroke={muted ? MUTED_SERIES_COLOR : s.color}
+                  strokeWidth={s.bold ? 3 : s.faint ? 1.2 : focusedSeries?.key === s.key ? 3 : 2}
+                  strokeOpacity={muted ? MUTED_OPACITY * 0.35 : s.faint ? 0.35 : 1}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeDasharray={s.dashed ? '6 5' : undefined}
+                  vectorEffect="non-scaling-stroke"
+                />
+              </g>
+            );
+          })}
 
           {/* Hover slabs: transparent hit areas covering each data index */}
           {hoverableIndices.map((idx) => {
             const x = chart.xForValue(data[idx][xKey], idx);
             const prevX = idx > 0 ? chart.xForValue(data[idx - 1][xKey], idx - 1) : PADDING_X;
             const nextX =
-              idx < data.length - 1 ? chart.xForValue(data[idx + 1][xKey], idx + 1) : VB_WIDTH - PADDING_X;
+              idx < data.length - 1
+                ? chart.xForValue(data[idx + 1][xKey], idx + 1)
+                : chart.vbWidth - PADDING_X;
             const left = Math.max(PADDING_X, (x + prevX) / 2);
-            const right = Math.min(VB_WIDTH - PADDING_X, (x + nextX) / 2);
+            const right = Math.min(chart.vbWidth - PADDING_X, (x + nextX) / 2);
             return (
               <rect
                 key={idx}
                 x={left}
                 y={PADDING_Y - 4}
                 width={Math.max(right - left, 1)}
-                height={VB_HEIGHT - PADDING_Y * 2 + 8}
+                height={vbHeight - PADDING_Y * 2 + 8}
                 fill="transparent"
                 onMouseEnter={() => setActiveIndex(idx)}
                 onMouseLeave={() => setActiveIndex(null)}
-                style={{ cursor: "pointer" }}
+                style={{ cursor: 'pointer' }}
               />
             );
           })}
@@ -579,42 +742,46 @@ export default function LineChart({
                 x={activeX - 1}
                 y={PADDING_Y}
                 width={2}
-                height={VB_HEIGHT - PADDING_Y * 2}
-                fill="#0051d5"
+                height={vbHeight - PADDING_Y * 2}
+                fill={hoverColor}
                 opacity="0.07"
               />
               <line
                 x1={activeX}
                 y1={PADDING_Y}
                 x2={activeX}
-                y2={VB_HEIGHT - PADDING_Y}
-                stroke="#64748B"
+                y2={vbHeight - PADDING_Y}
+                stroke="#98A2B3"
                 strokeWidth="1"
                 strokeDasharray="3 4"
                 strokeOpacity="0.5"
                 vectorEffect="non-scaling-stroke"
               />
-              {activePoints.map((p) => (
-                <g key={p.seriesKey}>
-                  <circle
-                    cx={p.x}
-                    cy={p.y}
-                    r={p.bold ? 10 : 8}
-                    fill={p.color}
-                    fillOpacity="0.18"
-                    vectorEffect="non-scaling-stroke"
-                  />
-                  <circle
-                    cx={p.x}
-                    cy={p.y}
-                    r={p.bold ? 5.5 : 4.5}
-                    fill="#ffffff"
-                    stroke={p.color}
-                    strokeWidth="2.5"
-                    vectorEffect="non-scaling-stroke"
-                  />
-                </g>
-              ))}
+              {activePoints.map((p) => {
+                const muted = focusedSeries != null && p.seriesKey !== focusedSeries.key;
+                const dotColor = muted ? MUTED_SERIES_COLOR : p.color;
+                return (
+                  <g key={p.seriesKey}>
+                    <circle
+                      cx={p.x}
+                      cy={p.y}
+                      r={muted ? 6 : p.bold ? 10 : 8}
+                      fill={dotColor}
+                      fillOpacity={muted ? 0.12 : 0.18}
+                      vectorEffect="non-scaling-stroke"
+                    />
+                    <circle
+                      cx={p.x}
+                      cy={p.y}
+                      r={muted ? 3 : p.bold ? 5.5 : 4.5}
+                      fill="#ffffff"
+                      stroke={dotColor}
+                      strokeWidth={muted ? 1.5 : 2.5}
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  </g>
+                );
+              })}
             </g>
           )}
         </svg>
@@ -625,34 +792,48 @@ export default function LineChart({
             ref={tooltipRef}
             className="pointer-events-none absolute z-10 bg-white px-4 py-3 text-sm shadow-xl"
             style={{
-              left: tip ? tip.left : "50%",
-              top: tip ? tip.top : "50%",
-              transform: tip ? "translate(-50%, 0)" : "translate(-50%, -50%)",
+              left: tip ? tip.left : '50%',
+              top: tip ? tip.top : '50%',
+              transform: tip ? 'translate(-50%, 0)' : 'translate(-50%, -50%)',
               opacity: tip ? 1 : 0,
-              transition: "opacity 120ms ease, left 120ms ease, top 120ms ease",
-              whiteSpace: "nowrap",
-              borderRadius: 6,
-              border: "1px solid #e6e8ec",
-              boxShadow: "0 10px 30px rgba(15, 23, 42, 0.14)",
+              transition: 'opacity 120ms ease, left 120ms ease, top 120ms ease',
+              whiteSpace: 'nowrap',
+              borderRadius: 8,
+              border: '1px solid #E4E7EC',
+              boxShadow: '0 6px 20px rgba(16, 24, 40, 0.12)',
             }}
           >
             <p className="text-xs font-bold text-onSurface">{String(activeItem[tooltipKey])}</p>
-            {activePoints.map((p) => (
-              <p key={p.seriesKey} className="mt-1 text-xs text-onSurface-variant">
-                <span
-                  className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle"
-                  style={{ backgroundColor: p.color }}
-                />
-                {p.seriesLabel || p.seriesKey}:{" "}
-                <strong className="text-onSurface">{formatValue(p.value)}</strong>
-              </p>
-            ))}
+            {activePoints.map((p) => {
+              const muted = focusedSeries != null && p.seriesKey !== focusedSeries.key;
+              return (
+                <p
+                  key={p.seriesKey}
+                  className="mt-1 text-xs"
+                  style={{ color: muted ? '#98A2B3' : undefined }}
+                >
+                  <span
+                    className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle"
+                    style={{ backgroundColor: muted ? MUTED_SERIES_COLOR : p.color }}
+                  />
+                  {p.seriesLabel || p.seriesKey}:{' '}
+                  <strong
+                    style={{ color: muted ? '#98A2B3' : undefined }}
+                    className="text-onSurface"
+                  >
+                    {valueFormatter ? valueFormatter(p.value) : formatValue(p.value)}
+                    {unit}
+                  </strong>
+                </p>
+              );
+            })}
+            {tooltipExtra && tooltipExtra(activeItem)}
             {activeItem[chart.bandKeys?.[0]] != null && activeItem[chart.bandKeys?.[1]] != null && (
               <p className="mt-1 text-xs text-onSurface-variant">
-                Forecast range:{" "}
+                Forecast range:{' '}
                 <strong className="text-onSurface">
                   {formatValue(activeItem[chart.bandKeys[0]])}
-                  {" – "}
+                  {' – '}
                   {formatValue(activeItem[chart.bandKeys[1]])}
                 </strong>
               </p>
@@ -660,21 +841,48 @@ export default function LineChart({
             {tip && (
               <span
                 style={{
-                  position: "absolute",
+                  position: 'absolute',
                   left: tip.arrowLeft,
-                  [tip.flipBelow ? "top" : "bottom"]: -ARROW_SIZE / 2,
+                  [tip.flipBelow ? 'top' : 'bottom']: -ARROW_SIZE / 2,
                   width: ARROW_SIZE,
                   height: ARROW_SIZE,
-                  background: "#fff",
-                  borderRight: "1px solid #e6e8ec",
-                  borderBottom: "1px solid #e6e8ec",
+                  background: '#fff',
+                  borderRight: '1px solid #E4E7EC',
+                  borderBottom: '1px solid #E4E7EC',
                   transform: `translateX(-50%) rotate(${tip.flipBelow ? 225 : 45}deg)`,
-                  transition: "transform 120ms ease",
+                  transition: 'transform 120ms ease',
                 }}
               />
             )}
           </div>
         )}
+      </div>
+
+      {/* The x axis: a rule under the plot, with a tick crossing it at every year in
+          the data. The tick runs 5px above the rule and 5px below, so it reads as a
+          tick on a scale rather than as another gridline, and it is positioned in the
+          same coordinate space as the labels below it so each tick lands on the year
+          it belongs to.
+
+          A tick per year rather than a tick per label, because the labels are
+          subsampled to whatever fits and the ticks are not. The salary index prints
+          a year every other one, and a tick that only appeared under a printed label
+          left the skipped years as bare stretches of rule — the axis looked like it
+          had no data there, when in fact the line runs straight through. The gap in
+          the labels is honest about space; the gap in the ticks was not honest at
+          all. */}
+      <div aria-hidden="true" className="relative mt-1 h-2.5 flex-shrink-0">
+        <div className="absolute inset-x-0 top-1/2 border-t-2 border-hairline-axis" />
+        {data.map((row, index) => {
+          const left = `${(chart.xForValue(row[xKey], index) / chart.vbWidth) * 100}%`;
+          return (
+            <div
+              key={index}
+              className="absolute top-1/2 h-2.5 w-[1.5px] -translate-x-1/2 -translate-y-1/2 bg-hairline-axis"
+              style={{ left }}
+            />
+          );
+        })}
       </div>
 
       {/* X Labels. The container spans the full chart width (same coordinate
@@ -684,41 +892,56 @@ export default function LineChart({
       <div
         className="relative mt-2 h-6 flex-shrink-0 text-xs"
         style={{
-          color: "#5A6472",
+          color: '#667085',
           fontWeight: 600,
         }}
       >
         {chart.labelTicks.map((tick, i) => {
-          const left = `${(chart.xForValue(data[tick.index][xKey], tick.index) / VB_WIDTH) * 100}%`;
+          const left = `${(chart.xForValue(data[tick.index][xKey], tick.index) / chart.vbWidth) * 100}%`;
           return (
-            <span
-              key={i}
-              className="absolute -translate-x-1/2 whitespace-nowrap"
-              style={{ left }}
-            >
+            <span key={i} className="absolute -translate-x-1/2 whitespace-nowrap" style={{ left }}>
               {tick.label}
             </span>
           );
         })}
       </div>
 
-      {/* Legend */}
-      <div className="mt-2 flex flex-shrink-0 flex-wrap gap-4 text-sm" style={{ color: "#39424E" }}>
-        {series.filter((s) => !s.hideInLegend).map((s) => (
-          <span key={s.key} className="flex items-center gap-1.5">
-            <span
-              style={{
-                display: "inline-block",
-                width: s.bold ? 22 : 16,
-                height: s.bold ? 3 : 2,
-                backgroundColor: s.color,
-                opacity: s.dashed || s.faint ? 0.6 : 1,
-              }}
-            />
-            {s.label}
-          </span>
-        ))}
-      </div>
+      {showLegend && (
+        <div
+          className="mt-2 flex flex-shrink-0 flex-wrap items-center gap-x-4 gap-y-1.5 text-sm"
+          style={{ color: '#39424E' }}
+        >
+          {series
+            .filter((s) => !s.hideInLegend)
+            .map((s) => {
+              const muted = isMuted(s);
+              return (
+                <span
+                  key={s.key}
+                  className="flex items-center gap-1.5 whitespace-nowrap transition-opacity duration-150"
+                  style={{
+                    opacity: muted ? 0.45 : 1,
+                    cursor: highlightEnabled ? 'pointer' : 'default',
+                  }}
+                  title={s.label}
+                  onMouseEnter={highlightEnabled ? () => setHighlightedKey(s.key) : undefined}
+                  onMouseLeave={highlightEnabled ? () => setHighlightedKey(null) : undefined}
+                >
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      width: s.bold ? 22 : 16,
+                      height: s.bold ? 3 : 2,
+                      backgroundColor: muted ? MUTED_SERIES_COLOR : s.color,
+                      opacity: s.dashed || s.faint ? 0.6 : 1,
+                    }}
+                  />
+                  {s.label}
+                </span>
+              );
+            })}
+        </div>
+      )}
     </div>
   );
 }

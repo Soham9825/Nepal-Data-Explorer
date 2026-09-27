@@ -66,7 +66,9 @@ export const auth = {
     const token = auth.getAccessToken();
     if (token) {
       const res = await fetch(`${AUTH_BASE}/logout/`, {
-        method: 'POST', credentials: 'include', headers: { ...auth.authenticatedHeaders() },
+        method: 'POST',
+        credentials: 'include',
+        headers: { ...auth.authenticatedHeaders() },
       });
       if (!res.ok && res.status !== 401) return false;
     }
@@ -79,7 +81,10 @@ export const auth = {
     const res = await fetch(`${AUTH_BASE}/signup/`, {
       method: 'POST',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf.csrfToken || csrf.csrf_token },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrf.csrfToken || csrf.csrf_token,
+      },
       body: JSON.stringify({ username, email, password, confirm_password }),
     });
     if (!res.ok) return parseError(res, 'Signup failed');
@@ -93,7 +98,8 @@ export const auth = {
 
   getCurrentUser: async () => {
     const res = await fetch(`${AUTH_BASE}/me/`, {
-      headers: auth.authenticatedHeaders(), credentials: 'include',
+      headers: auth.authenticatedHeaders(),
+      credentials: 'include',
     });
     if (!res.ok) {
       auth.clearTokens();
@@ -120,7 +126,9 @@ export const auth = {
   requestPasswordReset: async (email) => {
     const csrf = await auth.getCSRF();
     const res = await fetch(`${AUTH_BASE}/password-reset/request/`, {
-      method: 'POST', credentials: 'include', headers: csrfHeader(csrf),
+      method: 'POST',
+      credentials: 'include',
+      headers: csrfHeader(csrf),
       body: JSON.stringify({ email }),
     });
     if (!res.ok) return parseError(res, 'Could not send reset code');
@@ -130,7 +138,9 @@ export const auth = {
   verifyPasswordResetOtp: async (email, otp) => {
     const csrf = await auth.getCSRF();
     const res = await fetch(`${AUTH_BASE}/password-reset/verify/`, {
-      method: 'POST', credentials: 'include', headers: csrfHeader(csrf),
+      method: 'POST',
+      credentials: 'include',
+      headers: csrfHeader(csrf),
       body: JSON.stringify({ email, otp }),
     });
     if (!res.ok) return parseError(res, 'Invalid or expired reset code');
@@ -140,7 +150,9 @@ export const auth = {
   confirmPasswordReset: async (reset_token, password) => {
     const csrf = await auth.getCSRF();
     const res = await fetch(`${AUTH_BASE}/password-reset/confirm/`, {
-      method: 'POST', credentials: 'include', headers: csrfHeader(csrf),
+      method: 'POST',
+      credentials: 'include',
+      headers: csrfHeader(csrf),
       body: JSON.stringify({ reset_token, password }),
     });
     if (!res.ok) return parseError(res, 'Could not reset password');

@@ -51,4 +51,17 @@ export default [
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
     },
   },
+
+  // Economic dashboard section registry. Each file exports a plain descriptor
+  // object — id, subtitle, action, content — next to the component it points at,
+  // so a section owns the header control that changes its chart. The rule reads
+  // that object as a non-component export and would otherwise warn on the
+  // component beside it. Scoped to this folder; the tradeoff is only dev-server
+  // hot reloading inside it.
+  {
+    files: ["src/pages/economic/sections/*.{js,jsx}"],
+    rules: {
+      "react-refresh/only-export-components": "off",
+    },
+  },
 ];

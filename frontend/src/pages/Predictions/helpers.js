@@ -14,10 +14,33 @@ export const CHART_DOMAIN_START = Date.UTC(2015, 0, 1);
 export const CHART_DOMAIN_END = Date.UTC(2026, 11, 31);
 
 export const MONTH_NUMBERS = {
-  jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
-  jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
+  jan: 0,
+  feb: 1,
+  mar: 2,
+  apr: 3,
+  may: 4,
+  jun: 5,
+  jul: 6,
+  aug: 7,
+  sep: 8,
+  oct: 9,
+  nov: 10,
+  dec: 11,
 };
-export const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+export const MONTHS_SHORT = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
 
 export const MODEL_LABELS = {
   ridge: 'Ridge',
@@ -34,8 +57,11 @@ export function formatModelName(modelName) {
 }
 
 export function toMonthTimestamp(year, month) {
-  const key = String(month || '').trim().slice(0, 3).toLowerCase();
-  const monthIndex = MONTH_NUMBERS[key] ?? (Number(month) - 1);
+  const key = String(month || '')
+    .trim()
+    .slice(0, 3)
+    .toLowerCase();
+  const monthIndex = MONTH_NUMBERS[key] ?? Number(month) - 1;
   return Date.UTC(Number(year), monthIndex, 1);
 }
 

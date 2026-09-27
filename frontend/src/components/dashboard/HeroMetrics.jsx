@@ -1,4 +1,3 @@
-
 import MetricCard from '../cards/MetricCard';
 
 export default function HeroMetrics({ metrics = [] }) {
