@@ -450,7 +450,7 @@ export default function National() {
             </div>
 
             <button className="w-full py-4 bg-surface-container-lowest border-t border-outline-variant text-[12px] font-bold text-primary hover:bg-surface-container-high transition-colors font-sans flex items-center justify-center gap-2">
-              <Icon name="arrow_forward" size={16} color="#b70011" />
+          <Icon name="keyboard_arrow_down" size={20} color="#b70011" />
             </button>
           </div>
         </section>
