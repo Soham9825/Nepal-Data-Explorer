@@ -2,7 +2,7 @@
 // src/layout/Sidebar.jsx
 // ============================================================
 
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import UserCard from '../common/UserCard';
 
 const navItems = [
@@ -26,7 +26,9 @@ const DEFAULT_USER = {
 
 export default function Sidebar({ user = DEFAULT_USER, onLogout, collapsed, onToggle }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const currentPath = location.pathname;
+  const openProfile = () => navigate('/profile');
 
   const isAdmin = !!(user && (user.isStaff || user.isSuperuser));
   const navItemsWithAdmin = isAdmin
@@ -146,9 +148,18 @@ export default function Sidebar({ user = DEFAULT_USER, onLogout, collapsed, onTo
         {/* ================= User Card ================= */}
         {collapsed ? (
           <div className="mt-4 flex flex-col items-center gap-2" title={user.name}>
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-sm font-bold text-white">
-              {user.name.trim().slice(0, 2).toUpperCase()}
-            </div>
+            <button
+              onClick={openProfile}
+              className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-primary text-sm font-bold text-white"
+              aria-label="Open profile"
+              title="Open profile"
+            >
+              {user.avatarUrl ? (
+                <img src={user.avatarUrl} alt={user.name} className="h-full w-full object-cover" />
+              ) : (
+                user.name.trim().slice(0, 2).toUpperCase()
+              )}
+            </button>
             {onLogout && (
               <button
                 onClick={onLogout}
@@ -163,7 +174,13 @@ export default function Sidebar({ user = DEFAULT_USER, onLogout, collapsed, onTo
             )}
           </div>
         ) : (
-          <UserCard user={user} variant="card" onLogout={onLogout} className="mt-4" />
+          <UserCard
+            user={user}
+            variant="card"
+            onLogout={onLogout}
+            onOpenProfile={openProfile}
+            className="mt-4"
+          />
         )}
       </div>
     </aside>

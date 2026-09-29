@@ -20,6 +20,7 @@ import ResetPassword from '../pages/auth/ResetPassword';
 import VerifyEmail from '../pages/auth/VerifyEmail';
 import Support from '../pages/Support';
 import Admin from '../pages/Admin';
+import Profile from '../pages/Profile';
 import NotFound from '../pages/NotFound';
 
 import CSVExplorer from '../pages/CSVExplorer';
@@ -37,6 +38,7 @@ const PAGE_TITLES = {
   '/reports': 'Reports & Exports',
   '/research': 'Research Data Access',
   '/support': 'Support & Help',
+  '/profile': 'My Profile',
   '/admin': 'Admin Panel',
   '/csv-explorer': 'CSV Explorer',
 };
@@ -166,6 +168,15 @@ export default function AppRoutes() {
           element={
             <Protected>
               <CSVExplorer />
+            </Protected>
+          }
+        />
+
+        <Route
+          path="/profile"
+          element={
+            <Protected>
+              <Profile />
             </Protected>
           }
         />

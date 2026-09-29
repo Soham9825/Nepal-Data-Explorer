@@ -1,6 +1,6 @@
 from django.contrib import admin
 from .models import (
-    CustomUser, Role, VerifiedEmail, EmailVerificationToken
+    CustomUser, Role, VerifiedEmail, EmailVerificationToken, SavedCollection, SavedItem
 )
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
@@ -41,7 +41,20 @@ class EmailVerificationTokenAdmin(admin.ModelAdmin):
     list_filter = ('used_at',)
 
 
+class SavedCollectionAdmin(admin.ModelAdmin):
+    list_display = ('name', 'user', 'section', 'updated_at')
+    search_fields = ('name', 'user__username')
+    list_filter = ('section',)
+
+
+class SavedItemAdmin(admin.ModelAdmin):
+    list_display = ('title', 'collection', 'chart_key', 'created_at')
+    search_fields = ('title', 'collection__name', 'collection__user__username')
+
+
 admin.site.register(CustomUser, CustomUserAdmin)
 admin.site.register(Role, RoleAdmin)
 admin.site.register(VerifiedEmail, VerifiedEmailAdmin)
 admin.site.register(EmailVerificationToken, EmailVerificationTokenAdmin)
+admin.site.register(SavedCollection, SavedCollectionAdmin)
+admin.site.register(SavedItem, SavedItemAdmin)

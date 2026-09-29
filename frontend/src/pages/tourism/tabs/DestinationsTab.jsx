@@ -17,7 +17,7 @@ import YearSummaryCard from '../components/YearSummaryCard';
  * mirroring the Province Explorer, instead of being buried inside a chart panel's
  * header.
  */
-export default function DestinationsTab({ destinations, onProvinceChange, onScopeChange }) {
+export default function DestinationsTab({ destinations, onProvinceChange, onScopeChange, rankingSave, trendSave }) {
   const {
     provinces,
     activeProvince,
@@ -83,6 +83,7 @@ export default function DestinationsTab({ destinations, onProvinceChange, onScop
         <ChartPanel
           title={`${activeProvince || 'Province'} destinations`}
           subtitle={`${scopeLabel} · ${latestYear || 'Latest year'}`}
+          action={rankingSave}
           note="These are destination-level visits, not unique people. Repeated visits to the same destination can be counted more than once."
         >
           <RankedBars
@@ -116,6 +117,7 @@ export default function DestinationsTab({ destinations, onProvinceChange, onScop
         id="tourism-section-destination-trend"
         title="Destination trend"
         subtitle={`${scopeLabel} by year`}
+        action={trendSave}
         note="Only destinations with a record in the selected year are charted. Years without a published value are left blank rather than treated as zero."
       >
         {chartSeries.length ? (

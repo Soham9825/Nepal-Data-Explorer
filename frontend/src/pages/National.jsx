@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import MetricCard from '../components/cards/MetricCard';
 import NewsCard from '../components/cards/NewsCard';
 import ProgressBar from '../components/cards/ProgressBar';
@@ -429,6 +430,7 @@ export default function National() {
                     tagBg="#f0f0f0"
                     time={formatPublishedDate(article.published)}
                     headline={article.title}
+                    image={article.image}
                     onClick={() => {
                       if (article.url) {
                         window.open(article.url, '_blank', 'noopener,noreferrer');
@@ -449,9 +451,13 @@ export default function National() {
               )}
             </div>
 
-            <button className="w-full py-4 bg-surface-lowest border-t border-outline-variant text-[12px] font-bold text-primary hover:bg-surface-high transition-colors font-sans flex items-center justify-center gap-2">
+            <Link
+              to="/news"
+              className="w-full py-4 bg-surface-lowest border-t border-outline-variant text-[12px] font-bold text-primary hover:bg-surface-high transition-colors font-sans flex items-center justify-center gap-2"
+            >
+              View All Headlines
               <Icon name="arrow_forward" size={16} color="#b70011" />
-            </button>
+            </Link>
           </div>
         </section>
 

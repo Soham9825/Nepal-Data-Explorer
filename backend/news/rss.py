@@ -86,6 +86,289 @@ def title_similarity(title1, title2):
     return len(intersection) / len(union)
 
 
+CATEGORY_KEYWORDS = {
+    "Tourism": (
+        "tourism",
+        "tourist",
+        "trekker",
+        "trekking",
+        "climb",
+        "traveller",
+        "travel",
+        "airline",
+        "airport",
+        "hotel",
+        "hospitality",
+        "mount",
+        "everest",
+        "heritage",
+        "visa",
+        "arrival",
+        "expedition",
+        "safari",
+        "resort",
+    ),
+    "Economy": (
+        "economy",
+        "economic",
+        "gdp",
+        "inflation",
+        "growth",
+        "trade",
+        "export",
+        "import",
+        "market",
+        "commodity",
+        "business",
+        "industry",
+        "manufacturing",
+        "remittance",
+        "energy",
+        "electricity",
+        "infrastructure",
+        "finance",
+        "financial",
+        "bank",
+        "banking",
+        "nrb",
+        "rastra bank",
+        "interest rate",
+        "lending",
+        "loan",
+        "credit",
+        "rupee",
+        "exchange rate",
+        "forex",
+        "budget",
+        "fiscal",
+        "revenue",
+        "tax",
+        "stock",
+        "capital",
+        "monetary",
+        "agriculture",
+        "agri",
+        "farming",
+        "farmer",
+        "crop",
+        "paddy",
+        "rice",
+        "vegetable",
+        "fertiliser",
+        "fertilizer",
+        "livestock",
+        "irrigation",
+        "harvest",
+        "company",
+        "corporate",
+        "investment",
+        "consumption",
+        "prices",
+    ),
+    "Government": (
+        "government",
+        "governance",
+        "cabinet",
+        "ministry",
+        "minister",
+        "civil service",
+        "bureaucrat",
+        "bureaucracy",
+        "commission",
+        "secretariat",
+        "municipality",
+        "municipal",
+        "local body",
+        "provincial government",
+        "policy",
+        "regulation",
+        "act",
+        "law",
+        "supreme court",
+        "constitution",
+        "official",
+        "appointment",
+        "gazette",
+        "administration",
+        "administrative",
+    ),
+    "Politics": (
+        "politics",
+        "political",
+        "party",
+        "politician",
+        "coalition",
+        "election",
+        "vote",
+        "protest",
+        "parliament",
+        "parliamentary",
+        "legislation",
+        "lawmaker",
+        "legislator",
+        "prime minister",
+        "president",
+        "opposition",
+        "ruling party",
+        "court",
+        "corruption",
+        "diplomatic",
+        "diplomat",
+        "ambassador",
+        "summit",
+        "assembly",
+        "campaign",
+        "candidate",
+    ),
+    "Natural Disaster": (
+        "flood",
+        "flooding",
+        "rain",
+        "rainfall",
+        "landslide",
+        "avalanche",
+        "earthquake",
+        "tremor",
+        "aftershock",
+        "storm",
+        "cyclone",
+        "typhoon",
+        "disaster",
+        "rescue",
+        "relief",
+        "evacuation",
+        "inundation",
+        "mudslide",
+        "snowfall",
+        "landslide",
+        "wildfire",
+        "fire",
+        "blocked road",
+        "swept away",
+        "damage",
+        "destroyed",
+        "monsoon",
+    ),
+}
+
+
+def strip_html(value):
+    if not value:
+        return ""
+    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", value)).strip()
+
+
+def extract_image(entry):
+    # Prefer structured media fields, then fall back to the first <img> inside
+    # the summary HTML. Feeds that only embed pictures in the description are
+    # common enough that skipping them would leave most cards without a thumb.
+    media_thumbnail = entry.get("media_thumbnail") or []
+    for thumb in media_thumbnail:
+        url = (thumb.get("url") or "").strip()
+        if url:
+            return url
+
+    media_content = entry.get("media_content") or []
+    for content in media_content:
+        if str(content.get("type", "")).startswith("image") or not content.get("type"):
+            url = (content.get("url") or "").strip()
+            if url:
+                return url
+
+    for link in entry.get("links") or []:
+        if link.get("rel") == "enclosure" and str(link.get("type", "")).startswith("image"):
+            url = (link.get("href") or "").strip()
+            if url:
+                return url
+
+    raw = entry.get("summary") or entry.get("description") or ""
+    match = re.search(r"<img[^>]+src=[\"']([^\"']+)[\"']", raw, re.IGNORECASE)
+    if match:
+        return match.group(1).strip()
+
+    return ""
+
+
+# Many outlets (Kathmandu Post, OnlineKhabar, ...) do not embed images in their
+# feed items but do set OpenGraph "og:image" on the article page. Attribute
+# order inside the <meta> tag varies, so each pattern covers one ordering.
+OG_IMAGE_PATTERNS = (
+    re.compile(r'<meta[^>]+property=["\']og:image["\'][^>]*content=["\']([^"\']+)["\']', re.IGNORECASE),
+    re.compile(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]*property=["\']og:image["\']', re.IGNORECASE),
+    re.compile(r'<meta[^>]+name=["\']twitter:image["\'][^>]*content=["\']([^"\']+)["\']', re.IGNORECASE),
+    re.compile(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]*name=["\']twitter:image["\']', re.IGNORECASE),
+)
+
+PAGE_READ_LIMIT = 1_000_000
+
+
+def enrich_image(article):
+    if article.get("image"):
+        return article
+
+    page_url = article.get("url")
+    if not page_url:
+        return article
+
+    try:
+        _resolve_host(page_url)
+        request = Request(
+            page_url,
+            headers={
+                "User-Agent": USER_AGENT,
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            },
+        )
+        with urlopen(request, timeout=FEED_TIMEOUT) as response:
+            content_type = response.headers.get("Content-Type", "")
+            html = response.read(PAGE_READ_LIMIT)
+    except Exception as exc:
+        logger.warning("Image enrichment failed for %s: %s", page_url, exc)
+        return article
+
+    if "html" not in content_type.lower():
+        return article
+
+    decoded = html.decode("utf-8", errors="ignore")
+    for pattern in OG_IMAGE_PATTERNS:
+        match = pattern.search(decoded)
+        if match:
+            image = match.group(1).strip()
+            if image:
+                article["image"] = image
+                break
+
+    return article
+
+
+def enrich_articles(articles):
+    # Fetching a whole page per article is expensive, so only enrich the ones
+    # the feed did not provide an image for (a bounded set of top headlines).
+    missing = [article for article in articles if not article.get("image")]
+    if not missing:
+        return articles
+
+    with ThreadPoolExecutor(max_workers=min(len(missing), 8)) as executor:
+        list(executor.map(enrich_image, missing))
+
+    return articles
+
+
+def classify_article(title, summary=""):
+    text = f"{title} {summary}".lower()
+
+    best_category = "General"
+    best_score = 0
+
+    for category, keywords in CATEGORY_KEYWORDS.items():
+        score = sum(1 for keyword in keywords if keyword in text)
+        if score > best_score:
+            best_category = category
+            best_score = score
+
+    return best_category
+
+
 def _is_dns_error(exc):
     message = str(exc).lower()
     return any(marker in message for marker in DNS_ERROR_MARKERS)
@@ -153,11 +436,16 @@ def fetch_feed(feed_url, source_name):
             entry.get("updated", "")
         )
 
+        summary = strip_html(entry.get("summary", entry.get("description", "")))[:500]
+
         articles.append({
             "title": title,
             "url": url,
             "source": source_name,
             "published": published,
+            "summary": summary,
+            "image": extract_image(entry),
+            "category": classify_article(title, summary),
         })
 
     return articles
@@ -235,6 +523,7 @@ def get_top_articles(limit=10):
     )
 
     top_articles = articles[:limit]
+    enrich_articles(top_articles)
 
     # Cache for 10 minutes, but never cache an empty result so a temporary
     # feed outage does not blank the dashboard while the cache is warm.

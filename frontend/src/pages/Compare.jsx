@@ -292,14 +292,16 @@ export default function Compare() {
   };
 
   // After the first generation, any change to the dataset/series/filters
-  // refreshes the comparison in place (debounced) rather than tearing the
-  // results down and requiring a manual regenerate.
+  // refreshes the comparison in place. Keep only a short debounce for rapid
+  // picker changes, and mark the old results as stale immediately.
   useEffect(() => {
     if (!hasGeneratedRef.current) return undefined;
     clearTimeout(refreshTimerRef.current);
+    requestIdRef.current += 1;
+    setLoading(true);
     refreshTimerRef.current = setTimeout(() => {
       generateComparison();
-    }, 350);
+    }, 100);
     return () => clearTimeout(refreshTimerRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [datasetId, a, b, filters]);
@@ -408,7 +410,10 @@ export default function Compare() {
         )}
 
         {showResults && (
-          <div className="space-y-6">
+          <div
+            className={`space-y-6 transition-opacity duration-150 ${updating ? 'opacity-70' : ''}`}
+            aria-busy={updating}
+          >
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className="text-xl font-bold text-onSurface">Comparison Visualization</h3>

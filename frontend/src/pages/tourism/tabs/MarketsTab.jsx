@@ -10,7 +10,7 @@ import SelectControl from '../components/SelectControl';
  * Source markets tab: the ranked origin countries for a year, with the source's
  * aggregate "Others" bucket reported underneath rather than ranked as a country.
  */
-export default function MarketsTab({ markets, onYearChange }) {
+export default function MarketsTab({ markets, onYearChange, saveButton }) {
   const { countryMarkets, otherMarketTotal, topMarket, years, year, yearTotal } = markets;
 
   return (
@@ -19,12 +19,15 @@ export default function MarketsTab({ markets, onYearChange }) {
         title="Source markets"
         subtitle={`Ranked by international arrivals in ${year || 'the latest available year'}`}
         action={
-          <SelectControl
-            label="Year"
-            value={year}
-            onChange={onYearChange}
-            options={years.map((option) => ({ value: option, label: option }))}
-          />
+          <>
+            <SelectControl
+              label="Year"
+              value={year}
+              onChange={onYearChange}
+              options={years.map((option) => ({ value: option, label: option }))}
+            />
+            {saveButton}
+          </>
         }
         note="Percentages use total arrivals for the selected year. The source’s aggregate “Others” category is shown separately and is not ranked as a country."
       >

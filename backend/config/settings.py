@@ -149,6 +149,22 @@ NEWS_RSS_FEEDS = {
         "name": "Nepali Times",
         "url": "https://nepalitimes.com/feed/",
     },
+    "kathmandu_post": {
+        "name": "The Kathmandu Post",
+        "url": "https://kathmandupost.com/rss",
+    },
+    "onlinekhabar_english": {
+        "name": "OnlineKhabar English",
+        "url": "https://english.onlinekhabar.com/feed/",
+    },
+    "onlinekhabar": {
+        "name": "OnlineKhabar",
+        "url": "https://www.onlinekhabar.com/feed/",
+    },
+    "nagarik_network": {
+        "name": "Nagarik Network",
+        "url": "https://nagariknetwork.com/rss",
+    },
 }
 
 
@@ -202,6 +218,9 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+
+MEDIA_URL = 'media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 
 
 

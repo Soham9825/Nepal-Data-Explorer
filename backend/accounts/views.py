@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth import login as auth_login, logout as auth_logout, authenticate
 from django.contrib.auth.hashers import check_password, make_password
-from .models import CustomUser, PasswordResetOTP, VerifiedEmail, EmailVerificationToken
+from .models import CustomUser, PasswordResetOTP, VerifiedEmail, EmailVerificationToken, SavedCollection, SavedItem
 from django.core.mail import EmailMessage, send_mail
 from smtplib import SMTPException
 from socket import error as SocketError
@@ -29,6 +29,7 @@ from .models import PasswordResetToken
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
+from rest_framework.exceptions import NotFound
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
@@ -243,6 +244,22 @@ def _jwt_for_user(user):
     return {'access': str(refresh.access_token), 'refresh': str(refresh)}
 
 
+def _avatar_url(user, request):
+    if not user.avatar:
+        return None
+    return request.build_absolute_uri(user.avatar.url)
+
+
+def _user_payload(user, request):
+    return {
+        'username': user.username,
+        'email': user.email,
+        'is_staff': user.is_staff,
+        'is_superuser': user.is_superuser,
+        'avatarUrl': _avatar_url(user, request),
+    }
+
+
 class DeletedUserSafeTokenRefreshView(TokenRefreshView):
     serializer_class = DeletedUserSafeTokenRefreshSerializer
 
@@ -275,10 +292,7 @@ def api_login(request):
 
     if user:
         return JsonResponse({
-            'username': user.username,
-            'email': user.email,
-            'is_staff': user.is_staff,
-            'is_superuser': user.is_superuser,
+            **_user_payload(user, request),
             **_jwt_for_user(user),
         })
     else:
@@ -297,12 +311,7 @@ def api_logout_api(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def api_me(request):
-    return Response({
-        'username': request.user.username,
-        'email': request.user.email,
-        'is_staff': request.user.is_staff,
-        'is_superuser': request.user.is_superuser,
-    })
+    return Response(_user_payload(request.user, request))
 
 
 @api_view(['GET'])
@@ -514,10 +523,7 @@ def api_verify_email(request):
     return JsonResponse({
         'success': True,
         'detail': 'Email verified successfully.',
-        'username': user.username,
-        'email': user.email,
-        'is_staff': user.is_staff,
-        'is_superuser': user.is_superuser,
+        **_user_payload(user, request),
         **_jwt_for_user(user),
     })
 
@@ -661,10 +667,7 @@ def api_oauth_exchange(request):
         return JsonResponse({'detail': 'Invalid or expired OAuth code.'}, status=400)
 
     return JsonResponse({
-        'username': user.username,
-        'email': user.email,
-        'is_staff': user.is_staff,
-        'is_superuser': user.is_superuser,
+        **_user_payload(user, request),
         **_jwt_for_user(user),
     })
 
@@ -724,6 +727,237 @@ def oauth_callback(request, provider):
     except Exception:
         logger.exception('OAuth callback failed for %s', provider)
         return _oauth_redirect(provider, 'oauth_request_failed')
+
+
+# --- Profile & saved collections ---
+
+ALLOWED_AVATAR_TYPES = {'image/jpeg', 'image/png', 'image/webp'}
+MAX_AVATAR_BYTES = 5 * 1024 * 1024
+
+
+@api_view(['GET', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def api_profile(request):
+    """Read the profile, or update it (multipart for the avatar image)."""
+    if request.method == 'GET':
+        return Response(_user_payload(request.user, request))
+
+    avatar = request.FILES.get('avatar')
+    if avatar:
+        if avatar.size > MAX_AVATAR_BYTES:
+            return Response({'detail': 'Image must be under 5 MB.'}, status=400)
+        if avatar.content_type not in ALLOWED_AVATAR_TYPES:
+            return Response({'detail': 'Only JPG, PNG or WebP images are allowed.'}, status=400)
+
+        # Drop the previous file so old uploads do not pile up.
+        previous = request.user.avatar
+        request.user.avatar = avatar
+        try:
+            request.user.save(update_fields=['avatar'])
+        except OperationalError:
+            logger.exception('Could not save avatar')
+            return Response({'detail': 'Could not save image. Please try again.'}, status=503)
+        if previous:
+            try:
+                previous.delete(save=False)
+            except Exception:
+                logger.warning('Could not remove previous avatar for %s', request.user.username)
+
+    # JSON PATCH may also clear the avatar entirely, so a user can have no photo.
+    if request.data.get('remove_avatar'):
+        previous = request.user.avatar
+        if previous:
+            request.user.avatar = None
+            try:
+                request.user.save(update_fields=['avatar'])
+            except OperationalError:
+                logger.exception('Could not clear avatar')
+                return Response({'detail': 'Could not remove the image. Please try again.'}, status=503)
+            try:
+                previous.delete(save=False)
+            except Exception:
+                logger.warning('Could not remove avatar file for %s', request.user.username)
+
+    return Response(_user_payload(request.user, request))
+
+
+def _collection_or_404(request, collection_id):
+    collection = SavedCollection.objects.filter(pk=collection_id, user=request.user).first()
+    if not collection:
+        raise NotFound({'detail': 'Collection not found.'})
+    return collection
+
+
+def _collection_payload(collection):
+    return {
+        'id': str(collection.id),
+        'name': collection.name,
+        'description': collection.description,
+        'section': collection.section,
+        'created_at': collection.created_at.isoformat(),
+        'items': [
+            {
+                'id': str(item.id),
+                'chart_key': item.chart_key,
+                'title': item.title,
+                'subtitle': item.subtitle,
+                'note': item.note,
+                'params': item.params,
+                'created_at': item.created_at.isoformat(),
+            }
+            for item in collection.items.all()
+        ],
+    }
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def api_collections(request):
+    if request.method == 'GET':
+        collections = SavedCollection.objects.filter(user=request.user).prefetch_related('items')
+        return Response({'collections': [_collection_payload(c) for c in collections]})
+
+    name = (request.data.get('name') or '').strip()
+    if not name or len(name) > 80:
+        return Response({'detail': 'Collection name is required (max 80 characters).'}, status=400)
+
+    section = (request.data.get('section') or '').strip() or 'tourism'
+    description = (request.data.get('description') or '').strip()[:255]
+
+    if SavedCollection.objects.filter(user=request.user, name=name).exists():
+        return Response({'detail': 'You already have a collection with that name.'}, status=400)
+
+    collection = SavedCollection.objects.create(
+        user=request.user, name=name, description=description, section=section
+    )
+    return Response(_collection_payload(collection), status=201)
+
+
+@api_view(['PATCH', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def api_collection_detail(request, collection_id):
+    collection = _collection_or_404(request, collection_id)
+
+    if request.method == 'DELETE':
+        collection.delete()
+        return Response(status=204)
+
+    name = (request.data.get('name') or '').strip()
+    if name and len(name) <= 80 and name != collection.name:
+        conflict = SavedCollection.objects.filter(user=request.user, name=name).exclude(pk=collection.pk)
+        if conflict.exists():
+            return Response({'detail': 'You already have a collection with that name.'}, status=400)
+        collection.name = name
+    if 'description' in request.data:
+        collection.description = (request.data.get('description') or '').strip()[:255]
+    collection.save()
+    return Response(_collection_payload(collection))
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def api_collection_items(request, collection_id):
+    collection = _collection_or_404(request, collection_id)
+
+    chart_key = (request.data.get('chart_key') or '').strip()
+    title = (request.data.get('title') or '').strip()
+    if not chart_key or not title:
+        return Response({'detail': 'chart_key and title are required.'}, status=400)
+
+    subtitle = (request.data.get('subtitle') or '').strip()[:400]
+    note = (request.data.get('note') or '').strip()[:1000]
+    params = request.data.get('params')
+    if params is None or not isinstance(params, dict):
+        params = {}
+
+    # Saving the same view twice just updates its note instead of duplicating it.
+    item = collection.items.filter(chart_key=chart_key).first()
+    if item:
+        item.title = title[:160]
+        item.subtitle = subtitle
+        item.note = note if note else item.note
+        item.params = {**item.params, **params}
+        item.save()
+    else:
+        item = collection.items.create(
+            chart_key=chart_key[:80],
+            title=title[:160],
+            subtitle=subtitle,
+            note=note,
+            params=params,
+        )
+    SavedCollection.objects.filter(pk=collection.pk).update(updated_at=timezone.now())
+    return Response(
+        {
+            'item': {
+                'id': str(item.id),
+                'chart_key': item.chart_key,
+                'title': item.title,
+                'subtitle': item.subtitle,
+                'note': item.note,
+                'params': item.params,
+                'created_at': item.created_at.isoformat(),
+            },
+            'collection': _collection_payload(collection),
+        },
+        status=201,
+    )
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def api_collection_item_detail(request, collection_id, item_id):
+    collection = _collection_or_404(request, collection_id)
+    item = collection.items.filter(pk=item_id).first()
+    if not item:
+        raise NotFound({'detail': 'Saved item not found.'})
+    item.delete()
+    SavedCollection.objects.filter(pk=collection.pk).update(updated_at=timezone.now())
+    return Response({'collection': _collection_payload(collection)})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def api_collection_toggle(request):
+    """Instagram-style bookmark toggle in a single round-trip.
+
+    `chart_key` and `title` come from the caller. If the chart is saved anywhere
+    it is removed everywhere; otherwise it is stored in the user's default
+    "Saved" collection (created on first use). Returns `{'saved': <bool>}` so
+    the SPA can flip its bookmark without separately fetching the collection.
+    """
+    chart_key = (request.data.get('chart_key') or '').strip()
+    title = (request.data.get('title') or '').strip()
+    if not chart_key or not title:
+        return Response({'detail': 'chart_key and title are required.'}, status=400)
+
+    subtitle = (request.data.get('subtitle') or '').strip()[:400]
+    params = request.data.get('params')
+    if params is None or not isinstance(params, dict):
+        params = {}
+
+    holders = SavedItem.objects.filter(collection__user=request.user, chart_key=chart_key)
+    if holders.exists():
+        collection_ids = list(holders.values_list('collection_id', flat=True).distinct())
+        holders.delete()
+        SavedCollection.objects.filter(pk__in=collection_ids).update(updated_at=timezone.now())
+        return Response({'saved': False})
+
+    bucket, _ = SavedCollection.objects.get_or_create(
+        user=request.user, name='Saved', defaults={'section': 'tourism'}
+    )
+    item = bucket.items.filter(chart_key=chart_key).first()
+    if item:
+        item.title = title[:160]
+        item.subtitle = subtitle
+        item.params = {**item.params, **params}
+        item.save()
+    else:
+        item = bucket.items.create(
+            chart_key=chart_key[:80], title=title[:160], subtitle=subtitle, params=params
+        )
+    SavedCollection.objects.filter(pk=bucket.pk).update(updated_at=timezone.now())
+    return Response({'saved': True, 'item': {'id': str(item.id)}})
 
 
 

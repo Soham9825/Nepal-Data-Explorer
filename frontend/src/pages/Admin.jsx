@@ -96,7 +96,7 @@ export default function Admin() {
 
       {/* Account summary */}
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
-        <SectionCard className="rounded-xl">
+        <SectionCard className="rounded-none">
           <p className="text-xs font-bold uppercase tracking-wider text-onSurface-variant">
             Signed in as
           </p>
@@ -105,13 +105,13 @@ export default function Admin() {
           </p>
           <p className="mt-1 truncate text-sm text-onSurface-variant">{currentUser?.email || ''}</p>
         </SectionCard>
-        <SectionCard className="rounded-xl">
+        <SectionCard className="rounded-none">
           <p className="text-xs font-bold uppercase tracking-wider text-onSurface-variant">
             Registered users
           </p>
           <p className="mt-2 text-lg font-bold text-onSurface">{users ? users.length : '…'}</p>
         </SectionCard>
-        <SectionCard className="rounded-xl">
+        <SectionCard className="rounded-none">
           <p className="text-xs font-bold uppercase tracking-wider text-onSurface-variant">
             Administrators
           </p>
@@ -123,7 +123,7 @@ export default function Admin() {
       <SectionCard
         title="Users"
         subtitle="Search and review registered accounts. Account management lives in the Django admin console."
-        className="rounded-xl"
+        className="rounded-none"
         contentClassName="p-0"
       >
         {error ? (

@@ -12,13 +12,15 @@
  * object, so a section reaches for `actions.setPartnerView` without the page
  * passing eight props down for it.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { DEFAULT_PARTNER_VIEW, DEFAULT_RANGE } from '../constants';
 
 /** Every province option, plus the national aggregate they all roll up into. */
 export const ALL_PROVINCES = 'All';
 
 export function useSectionFilters() {
+  const [searchParams] = useSearchParams();
   const [growthRange, setGrowthRange] = useState(DEFAULT_RANGE);
   const [tradeRange, setTradeRange] = useState(DEFAULT_RANGE);
   const [balanceRange, setBalanceRange] = useState(DEFAULT_RANGE);
@@ -27,6 +29,18 @@ export function useSectionFilters() {
   const [partnerView, setPartnerView] = useState(DEFAULT_PARTNER_VIEW);
   const [selectedProvince, setSelectedProvince] = useState(ALL_PROVINCES);
   const [growthMetric, setGrowthMetric] = useState('basic_price');
+
+  useEffect(() => {
+    setGrowthRange(searchParams.get('growthRange') || DEFAULT_RANGE);
+    setTradeRange(searchParams.get('tradeRange') || DEFAULT_RANGE);
+    setBalanceRange(searchParams.get('balanceRange') || DEFAULT_RANGE);
+    setSectorYear(searchParams.get('sectorYear') || '');
+    setPartnerView(searchParams.get('partnerView') || DEFAULT_PARTNER_VIEW);
+    setSelectedProvince(searchParams.get('selectedProvince') || ALL_PROVINCES);
+    setGrowthMetric(searchParams.get('growthMetric') || 'basic_price');
+    // Restore once from a profile bookmark; control changes own state thereafter.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return useMemo(
     () => ({

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { SectionCard } from '../components/ui/Card';
 import { Icon } from '../components/ui/Icon';
 import ErrorMessage from '../components/common/ErrorMessage';
@@ -10,6 +10,8 @@ import PieChart from '../components/charts/PieChart';
 import { PROVINCE_PATHS } from '../data/provincePaths';
 import { PROVINCE_ORDER } from '../services/provinceGDP';
 import { fetchProvinceDashboard, fetchProvincePopulation } from '../services/provincesAPI';
+import { collectionsApi } from '../services/auth';
+import SaveViewButton from './tourism/components/SaveViewButton';
 
 const MIN_ID = 1;
 const MAX_ID = 7;
@@ -209,6 +211,8 @@ const DestinationCarousel = ({ destinations = [], shape }) => {
 export default function Provinces() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const [savedKeys, setSavedKeys] = useState(() => new Set());
+  const [searchParams] = useSearchParams();
 
   const urlId = Number(id);
   const selectedId = Number.isInteger(urlId) && urlId >= MIN_ID && urlId <= MAX_ID ? urlId : MIN_ID;
@@ -220,6 +224,34 @@ export default function Provinces() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [shareYear, setShareYear] = useState(null);
+  useEffect(() => {
+    let mounted = true;
+    collectionsApi.list().then((payload) => {
+      if (!mounted) return;
+      setSavedKeys(new Set((payload.collections || []).flatMap((c) => c.items.map((i) => i.chart_key))));
+    }).catch(() => {});
+    return () => { mounted = false; };
+  }, []);
+
+  useEffect(() => {
+    const section = searchParams.get('section');
+    if (!section || loading || (selectedName && !dashboard)) return undefined;
+    const target = document.getElementById(`province-${section}`);
+    if (!target) return undefined;
+    const frame = requestAnimationFrame(() => target.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    return () => cancelAnimationFrame(frame);
+  }, [searchParams, loading, dashboard, selectedName]);
+
+  const saveButtonFor = (key, title, subtitle, params = {}) => {
+    const chartKey = `province-dashboard-${key}`;
+    const item = { chart_key: chartKey, title, subtitle, params: { provinceId: selectedId, ...params } };
+    return <SaveViewButton
+      item={item}
+      alreadySaved={savedKeys.has(chartKey)}
+      onSaved={(savedKey) => setSavedKeys((previous) => new Set(previous).add(savedKey))}
+      onRemoved={(savedKey) => setSavedKeys((previous) => { const next = new Set(previous); next.delete(savedKey); return next; })}
+    />;
+  };
   // Payloads already fetched this session, keyed by province name. There are
   // only seven provinces, so revisiting one is instant instead of refetching.
   const cacheRef = useRef(new Map());
@@ -227,6 +259,13 @@ export default function Provinces() {
   useEffect(() => {
     setShareYear(null);
   }, [selectedName]);
+
+  useEffect(() => {
+    const requestedYear = searchParams.get('shareYear');
+    if (requestedYear) setShareYear(Number(requestedYear));
+    // Restore once from a saved bookmark; province navigation resets the picker.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -355,7 +394,7 @@ export default function Provinces() {
     const displayName = new Map(officialDestinations.map((d) => [d.official_name, d.name]));
     const totals = new Map();
     visits.forEach((v) => {
-      if (v.year !== activeShareYear) return;
+      if (String(v.year) !== String(activeShareYear)) return;
       totals.set(
         v.destination,
         (totals.get(v.destination) || 0) + (toNumber(v.visitor_count) || 0)
@@ -502,7 +541,7 @@ export default function Provinces() {
 
           {/* Economy */}
           <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <SectionCard title="GDP Trend" subtitle="Nominal GDP at current prices, NPR million">
+            <SectionCard id="province-gdp" title="GDP Trend" subtitle="Nominal GDP at current prices, NPR million" action={saveButtonFor('gdp', 'GDP Trend', 'Nominal GDP at current prices, NPR million')}>
               {/* A deeper, heavier stroke than the other charts on this page.
                   `#0051d5` is the province-map blue, which is right for a small map
                   fill but reads as a mid-tone thread at chart width, and the pale
@@ -520,7 +559,7 @@ export default function Provinces() {
                 height={320}
               />
             </SectionCard>
-            <SectionCard title="GDP Growth Rate" subtitle="Annual growth at purchaser prices (%)">
+            <SectionCard id="province-growth" title="GDP Growth Rate" subtitle="Annual growth at purchaser prices (%)" action={saveButtonFor('growth', 'GDP Growth Rate', 'Annual growth at purchaser prices (%)')}>
               <div className="h-80">
                 <BarChart
                   data={growthRows}
@@ -537,12 +576,14 @@ export default function Provinces() {
           {visitsByYear.length > 0 && (
             <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <SectionCard
+                id="province-visits"
                 title="Tourism Visits by Year"
                 subtitle={
                   visitYears
                     ? `Official destination totals, ${visitYears} · Nepal Tourism Statistics`
                     : 'Official destination visits by year'
                 }
+                action={saveButtonFor('visits', 'Tourism Visits by Year', 'Official destination totals', { })}
               >
                 <div className="h-80">
                   <BarChart
@@ -555,12 +596,14 @@ export default function Provinces() {
                 </div>
               </SectionCard>
               <SectionCard
+                id="province-share"
                 title="Visitor Share by Destination"
                 subtitle={
                   destinationShare.year
                     ? `Share of official visits, ${destinationShare.year} · Nepal Tourism Statistics`
                     : 'Share of official visitor counts'
                 }
+                action={saveButtonFor('share', 'Visitor Share by Destination', `Official visitor share · ${activeShareYear || 'latest year'}`, { shareYear: activeShareYear })}
               >
                 <div className="flex h-80 flex-col items-center justify-center gap-6 overflow-y-auto pr-1 lg:flex-row lg:gap-8">
                   {destinationShare.items.length === 0 ? (

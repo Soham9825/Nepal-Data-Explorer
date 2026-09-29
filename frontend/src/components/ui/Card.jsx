@@ -7,6 +7,7 @@
  * change smooth, and callers can still override `className` per instance.
  */
 export function SectionCard({
+  id,
   title,
   subtitle,
   action,
@@ -17,6 +18,7 @@ export function SectionCard({
 }) {
   return (
     <div
+      id={id}
       className={`card-shadow flex flex-col border border-outline-variant bg-surface transition-colors duration-200 hover:border-primary ${className}`}
     >
       <div className="flex items-start justify-between gap-4 p-5 pb-0">

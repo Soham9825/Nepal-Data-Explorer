@@ -11,7 +11,7 @@ import YearSummaryCard from '../components/YearSummaryCard';
  * Trekking areas: the ranked areas for a year beside a summary that repeats only
  * the leaders, since the ranking on the left already shows every area.
  */
-export default function TrekkingPanel({ trekking, onYearChange }) {
+export default function TrekkingPanel({ trekking, onYearChange, saveButton }) {
   const { years, year, items, total, scrolls, leaders } = trekking;
 
   return (
@@ -23,12 +23,15 @@ export default function TrekkingPanel({ trekking, onYearChange }) {
           scrolls ? ' — scroll to see all' : ''
         }`}
         action={
-          <SelectControl
-            label="Year"
-            value={year}
-            onChange={onYearChange}
-            options={years.map((option) => ({ value: option, label: option }))}
-          />
+          <div className="flex items-center gap-2">
+            <SelectControl
+              label="Year"
+              value={year}
+              onChange={onYearChange}
+              options={years.map((option) => ({ value: option, label: option }))}
+            />
+            {saveButton}
+          </div>
         }
         note="Trekker totals are a separate tourism series and should not be compared directly with total arrivals."
       >

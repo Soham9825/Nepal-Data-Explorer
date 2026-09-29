@@ -7,19 +7,24 @@ embedded matplotlib charts.
 
 import io
 import re
+from contextlib import contextmanager
+from contextvars import ContextVar
 from datetime import datetime
 
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_LEFT, TA_CENTER
+from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.lib.utils import ImageReader
+from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.platypus import (
     BaseDocTemplate,
+    Flowable,
     Frame,
     HRFlowable,
     Image as RLImage,
+    KeepTogether,
     NextPageTemplate,
     PageBreak,
     PageTemplate,
@@ -28,6 +33,8 @@ from reportlab.platypus import (
     Table,
     TableStyle,
 )
+
+from xml.sax.saxutils import escape
 
 ACCENT = colors.HexColor("#b70011")
 ACCENT_DARK = colors.HexColor("#7a0a12")
@@ -38,9 +45,26 @@ LIGHT = colors.HexColor("#f5f3f1")
 LIGHT_ACCENT = colors.HexColor("#fbe9e7")
 WHITE = colors.HexColor("#ffffff")
 BORDER = colors.HexColor("#e3dedc")
+BAND = colors.HexColor("#efece9")
 
 PAGE_W, PAGE_H = A4
 MARGIN = 50
+
+# Chart height scale, tuned per report by measuring rendered whitespace. The
+# economic report needs smaller charts than national/tourism to avoid pushing a
+# trailing section onto a near-empty final page. Held in a ContextVar so
+# concurrent requests each keep their own scale.
+CHART_SCALE_NATIONAL = 0.95
+CHART_SCALE_ECONOMIC = 0.85
+_chart_scale = ContextVar("chart_scale", default=CHART_SCALE_NATIONAL)
+
+# Table density. Cell padding and the gap around each table are the two knobs
+# that decide how much vertical space a row costs, and therefore how many
+# pages the report needs.
+CELL_PADDING_V = 5
+CELL_PADDING_H = 6
+TABLE_SPACE_BEFORE = 6
+TABLE_SPACE_AFTER = 10
 CONTENT_W = PAGE_W - 2 * MARGIN
 
 _NUM_RE = re.compile(r"[-+]?(?:\d*\.\d+|\d+\.?)(?:[eE][-+]?\d+)?")
@@ -107,23 +131,22 @@ def _table_style(header_blend=ACCENT, accent=None):
     return TableStyle(
         [
             ("BACKGROUND", (0, 0), (-1, 0), accent or header_blend),
-            ("TEXTCOLOR", (0, 0), (-1, 0), WHITE),
             ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
             ("FONTSIZE", (0, 0), (-1, 0), 8.5),
             ("FONTSIZE", (0, 1), (-1, -1), 8.5),
             ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
-            ("TEXTCOLOR", (0, 0), (-1, -1), TEXT),
-            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [WHITE, LIGHT]),
+            ("TEXTCOLOR", (0, 1), (-1, -1), TEXT),
+            ("TEXTCOLOR", (0, 0), (-1, 0), WHITE),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [WHITE, BAND]),
             ("GRID", (0, 0), (-1, -1), 0.4, BORDER),
             ("BOX", (0, 0), (-1, -1), 0.9, BORDER),
             ("LINEABOVE", (0, 0), (-1, 0), 1.6, accent or header_blend),
             ("LINEBELOW", (0, -1), (-1, -1), 0.8, accent or header_blend),
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-            ("TOPPADDING", (0, 0), (-1, -1), 4),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-            ("LEFTPADDING", (0, 0), (-1, -1), 6),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-            ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
+            ("TOPPADDING", (0, 0), (-1, -1), CELL_PADDING_V),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), CELL_PADDING_V),
+            ("LEFTPADDING", (0, 0), (-1, -1), CELL_PADDING_H),
+            ("RIGHTPADDING", (0, 0), (-1, -1), CELL_PADDING_H),
         ]
     )
 
@@ -140,8 +163,9 @@ def _image(png_bytes, max_width=CONTENT_W, max_height=245):
     iw, ih = reader.getSize()
     width = min(max_width, iw)
     height = ih * (width / iw)
-    if height > max_height:
-        height = max_height
+    cap = max_height * _chart_scale.get()
+    if height > cap:
+        height = cap
         width = iw * (height / ih)
     return _BytesImage(png_bytes, width=width, height=height)
 
@@ -184,7 +208,9 @@ def _cover_page(canvas, doc):
     canvas.drawString(22 * mm, PAGE_H - 92 * mm, tagline)
     canvas.setFont("Helvetica", 13.5)
     canvas.setFillColor(MUTED)
-    for i, line in enumerate(_wrap_descriptor(descriptor, 92)):
+    for i, line in enumerate(
+        _wrap_descriptor(descriptor, CONTENT_W - 14 * mm, "Helvetica", 13.5)
+    ):
         canvas.drawString(22 * mm, PAGE_H - 104 * mm - i * 7 * mm, line)
 
     # Report period card
@@ -207,13 +233,17 @@ def _cover_page(canvas, doc):
     canvas.restoreState()
 
 
-def _wrap_descriptor(text, limit):
-    """Breaks a descriptor string into display lines for the cover page."""
+def _wrap_descriptor(text, max_width, font="Helvetica-Bold", size=13.5):
+    """Breaks a descriptor string into display lines that fit `max_width`.
+
+    Wraps on measured text width rather than character count, so wide glyphs
+    ("WORLD", "MMM") cannot push a line past the cover's content edge.
+    """
     words = str(text or "").split()
     lines, current = [], ""
     for word in words:
         candidate = f"{current} {word}".strip()
-        if len(candidate) <= limit:
+        if stringWidth(candidate, font, size) <= max_width:
             current = candidate
         else:
             if current:
@@ -277,25 +307,100 @@ def _h1_style(accent=None):
 
 def _section(story, styles, title, accent=None):
     """Adds a numbered section heading with an accent underline rule."""
-    story.append(Paragraph(title, _h1_style(accent)))
     story.append(
-        HRFlowable(
-            width="100%",
-            thickness=1.4,
-            color=(accent or ACCENT_DARK),
-            spaceBefore=0,
-            spaceAfter=10,
-            lineCap="butt",
+        KeepTogether(
+            [
+                Paragraph(title, _h1_style(accent)),
+                HRFlowable(
+                    width="100%",
+                    thickness=1.4,
+                    color=(accent or ACCENT_DARK),
+                    spaceBefore=0,
+                    spaceAfter=10,
+                    lineCap="butt",
+                ),
+            ]
         )
     )
 
 
-def _table(story, data, col_widths, style=None):
-    table = Table(data, colWidths=col_widths, repeatRows=1)
+_CELL_ALIGN = {TA_LEFT: "LEFT", TA_CENTER: "CENTER", TA_RIGHT: "RIGHT"}
+
+_NUMERIC_RE = re.compile(
+    r"^[\s(\[]*-?(?:[\d,]*\d)?(?:\.\d+)?%?\s*[\])]?"
+    r"(?:\s*(?:persons/km²|per\s+\d+|kg|km²|NRS|USD|M|m|B|bn|bn)\.?)?$"
+)
+
+
+def _looks_numeric(value):
+    """True when a cell is a plain number, currency, percentage or short unit."""
+    if isinstance(value, (int, float)):
+        return True
+    text = str(value).strip()
+    if not text or text in {"n/a", "-", "–", "—"}:
+        return False
+    return bool(_NUMERIC_RE.match(text))
+
+
+def _column_alignments(data):
+    """Derive per-column alignment from the body rows: numbers right, text left."""
+    body = data[1:] if len(data) > 1 else []
+    if not body:
+        return []
+    width = max(len(row) for row in body)
+    aligns = []
+    for col in range(width):
+        cells = [row[col] for row in body if col < len(row) and _looks_numeric(row[col])]
+        total = sum(1 for row in body if col < len(row))
+        # Require a clear majority so one stray "5.8" in a text column does not flip it.
+        aligns.append(TA_RIGHT if cells and len(cells) >= max(1, total * 0.6) else TA_LEFT)
+    return aligns
+
+
+def _make_table(data, col_widths, style=None):
+    """Builds a Table with wrapping cells and type-aware per-column alignment.
+
+    Cells are wrapped in Paragraphs so long labels wrap inside their column
+    instead of overflowing into the neighbouring one, and each column is
+    aligned from its own data type rather than a hand-tuned per-table rule.
+    """
+    aligns = _column_alignments(data)
+
+    def render(row, is_header):
+        cells = []
+        for col, value in enumerate(row):
+            if isinstance(value, Flowable):
+                cells.append(value)
+                continue
+            align = aligns[col] if col < len(aligns) else TA_LEFT
+            cell_style = ParagraphStyle(
+                f"cell-{is_header}-{col}",
+                fontName="Helvetica-Bold" if is_header else "Helvetica",
+                fontSize=8.5,
+                leading=11,
+                textColor=WHITE if is_header else TEXT,
+                alignment=align,
+            )
+            cells.append(Paragraph(escape(str(value)), cell_style))
+        return cells
+
+    rendered = [render(data[0], True)] + [render(row, False) for row in data[1:]]
+    table = Table(rendered, colWidths=col_widths, repeatRows=1)
     table.setStyle(style if style is not None else _table_style())
-    story.append(Spacer(1, 4))
+    return table
+
+
+def _table(story, data, col_widths, style=None):
+    """Render a table with wrapping, type-aware alignment and consistent spacing.
+
+    Cells are wrapped in Paragraphs so long labels wrap inside their column
+    instead of overflowing into the neighbouring one, and each column is
+    aligned from its own data type rather than a hand-tuned per-table rule.
+    """
+    table = _make_table(data, col_widths, style)
+    story.append(Spacer(1, TABLE_SPACE_BEFORE))
     story.append(table)
-    story.append(Spacer(1, 8))
+    story.append(Spacer(1, TABLE_SPACE_AFTER))
 
 
 def build_story(dataset, charts, trends, state):
@@ -585,17 +690,18 @@ def build_story(dataset, charts, trends, state):
         ["Dashboard filters", ", ".join(f"{k}: {v}" for k, v in (state.get("filters") or {}).items()) or "None"],
         ["Generated at", generated_label],
     ]
-    _table(
-        story,
-        params,
-        [CONTENT_W * 0.4, CONTENT_W * 0.6],
-        _table_style_aligned_left(),
-    )
     story.append(
-        Paragraph(
-            "This report was generated automatically from live database values and may be "
-            "regenerated at any time as new data becomes available.",
-            styles["small"],
+        KeepTogether(
+            [
+                Spacer(1, TABLE_SPACE_BEFORE),
+                _make_table(params, [CONTENT_W * 0.4, CONTENT_W * 0.6], _table_style_aligned_left()),
+                Spacer(1, TABLE_SPACE_AFTER),
+                Paragraph(
+                    "This report was generated automatically from live database values and may be "
+                    "regenerated at any time as new data becomes available.",
+                    styles["small"],
+                ),
+            ]
         )
     )
 
@@ -609,7 +715,25 @@ def _table_style_aligned_left():
 
 
 def _build_pdf(story, meta):
-    """Wraps a story + meta into a built PDF. Returns (pdf_bytes, filename)."""
+    """Wraps an already-assembled story + meta into a built PDF."""
+    return _build_pdf_inner(story, meta)
+
+
+@contextmanager
+def _chart_scaling(scale):
+    """Scopes the chart height scale over story assembly *and* PDF build.
+
+    `_image` resolves its geometry when the story is assembled, so the scale
+    has to be active before `build_*_story` runs, not just around `doc.build`.
+    """
+    token = _chart_scale.set(scale)
+    try:
+        yield
+    finally:
+        _chart_scale.reset(token)
+
+
+def _build_pdf_inner(story, meta):
     pdf_buffer = io.BytesIO()
     doc = BaseDocTemplate(
         pdf_buffer,
@@ -645,8 +769,9 @@ def _build_pdf(story, meta):
 
 def build_pdf(dataset, charts, trends, state):
     """Builds the full national dashboard PDF."""
-    story, meta = build_story(dataset, charts, trends, state)
-    return _build_pdf(story, meta)
+    with _chart_scaling(CHART_SCALE_NATIONAL):
+        story, meta = build_story(dataset, charts, trends, state)
+        return _build_pdf(story, meta)
 
 
 def build_tourism_story(dataset, charts, trends, state):
@@ -1156,17 +1281,18 @@ def build_tourism_story(dataset, charts, trends, state):
         ["Dashboard filters", ", ".join(f"{k}: {v}" for k, v in (state.get("filters") or {}).items()) or "None"],
         ["Generated at", generated_label],
     ]
-    _table(
-        story,
-        params,
-        [CONTENT_W * 0.4, CONTENT_W * 0.6],
-        _table_style_aligned_left(),
-    )
     story.append(
-        Paragraph(
-            "This report was generated automatically from live database values and may be "
-            "regenerated at any time as new data becomes available.",
-            styles["small"],
+        KeepTogether(
+            [
+                Spacer(1, TABLE_SPACE_BEFORE),
+                _make_table(params, [CONTENT_W * 0.4, CONTENT_W * 0.6], _table_style_aligned_left()),
+                Spacer(1, TABLE_SPACE_AFTER),
+                Paragraph(
+                    "This report was generated automatically from live database values and may be "
+                    "regenerated at any time as new data becomes available.",
+                    styles["small"],
+                ),
+            ]
         )
     )
 
@@ -1175,8 +1301,9 @@ def build_tourism_story(dataset, charts, trends, state):
 
 def build_tourism_pdf(dataset, charts, trends, state):
     """Builds the full tourism dashboard PDF."""
-    story, meta = build_tourism_story(dataset, charts, trends, state)
-    return _build_pdf(story, meta)
+    with _chart_scaling(CHART_SCALE_NATIONAL):
+        story, meta = build_tourism_story(dataset, charts, trends, state)
+        return _build_pdf(story, meta)
 
 
 def build_economic_story(dataset, charts, trends, state):
@@ -1638,17 +1765,18 @@ def build_economic_story(dataset, charts, trends, state):
         ["Dashboard filters", ", ".join(f"{k}: {v}" for k, v in (state.get("filters") or {}).items()) or "None"],
         ["Generated at", generated_label],
     ]
-    _table(
-        story,
-        params,
-        [CONTENT_W * 0.4, CONTENT_W * 0.6],
-        _table_style_aligned_left(),
-    )
     story.append(
-        Paragraph(
-            "This report was generated automatically from live database values and may be "
-            "regenerated at any time as new data becomes available.",
-            styles["small"],
+        KeepTogether(
+            [
+                Spacer(1, TABLE_SPACE_BEFORE),
+                _make_table(params, [CONTENT_W * 0.4, CONTENT_W * 0.6], _table_style_aligned_left()),
+                Spacer(1, TABLE_SPACE_AFTER),
+                Paragraph(
+                    "This report was generated automatically from live database values and may be "
+                    "regenerated at any time as new data becomes available.",
+                    styles["small"],
+                ),
+            ]
         )
     )
 
@@ -1657,5 +1785,6 @@ def build_economic_story(dataset, charts, trends, state):
 
 def build_economic_pdf(dataset, charts, trends, state):
     """Builds the full economic dashboard PDF."""
-    story, meta = build_economic_story(dataset, charts, trends, state)
-    return _build_pdf(story, meta)
+    with _chart_scaling(CHART_SCALE_ECONOMIC):
+        story, meta = build_economic_story(dataset, charts, trends, state)
+        return _build_pdf(story, meta)

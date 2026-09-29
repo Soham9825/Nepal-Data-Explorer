@@ -16,6 +16,8 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import include, path
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -25,3 +27,8 @@ urlpatterns = [
     path('api/news/', include('news.urls')),
     path('api/reports/', include('reports.urls')),
 ]
+
+# Serve user uploads in development. Production deployments must configure the
+# platform's media serving (e.g. an S3 bucket or a CDN) instead of this.
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

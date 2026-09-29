@@ -29,6 +29,7 @@ export default function OverviewTab({
   stayRange,
   setTrendRange,
   setStayRange,
+  saveButtonFor,
 }) {
   const {
     visibleArrivalTrend,
@@ -67,6 +68,7 @@ export default function OverviewTab({
             subtitle={`Calendar year · ${periodStart(visibleAvgStay)} to ${periodEnd(
               visibleAvgStay
             )} · average days per arrival`}
+            action={saveButtonFor('stay')}
           >
             <div className="h-[200px] min-h-0 flex-1">
               <LineChart
@@ -138,6 +140,7 @@ export default function OverviewTab({
             subtitle={`Calendar year · ${periodStart(visibleArrivalTrend)} to ${periodEnd(
               visibleArrivalTrend
             )} · total arrivals`}
+            action={saveButtonFor('arrivals')}
             note="Hover any year for arrivals and the year-on-year change. Arrivals fell sharply in 2020 and 2021 during the pandemic period."
           >
             <div className="min-h-[384px] flex-1">
@@ -164,6 +167,7 @@ export default function OverviewTab({
             subtitle={`Fiscal year · ${periodStart(visibleRevenueTrend)} to ${periodEnd(
               visibleRevenueTrend
             )} · US$ millions${trends.latestRevenue?.fiscal_year.endsWith('*') ? ' · latest year estimated' : ''}`}
+            action={saveButtonFor('revenue')}
             note="Revenue is reported by fiscal year, so it is not directly comparable with the calendar-year arrival series. An asterisk marks a source estimate."
           >
             <div className="min-h-[384px] flex-1">

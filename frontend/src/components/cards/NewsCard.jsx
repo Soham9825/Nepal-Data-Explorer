@@ -1,4 +1,7 @@
-export default function NewsCard({ tag, tagColor, tagBg, time, headline, onClick }) {
+import { useState } from 'react';
+
+export default function NewsCard({ tag, tagColor, tagBg, time, headline, image, onClick }) {
+  const [imgFailed, setImgFailed] = useState(false);
   const handleKeyDown = (event) => {
     if ((event.key === 'Enter' || event.key === ' ') && onClick) {
       event.preventDefault();
@@ -16,6 +19,21 @@ export default function NewsCard({ tag, tagColor, tagBg, time, headline, onClick
       aria-label={headline}
     >
       <div className="w-[3px] rounded-[2px] flex-shrink-0" style={{ background: tagColor }} />
+      {image && !imgFailed ? (
+        <img
+          src={image}
+          alt=""
+          loading="lazy"
+          onError={() => setImgFailed(true)}
+          className="w-16 h-14 object-cover rounded-sm flex-shrink-0"
+        />
+      ) : (
+        <div className="w-16 h-14 flex-shrink-0 bg-primary flex items-center justify-center rounded-sm px-1">
+          <span className="text-white text-[7px] font-bold uppercase tracking-[0.05em] text-center leading-tight">
+            Nepal Data Explorer
+          </span>
+        </div>
+      )}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1.5 flex-wrap">
           <span
