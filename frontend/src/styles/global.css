@@ -69,10 +69,37 @@
   .animate-spin {
     animation: spin 1s linear infinite;
   }
+
+  /* Slide up from the bottom so a bottom-anchored toast enters naturally. */
+  .animate-toast-up {
+    animation: toast-up 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  }
 }
 
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@keyframes toast-in {
+  from {
+    transform: translateX(12px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes toast-up {
+  from {
+    transform: translateY(12px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
   }
 }

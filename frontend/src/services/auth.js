@@ -50,6 +50,12 @@ const removeStored = (key) => {
   }
 };
 
+const jsonOrThrow = async (res, fallback) => {
+  const data = await res.json().catch(() => ({}));
+  if (res.ok) return data;
+  throw new Error(data.detail || fallback);
+};
+
 /**
  * SimpleJWT tokens are `header.payload.signature`. Anything else in storage is
  * garbage — most often the literal text "undefined" written by the old
@@ -62,7 +68,10 @@ const removeStored = (key) => {
  * works with no Authorization header fails once a junk one is attached.
  */
 const looksLikeJwt = (token) =>
-  typeof token === 'string' && token !== 'undefined' && token !== 'null' && token.split('.').length === 3;
+  typeof token === 'string' &&
+  token !== 'undefined' &&
+  token !== 'null' &&
+  token.split('.').length === 3;
 
 const readToken = (key) => {
   const token = readStored(key);
@@ -180,7 +189,9 @@ export const auth = {
     const token = auth.getAccessToken();
     if (token) {
       const res = await fetch(`${AUTH_BASE}/logout/`, {
-        method: 'POST', credentials: 'include', headers: { ...auth.authenticatedHeaders() },
+        method: 'POST',
+        credentials: 'include',
+        headers: { ...auth.authenticatedHeaders() },
       });
       if (!res.ok && res.status !== 401) return false;
     }
@@ -193,7 +204,10 @@ export const auth = {
     const res = await fetch(`${AUTH_BASE}/signup/`, {
       method: 'POST',
       credentials: 'include',
-      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf.csrfToken || csrf.csrf_token },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrf.csrfToken || csrf.csrf_token,
+      },
       body: JSON.stringify({ username, email, password, confirm_password }),
     });
     if (!res.ok) return parseError(res, 'Signup failed');
@@ -280,7 +294,9 @@ export const auth = {
   requestPasswordReset: async (email) => {
     const csrf = await auth.getCSRF();
     const res = await fetch(`${AUTH_BASE}/password-reset/request/`, {
-      method: 'POST', credentials: 'include', headers: csrfHeader(csrf),
+      method: 'POST',
+      credentials: 'include',
+      headers: csrfHeader(csrf),
       body: JSON.stringify({ email }),
     });
     if (!res.ok) return parseError(res, 'Could not send reset code');
@@ -290,7 +306,9 @@ export const auth = {
   verifyPasswordResetOtp: async (email, otp) => {
     const csrf = await auth.getCSRF();
     const res = await fetch(`${AUTH_BASE}/password-reset/verify/`, {
-      method: 'POST', credentials: 'include', headers: csrfHeader(csrf),
+      method: 'POST',
+      credentials: 'include',
+      headers: csrfHeader(csrf),
       body: JSON.stringify({ email, otp }),
     });
     if (!res.ok) return parseError(res, 'Invalid or expired reset code');
@@ -300,7 +318,9 @@ export const auth = {
   confirmPasswordReset: async (reset_token, password) => {
     const csrf = await auth.getCSRF();
     const res = await fetch(`${AUTH_BASE}/password-reset/confirm/`, {
-      method: 'POST', credentials: 'include', headers: csrfHeader(csrf),
+      method: 'POST',
+      credentials: 'include',
+      headers: csrfHeader(csrf),
       body: JSON.stringify({ reset_token, password }),
     });
     if (!res.ok) return parseError(res, 'Could not reset password');
@@ -340,6 +360,123 @@ export const auth = {
     });
     if (!res.ok) return parseError(res, 'OAuth sign-in failed');
     return res.json();
+  },
+};
+
+/**
+ * Profile & saved collections.
+ *
+ * These calls decorate an access token with the auth machinery above. Media (the
+ * avatar image) is served from the same Django origin, which the Vite dev proxy
+ * forwards under `/media`.
+ */
+
+/** Signals the layout to re-read `/me` after a profile change (e.g. a new avatar). */
+const notifyUserUpdated = () => {
+  try {
+    window.dispatchEvent(new CustomEvent('nde-user-updated'));
+  } catch {
+    /* not in a browser */
+  }
+};
+
+const authFetch = async (path, options = {}) => {
+  const doFetch = (token) =>
+    fetch(`${AUTH_BASE}${path}`, {
+      credentials: 'include',
+      ...options,
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(options.headers || {}),
+      },
+    });
+
+  let res = await doFetch(auth.getAccessToken());
+
+  // An expired 30-minute access token would otherwise 401 every profile and
+  // collection call thirty minutes into a session. Refresh once and retry — the
+  // same recovery the /me/ path already uses.
+  if (res.status === 401) {
+    const fresh = await refreshAccessToken();
+    if (fresh) res = await doFetch(fresh);
+  }
+
+  if (res.status === 204) return null;
+  return jsonOrThrow(res, `${res.status} ${res.statusText}`);
+};
+
+export const profileApi = {
+  get: () => authFetch('/profile/'),
+
+  /* Upload a new avatar image (multipart). */
+  updateAvatar: async (file) => {
+    const form = new FormData();
+    form.append('avatar', file);
+    const data = await authFetch('/profile/', { method: 'PATCH', body: form });
+    auth.cacheUser({ ...auth.getCachedUser(), avatarUrl: data.avatarUrl });
+    notifyUserUpdated();
+    return data;
+  },
+
+  /* Clear the avatar so the profile falls back to initials. */
+  removeAvatar: async () => {
+    const data = await authFetch('/profile/', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ remove_avatar: true }),
+    });
+    auth.cacheUser({ ...auth.getCachedUser(), avatarUrl: null });
+    notifyUserUpdated();
+    return data;
+  },
+};
+
+export const collectionsApi = {
+  list: async () => {
+    const data = await authFetch('/collections/');
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('nde-collections-loaded', { detail: data.collections || [] })
+      );
+    }
+    return data;
+  },
+
+  create: async ({ name, description = '', section = 'tourism' }) => {
+    const data = await authFetch('/collections/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, description, section }),
+    });
+    return data;
+  },
+
+  rename: async (id, { name, description }) =>
+    authFetch(`/collections/${id}/`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, description }),
+    }),
+
+  remove: (id) => authFetch(`/collections/${id}/`, { method: 'DELETE' }),
+
+  addItem: (collectionId, item) =>
+    authFetch(`/collections/${collectionId}/items/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(item),
+    }),
+
+  removeItem: (collectionId, itemId) =>
+    authFetch(`/collections/${collectionId}/items/${itemId}/`, { method: 'DELETE' }),
+
+  toggle: async (item) => {
+    const data = await authFetch('/collections/toggle/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(item),
+    });
+    return data;
   },
 };
 

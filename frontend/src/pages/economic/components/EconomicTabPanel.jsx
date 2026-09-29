@@ -3,11 +3,26 @@ import { TAB_BY_ID, reservedSectionHeight, sectionElementId } from '../constants
 import { SECTION_BY_ID } from '../sections';
 import EconomicKpiStrip from './EconomicKpiStrip';
 import LazySection from './LazySection';
+import SaveViewButton from '../../tourism/components/SaveViewButton';
 
+function sectionParams(id, actions) {
+  const params = {
+    sectoral: { sectorYear: actions.sectorYear },
+    growth: { growthRange: actions.growthRange },
+    trade: { tradeRange: actions.tradeRange },
+    partners: { partnerView: actions.partnerView },
+    balance: { balanceRange: actions.balanceRange },
+    province: { selectedProvince: actions.selectedProvince, growthMetric: actions.growthMetric },
+  };
+  return params[id] || {};
+}
 
-function SectionSlot({ id, view, actions, eager }) {
+function SectionSlot({ id, view, actions, eager, saveButtonFor }) {
   const section = SECTION_BY_ID[id];
   const Body = section.content;
+  const saveItem = id === 'appi_table'
+    ? null
+    : saveButtonFor(id, section.title, section.subtitle(view), sectionParams(id, actions));
 
   return (
     <div id={sectionElementId(id)} className="scroll-mt-24">
@@ -15,7 +30,19 @@ function SectionSlot({ id, view, actions, eager }) {
         <SectionCard
           title={section.title}
           subtitle={section.subtitle(view)}
-          action={section.action(view, actions)}
+          action={
+            <div className="flex items-center gap-2">
+              {section.action(view, actions)}
+              {saveItem && (
+                <SaveViewButton
+                  item={saveItem}
+                  alreadySaved={saveItem.alreadySaved}
+                  onSaved={saveItem.onSaved}
+                  onRemoved={saveItem.onRemoved}
+                />
+              )}
+            </div>
+          }
           className="h-full rounded-sm"
         >
           <Body view={view} actions={actions} />
@@ -26,7 +53,7 @@ function SectionSlot({ id, view, actions, eager }) {
 }
 
 
-export default function EconomicTabPanel({ activeTab, view, actions, cards }) {
+export default function EconomicTabPanel({ activeTab, view, actions, cards, saveButtonFor }) {
   const tab = TAB_BY_ID[activeTab];
   if (!tab) return null;
 
@@ -52,6 +79,7 @@ export default function EconomicTabPanel({ activeTab, view, actions, cards }) {
                 view={view}
                 actions={actions}
                 eager={id === firstSectionId}
+                saveButtonFor={saveButtonFor}
               />
             ))}
           </div>

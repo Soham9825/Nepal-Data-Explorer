@@ -15,9 +15,11 @@
  * tab, and resolving them up front is what keeps a tab from snapping its
  * selection when it is opened.
  */
+import { useEffect, useState } from 'react';
 import ErrorMessage from '../../components/common/ErrorMessage';
 import Loader from '../../components/common/Loader';
 import EmptyPanel from './components/EmptyPanel';
+import SaveViewButton from './components/SaveViewButton';
 import TourismFooter from './components/TourismFooter';
 import TourismHero from './components/TourismHero';
 import TourismTabBar from './components/TourismTabBar';
@@ -32,10 +34,28 @@ import { useTourismData } from './hooks/useTourismData';
 import { useTourismNavigation } from './hooks/useTourismNavigation';
 import { useTourismTrends } from './hooks/useTourismTrends';
 import { selectProvinceTourism } from './series';
+import { collectionsApi } from '../../services/auth';
 import DestinationsTab from './tabs/DestinationsTab';
 import MarketsTab from './tabs/MarketsTab';
 import OverviewTab from './tabs/OverviewTab';
 import ProfileTab from './tabs/ProfileTab';
+
+// Each chart inside the Visitor behavior tab is bookmarked on its own — a user
+// picks the specific reading they want, not the whole tab.
+const SECTION_SAVE_META = {
+  stay: { key: 'tourism-overview-stay', title: 'Average length of stay' },
+  arrivals: { key: 'tourism-overview-arrivals', title: 'Tourist arrivals' },
+  revenue: { key: 'tourism-overview-revenue', title: 'Tourism revenue' },
+  markets: { key: 'tourism-markets-source', title: 'Source markets' },
+  destinations: { key: 'tourism-destinations-ranking', title: 'Province destinations' },
+  destinationTrend: { key: 'tourism-destinations-trend', title: 'Destination trend' },
+  purpose: { key: 'tourism-profile-purpose', title: 'Purpose of visit' },
+  age: { key: 'tourism-profile-age', title: 'Visitor age groups' },
+  gender: { key: 'tourism-profile-gender', title: 'Visitor gender' },
+  trekking: { key: 'tourism-profile-trekking', title: 'Trekking areas' },
+};
+
+const yearLabel = (value) => (value ? `Year ${value}` : 'Latest');
 
 export default function Tourism() {
   const { data, loading, error, retry } = useTourismData();
@@ -52,6 +72,73 @@ export default function Tourism() {
     data,
     filters.selectedProvince,
     filters.selectedProvinceScope
+  );
+
+  // Chart keys already saved in any of the user's collections, so the bookmark
+  // can reflect the current view's saved state without a second round-trip.
+  const [savedKeys, setSavedKeys] = useState(() => new Set());
+  useEffect(() => {
+    let mounted = true;
+    collectionsApi
+      .list()
+      .then((payload) => {
+        if (!mounted) return;
+        const keys = new Set();
+        (payload.collections || []).forEach((collection) =>
+          collection.items.forEach((item) => keys.add(item.chart_key))
+        );
+        setSavedKeys(keys);
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Summary line and filter snapshot for each savable chart, built from the
+  // currently-selected years so a bookmark restores the exact reading later.
+  const paramsForSection = {
+    stay: { stayRange: filters.stayRange },
+    arrivals: { arrivalRange: filters.arrivalRange },
+    revenue: { arrivalRange: filters.revenueRange },
+    markets: { sourceYear: filters.selectedSourceYear },
+    destinations: { province: destinations.activeProvince, visitorScope: destinations.activeScope },
+    destinationTrend: { province: destinations.activeProvince, visitorScope: destinations.activeScope },
+    purpose: { purposeYear: filters.purposeYear },
+    age: { ageYear: filters.ageYear },
+    gender: { sexYear: filters.sexYear },
+    trekking: { trekkingYear: filters.trekkingYear },
+  };
+  const subtitleForSection = {
+    stay: `Average visitor stay · ${filters.stayRange} year range`,
+    arrivals: `Tourist arrivals · ${filters.arrivalRange} year range`,
+    revenue: `Tourism revenue · ${filters.revenueRange} year range`,
+    markets: `Ranked source markets in ${yearLabel(filters.selectedSourceYear || markets.year)}`,
+    destinations: `${destinations.activeProvince} · ${destinations.activeScopeRecord?.label || 'selected scope'} · ${destinations.latestYear || 'latest year'}`,
+    destinationTrend: `${destinations.activeProvince} · ${destinations.activeScopeRecord?.label || 'selected scope'}`,
+    purpose: `Recorded arrivals by purpose in ${yearLabel(filters.purposeYear)}`,
+    age: `Reported arrivals and shares in ${yearLabel(filters.ageYear)}`,
+    gender: `Arrival counts by year · composition for ${yearLabel(filters.sexYear)}`,
+    trekking: `Reported trekkers by area in ${yearLabel(filters.trekkingYear)}`,
+  };
+  const saveButtonFor = (section) => (
+    <SaveViewButton
+      item={{
+        chart_key: SECTION_SAVE_META[section].key,
+        title: SECTION_SAVE_META[section].title,
+        subtitle: subtitleForSection[section],
+        params: paramsForSection[section],
+      }}
+      alreadySaved={savedKeys.has(SECTION_SAVE_META[section].key)}
+      onSaved={(key) => setSavedKeys((previous) => new Set(previous).add(key))}
+      onRemoved={(key) =>
+        setSavedKeys((previous) => {
+          const next = new Set(previous);
+          next.delete(key);
+          return next;
+        })
+      }
+    />
   );
 
   // Assembled on each render rather than memoised: it is a single pass over rows
@@ -113,11 +200,12 @@ export default function Tourism() {
             stayRange={filters.stayRange}
             setTrendRange={filters.setTrendRange}
             setStayRange={filters.setStayRange}
+            saveButtonFor={saveButtonFor}
           />
         )}
 
         {activeTab === 'markets' && (
-          <MarketsTab markets={markets} onYearChange={filters.setSelectedSourceYear} />
+          <MarketsTab markets={markets} onYearChange={filters.setSelectedSourceYear} saveButton={saveButtonFor('markets')} />
         )}
 
         {activeTab === 'profile' && (
@@ -130,6 +218,10 @@ export default function Tourism() {
             onAgeYearChange={filters.setAgeYear}
             onSexYearChange={filters.setSexYear}
             onTrekkingYearChange={filters.setTrekkingYear}
+            purposeSave={saveButtonFor('purpose')}
+            ageSave={saveButtonFor('age')}
+            genderSave={saveButtonFor('gender')}
+            trekkingSave={saveButtonFor('trekking')}
           />
         )}
 
@@ -138,6 +230,8 @@ export default function Tourism() {
             destinations={destinations}
             onProvinceChange={filters.setSelectedProvince}
             onScopeChange={filters.setSelectedProvinceScope}
+            rankingSave={saveButtonFor('destinations')}
+            trendSave={saveButtonFor('destinationTrend')}
           />
         )}
       </div>

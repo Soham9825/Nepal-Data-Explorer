@@ -37,23 +37,34 @@ export default function DashboardLayout({ children, pageTitle }) {
 
   useEffect(() => {
     let mounted = true;
-    auth
-      .getCurrentUser()
-      .then((user) => {
-        if (!mounted || !user) return;
-        setCurrentUser({
-          name: user.username || user.email || DEFAULT_USER.name,
-          role:
-            user.role || (user.is_superuser || user.is_staff ? 'Administrator' : DEFAULT_USER.role),
-          avatarUrl: user.avatarUrl,
-          isStaff: user.is_staff || user.is_superuser || false,
+    const refresh = () =>
+      auth
+        .getCurrentUser({ force: true })
+        .then((user) => {
+          if (!mounted || !user) return;
+          setCurrentUser({
+            name: user.username || user.email || DEFAULT_USER.name,
+            role:
+              user.role ||
+              (user.is_superuser || user.is_staff ? 'Administrator' : DEFAULT_USER.role),
+            avatarUrl: user.avatarUrl,
+            isStaff: user.is_staff || user.is_superuser || false,
+          });
+        })
+        .catch((error) => {
+          console.warn('Could not load current user', error);
         });
-      })
-      .catch((error) => {
-        console.warn('Could not load current user', error);
-      });
+
+    refresh();
+
+    // The profile page flips the avatar/image and re-serialises the cached user;
+    // this event tells the chrome to pull the fresh copy in.
+    const onProfileUpdate = () => refresh();
+    window.addEventListener('nde-user-updated', onProfileUpdate);
+
     return () => {
       mounted = false;
+      window.removeEventListener('nde-user-updated', onProfileUpdate);
     };
   }, []);
 

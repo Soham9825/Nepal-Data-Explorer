@@ -45,6 +45,14 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState('');
 
+  // Read the OAuth callback query synchronously on first render so the very
+  // first paint shows the "signing you in" screen — not a brief flash of the
+  // login form while the code exchange round-trips.
+  const [oauthPending, setOauthPending] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('oauth') === 'success' && params.get('code');
+  });
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const oauthResult = params.get('oauth');
@@ -89,7 +97,10 @@ export default function Login() {
         auth.cacheUser(user);
         navigate('/national', { replace: true });
       })
-      .catch((err) => alert(err.message || 'Google sign-in failed'))
+      .catch((err) => {
+        alert(err.message || 'Google sign-in failed');
+        setOauthPending(false);
+      })
       .finally(() => setLoading(false));
   }, [navigate]);
 
@@ -108,6 +119,32 @@ export default function Login() {
       }
     })();
   };
+
+  // While an OAuth callback is being exchanged, show a focused "signing you in"
+  // screen instead of the credential form, so the redirect never flashes it.
+  if (oauthPending) {
+    return (
+      <div
+        className="nepal-auth flex min-h-screen items-center justify-center"
+        style={{ background: 'var(--snow)' }}
+      >
+        <div className="flex flex-col items-center gap-5">
+          <span
+            className="flex h-12 w-12 items-center justify-center rounded-full"
+            style={{ background: 'var(--crimson)' }}
+          >
+            <span
+              className="h-5 w-5 animate-spin rounded-full border-2 border-white/40 border-t-white"
+              aria-hidden="true"
+            />
+          </span>
+          <span className="text-sm font-medium" style={{ color: 'var(--ink)' }}>
+            Signing you in…
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

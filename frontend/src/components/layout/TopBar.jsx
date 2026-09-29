@@ -2,10 +2,12 @@
 // src/layout/TopBar.jsx
 // ============================================================
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import UserCard from '../common/UserCard';
 import TopBarSearch from './TopBarSearch';
 
 export default function TopBar({ pageTitle, user }) {
+  const navigate = useNavigate();
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
@@ -56,7 +58,7 @@ export default function TopBar({ pageTitle, user }) {
           <span className="text-xs text-onSurface-variant">{formattedDate}</span>
         </div>
 
-        <UserCard user={user} variant="compact" />
+        <UserCard user={user} variant="compact" onOpenProfile={() => navigate('/profile')} />
       </div>
     </div>
   );

@@ -7,6 +7,7 @@
  * obvious spot instead of beside the derivations it feeds.
  */
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { PROVINCE_ORDER } from '../../../services/provinceGDP';
 
 /**
@@ -27,11 +28,28 @@ export function useTourismFilters(requestedProvince) {
   const [ageYear, setAgeYear] = useState('');
   const [selectedProvince, setSelectedProvince] = useState('');
   const [selectedProvinceScope, setSelectedProvinceScope] = useState('');
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
     if (!PROVINCE_ORDER.includes(requestedProvince)) return;
     setSelectedProvince(requestedProvince);
   }, [requestedProvince]);
+
+  // A bookmarked chart can restore its captured reading through `?<param>=<year>`
+  // (see Profile's openSaved). Read once on mount so a fresh link lands on the
+  // exact year the user saved; picking a year by hand afterwards owns the state.
+  useEffect(() => {
+    setArrivalRange(searchParams.get('arrivalRange') || 'all');
+    setStayRange(searchParams.get('stayRange') || 'all');
+    setPurposeYear(searchParams.get('purposeYear') || '');
+    setAgeYear(searchParams.get('ageYear') || '');
+    setSexYear(searchParams.get('sexYear') || '');
+    setTrekkingYear(searchParams.get('trekkingYear') || '');
+    setSelectedSourceYear(searchParams.get('sourceYear') || '');
+    setSelectedProvince(searchParams.get('province') || requestedProvince || '');
+    setSelectedProvinceScope(searchParams.get('visitorScope') || '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Arrivals and revenue share one control in the trends section: the two series
   // sit side by side and are read together, so a single period keeps them

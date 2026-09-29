@@ -13,7 +13,7 @@ import YearSummaryCard from '../components/YearSummaryCard';
  *
  * The history feeds the composition above it, so the two can be read together.
  */
-export default function GenderPanel({ gender, onYearChange }) {
+export default function GenderPanel({ gender, onYearChange, saveButton }) {
   const { years, year, series, total, breakdown, hasComposition, summaryRows, narrative } = gender;
 
   return (
@@ -22,12 +22,15 @@ export default function GenderPanel({ gender, onYearChange }) {
       title="Visitor gender"
       subtitle="Arrival counts by year · composition shown for selected year"
       action={
-        <SelectControl
-          label="Year"
-          value={year}
-          onChange={onYearChange}
-          options={years.map((option) => ({ value: option, label: option }))}
-        />
+        <div className="flex items-center gap-2">
+          <SelectControl
+            label="Year"
+            value={year}
+            onChange={onYearChange}
+            options={years.map((option) => ({ value: option, label: option }))}
+          />
+          {saveButton}
+        </div>
       }
       note="Lines show reported arrivals; the selected-year composition is calculated from those counts."
     >

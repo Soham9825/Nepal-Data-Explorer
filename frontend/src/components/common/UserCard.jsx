@@ -13,32 +13,62 @@ function getInitials(name = '') {
  *
  * variant="compact"  -> avatar + name/role only (TopBar style, no card bg)
  * variant="card"     -> avatar + name/role + logout button, in a bg card (Sidebar style)
+ *
+ * Passing `onOpenProfile` makes the identity (avatar + name) clickable so the user
+ * can reach their profile page; the logout button keeps its own handler.
  */
-export default function UserCard({ user, variant = 'compact', onLogout, className = '' }) {
+export default function UserCard({
+  user,
+  variant = 'compact',
+  onLogout,
+  onOpenProfile,
+  className = '',
+}) {
   const currentUser = user || { name: 'Guest User', role: 'Viewer' };
   const initials = getInitials(currentUser.name);
+
+  const identity = (
+    <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary text-sm font-bold text-white">
+      {currentUser.avatarUrl ? (
+        <img
+          src={currentUser.avatarUrl}
+          alt={currentUser.name}
+          className="w-full h-full object-cover"
+        />
+      ) : (
+        initials
+      )}
+    </div>
+  );
+
+  const nameRole = (
+    <div className="min-w-0 flex-1 overflow-hidden">
+      <p className="truncate text-sm font-semibold text-onSurface">{currentUser.name}</p>
+      <p className="truncate text-xs text-onSurface-variant">{currentUser.role}</p>
+    </div>
+  );
 
   if (variant === 'card') {
     return (
       <div
         className={`flex items-center gap-3 rounded-xl bg-surface-lowest p-3 min-w-0 ${className}`}
       >
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-sm font-bold text-white overflow-hidden">
-          {currentUser.avatarUrl ? (
-            <img
-              src={currentUser.avatarUrl}
-              alt={currentUser.name}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            initials
-          )}
-        </div>
-
-        <div className="min-w-0 flex-1 overflow-hidden">
-          <p className="truncate text-sm font-semibold text-onSurface">{currentUser.name}</p>
-          <p className="truncate text-xs text-onSurface-variant">{currentUser.role}</p>
-        </div>
+        {onOpenProfile ? (
+          <button
+            onClick={onOpenProfile}
+            title="Open profile"
+            aria-label="Open profile"
+            className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left transition-colors hover:bg-surface-highest"
+          >
+            {identity}
+            {nameRole}
+          </button>
+        ) : (
+          <>
+            {identity}
+            {nameRole}
+          </>
+        )}
 
         {onLogout && (
           <button
@@ -56,18 +86,16 @@ export default function UserCard({ user, variant = 'compact', onLogout, classNam
   }
 
   // compact variant (TopBar)
-  return (
-    <div
-      className={`flex items-center gap-2 pl-4 border-l border-outline-variant min-w-0 ${className}`}
-    >
+  const compactContent = (
+    <>
       {currentUser.avatarUrl ? (
         <img
           src={currentUser.avatarUrl}
           alt={currentUser.name}
-          className="w-8 h-8 rounded-sm object-cover shrink-0"
+          className="w-8 h-8 rounded-full object-cover shrink-0"
         />
       ) : (
-        <div className="w-8 h-8 bg-primary rounded-sm flex items-center justify-center text-white text-sm font-bold shrink-0">
+        <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0">
           {initials}
         </div>
       )}
@@ -77,6 +105,24 @@ export default function UserCard({ user, variant = 'compact', onLogout, classNam
         </p>
         <p className="text-xs text-onSurface-variant leading-tight truncate">{currentUser.role}</p>
       </div>
-    </div>
+    </>
   );
+
+  // compact variant (TopBar) — a rounded pill so the hover highlight hugs the
+  // identity instead of painting a full-height rectangle with hard corners.
+  const compactClass = `flex items-center gap-2 rounded-md py-1.5 pl-3 pr-2 min-w-0 ${className}`;
+  if (onOpenProfile) {
+    return (
+      <button
+        onClick={onOpenProfile}
+        title="Open profile"
+        aria-label="Open profile"
+        className={`${compactClass} border-l border-outline-variant transition-colors hover:bg-surface-highest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary`}
+      >
+        {compactContent}
+      </button>
+    );
+  }
+
+  return <div className={compactClass}>{compactContent}</div>;
 }

@@ -22,6 +22,10 @@ export default function ProfileTab({
   onAgeYearChange,
   onSexYearChange,
   onTrekkingYearChange,
+  purposeSave,
+  ageSave,
+  genderSave,
+  trekkingSave,
 }) {
   return (
     <div className="space-y-6">
@@ -33,12 +37,15 @@ export default function ProfileTab({
             purpose.scrolls ? ' — scroll to see all' : ''
           }`}
           action={
-            <SelectControl
-              label="Year"
-              value={purpose.year}
-              onChange={onPurposeYearChange}
-              options={purpose.years.map((year) => ({ value: year, label: year }))}
-            />
+            <div className="flex items-center gap-2">
+              <SelectControl
+                label="Year"
+                value={purpose.year}
+                onChange={onPurposeYearChange}
+                options={purpose.years.map((year) => ({ value: year, label: year }))}
+              />
+              {purposeSave}
+            </div>
           }
           note="Shares use the sum of reported purpose categories for the selected year."
         >
@@ -57,12 +64,15 @@ export default function ProfileTab({
             age.scrolls ? ' — scroll to see all' : ''
           }`}
           action={
-            <SelectControl
-              label="Year"
-              value={age.year}
-              onChange={onAgeYearChange}
-              options={age.years.map((year) => ({ value: year, label: year }))}
-            />
+            <div className="flex items-center gap-2">
+              <SelectControl
+                label="Year"
+                value={age.year}
+                onChange={onAgeYearChange}
+                options={age.years.map((year) => ({ value: year, label: year }))}
+              />
+              {ageSave}
+            </div>
           }
           note="Shares use the source-reported total. The 46–60 and 60+ source bands overlap at age 60, so groups should be interpreted as published."
         >
@@ -75,10 +85,14 @@ export default function ProfileTab({
         </ChartPanel>
       </div>
 
-      <GenderPanel gender={gender} onYearChange={onSexYearChange} />
+      <GenderPanel gender={gender} onYearChange={onSexYearChange} saveButton={genderSave} />
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(240px,1fr)]">
-        <TrekkingPanel trekking={trekking} onYearChange={onTrekkingYearChange} />
+        <TrekkingPanel
+          trekking={trekking}
+          onYearChange={onTrekkingYearChange}
+          saveButton={trekkingSave}
+        />
       </div>
     </div>
   );

@@ -20,7 +20,8 @@
  * be drawing, and the KPI strip is derived whether or not the Overview tab is the
  * one showing it. So every hook below runs whatever the tab bar says is selected.
  */
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { collectionsApi } from '../../services/auth';
 import Loader from '../../components/common/Loader';
 import EconomicFooter from './components/EconomicFooter';
 import EconomicHero from './components/EconomicHero';
@@ -41,6 +42,28 @@ export default function Economic() {
   const provinceRequest = useProvinceGdpData();
   const { activeTab, selectTab, pageRef } = useEconomicNavigation({ loading });
   const actions = useSectionFilters();
+  const [savedKeys, setSavedKeys] = useState(() => new Set());
+  useEffect(() => {
+    let mounted = true;
+    collectionsApi.list().then((payload) => {
+      if (!mounted) return;
+      setSavedKeys(new Set((payload.collections || []).flatMap((c) => c.items.map((i) => i.chart_key))));
+    }).catch(() => {});
+    return () => { mounted = false; };
+  }, []);
+  const saveButtonFor = (id, title, subtitle, params = {}) => ({
+    chart_key: `economic-${id}`,
+    title,
+    subtitle,
+    params,
+    alreadySaved: savedKeys.has(`economic-${id}`),
+    onSaved: (key) => setSavedKeys((previous) => new Set(previous).add(key)),
+    onRemoved: (key) => setSavedKeys((previous) => {
+      const next = new Set(previous);
+      next.delete(key);
+      return next;
+    }),
+  });
 
   const sectoral = useSectoralGrowth(data, actions.sectorYear, actions.sectorGroup);
   const worldOutput = useWorldOutput(data, actions.growthRange);
@@ -124,7 +147,7 @@ export default function Economic() {
 
       <EconomicTabBar activeTab={activeTab} onSelect={selectTab} />
 
-      <EconomicTabPanel activeTab={activeTab} view={view} actions={actions} cards={cards} />
+      <EconomicTabPanel activeTab={activeTab} view={view} actions={actions} cards={cards} saveButtonFor={saveButtonFor} />
 
       <EconomicFooter csvRows={csvRows} view={view} actions={actions} activeTab={activeTab} />
 
