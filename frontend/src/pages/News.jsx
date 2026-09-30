@@ -134,9 +134,11 @@ export default function News() {
   const sourceOptions = useMemo(() => ['All', ...sources.map((s) => s.name)], [sources]);
 
   const categories = useMemo(() => {
-    const present = [...new Set(news.map((n) => n.category).filter(Boolean))];
-    const extra = present.filter((c) => !CANONICAL_CATEGORIES.includes(c));
-    return ['All', ...CANONICAL_CATEGORIES.filter((c) => present.includes(c)), ...extra];
+    const present = new Set(news.map((n) => n.category).filter(Boolean));
+    const extra = [...present].filter((c) => !CANONICAL_CATEGORIES.includes(c));
+    // Every canonical topic stays listed even with no articles, so Tourism is always
+    // selectable rather than disappearing until an editor tags a story with it.
+    return ['All', ...CANONICAL_CATEGORIES, ...extra];
   }, [news]);
 
   const filtered = useMemo(

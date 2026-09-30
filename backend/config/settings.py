@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
+import sys
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -95,15 +96,23 @@ SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Lax'
 SESSION_SAVE_EVERY_REQUEST = True
 
-if not DEBUG:
-    SECURE_SSL_REDIRECT = True
+# Django's test client speaks plain HTTP, so enabling the block below would
+# 301 every test request to https and strand the whole suite.
+RUNNING_TESTS = 'test' in sys.argv
+
+# Turn this on only when the app is genuinely served over TLS. A plain-HTTP dev server
+# has no https port to redirect to, so forcing it would break every local request.
+HTTPS_ONLY = config('HTTPS_ONLY', default=False, cast=bool)
+
+if not DEBUG and not RUNNING_TESTS:
+    SECURE_SSL_REDIRECT = HTTPS_ONLY
+    SESSION_COOKIE_SECURE = HTTPS_ONLY
+    CSRF_COOKIE_SECURE = HTTPS_ONLY
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
-    SECURE_HSTS_SECONDS = 31536000
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
-    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_HSTS_SECONDS = 31536000 if HTTPS_ONLY else 0
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = HTTPS_ONLY
+    SECURE_HSTS_PRELOAD = HTTPS_ONLY
+    SECURE_CONTENT_TYPE_NOSNIFF = True 
     SECURE_REFERRER_POLICY = 'same-origin'
     SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin'
 else:

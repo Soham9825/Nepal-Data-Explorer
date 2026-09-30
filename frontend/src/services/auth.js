@@ -85,7 +85,23 @@ const readToken = (key) => {
 const cacheUser = (user) => {
   meCache = user;
   meCachedAt = user ? Date.now() : 0;
-  if (user) writeStored(USER_STORAGE_KEY, JSON.stringify(user));
+  // Only persist a user we can identify. A stub carrying just `avatarUrl` would
+  // make isAdmin() read undefined and strip admin chrome until the next /me.
+  if (user && user.username) writeStored(USER_STORAGE_KEY, JSON.stringify(user));
+  else if (!user) removeStored(USER_STORAGE_KEY);
+};
+
+/**
+ * Fold an avatar change into the cached user without re-reading storage, so a
+ * failed read can't downgrade the cached object to `{ avatarUrl }`.
+ */
+const cacheAvatarUrl = (avatarUrl) => {
+  const current = meCache || auth.getCachedUser();
+  const merged = { ...(current || {}), avatarUrl };
+  meCache = merged;
+  meCachedAt = Date.now();
+  if (merged.username) writeStored(USER_STORAGE_KEY, JSON.stringify(merged));
+  return merged;
 };
 
 // Exchange the still-valid refresh token for a new access token. The backend has
@@ -413,7 +429,7 @@ export const profileApi = {
     const form = new FormData();
     form.append('avatar', file);
     const data = await authFetch('/profile/', { method: 'PATCH', body: form });
-    auth.cacheUser({ ...auth.getCachedUser(), avatarUrl: data.avatarUrl });
+    cacheAvatarUrl(data.avatarUrl);
     notifyUserUpdated();
     return data;
   },
@@ -425,7 +441,7 @@ export const profileApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ remove_avatar: true }),
     });
-    auth.cacheUser({ ...auth.getCachedUser(), avatarUrl: null });
+    cacheAvatarUrl(null);
     notifyUserUpdated();
     return data;
   },

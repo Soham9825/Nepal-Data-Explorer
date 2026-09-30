@@ -2,6 +2,7 @@ import feedparser
 from django.conf import settings
 from django.core.cache import cache
 from concurrent.futures import ThreadPoolExecutor
+import ipaddress
 import logging
 import re
 import socket
@@ -107,6 +108,22 @@ CATEGORY_KEYWORDS = {
         "expedition",
         "safari",
         "resort",
+        # The RSS feeds are largely Nepali, so English keywords alone never match.
+        "पर्यटन",
+        "पर्यटक",
+        "सैलानी",
+        "भ्रमण",
+        "ट्रेकिङ",
+        "ट्रेकर",
+        "होटल",
+        "विमानस्थल",
+        "हिमालय",
+        "दर्शनीय",
+        "स्मारक",
+        "रमाइलो",
+        "साहसिक",
+        "गन्तव्य",
+        "पर्वतीय",
     ),
     "Economy": (
         "economy",
@@ -375,22 +392,34 @@ def _is_dns_error(exc):
 
 
 def _resolve_host(feed_url):
+    # Feed and article URLs arrive from remote RSS content, so this doubles as the
+    # SSRF guard for every urlopen below: only plain public http(s) targets pass.
+    parsed = urlparse(feed_url)
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError(f"Refusing non-http(s) URL scheme {parsed.scheme!r}")
+    host = parsed.hostname
+    if not host:
+        raise ValueError("Refusing URL with no hostname")
+
     # macOS's resolver can intermittently return SERVFAIL for a hostname that
     # the upstream DNS server resolves fine. Retry just the getaddrinfo call a
     # few times before attempting the HTTP request.
-    host = urlparse(feed_url).hostname
-    if not host:
-        return
     attempts = 0
     while True:
         attempts += 1
         try:
-            socket.getaddrinfo(host, None, socket.AF_UNSPEC, socket.SOCK_STREAM)
-            return
+            addresses = socket.getaddrinfo(host, None, socket.AF_UNSPEC, socket.SOCK_STREAM)
         except socket.gaierror as exc:
             if attempts >= MAX_DNS_ATTEMPTS or not _is_dns_error(exc):
                 raise
             time.sleep(attempts)
+            continue
+
+        for address in addresses:
+            ip = ipaddress.ip_address(address[4][0])
+            if not ip.is_global:
+                raise ValueError(f"Refusing non-public address {ip} for {host}")
+        return
 
 
 def _fetch_feed_payload(feed_url):

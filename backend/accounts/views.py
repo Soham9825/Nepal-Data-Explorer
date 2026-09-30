@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth import login as auth_login, logout as auth_logout, authenticate
 from django.contrib.auth.hashers import check_password, make_password
-from .models import CustomUser, PasswordResetOTP, VerifiedEmail, EmailVerificationToken, SavedCollection, SavedItem
+from .models import CustomUser, Profile, PasswordResetOTP, VerifiedEmail, EmailVerificationToken, SavedCollection, SavedItem
 from django.core.mail import EmailMessage, send_mail
 from smtplib import SMTPException
 from socket import error as SocketError
@@ -10,7 +10,8 @@ from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
 import time
 import re
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
+from django.urls import reverse
 from django.views.decorators.http import require_POST
 from django.views.decorators.csrf import ensure_csrf_cookie, csrf_protect
 from django.middleware.csrf import get_token
@@ -19,7 +20,6 @@ import hashlib
 import io
 import secrets
 from PIL import Image, ImageOps, UnidentifiedImageError
-from django.core.files.base import ContentFile
 from datetime import timedelta
 from urllib.parse import urlencode
 from urllib.error import HTTPError, URLError
@@ -30,7 +30,7 @@ from django.db.utils import OperationalError
 from django.utils import timezone
 from .models import PasswordResetToken
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.exceptions import NotFound
 from rest_framework_simplejwt.authentication import JWTAuthentication
@@ -248,9 +248,17 @@ def _jwt_for_user(user):
 
 
 def _avatar_url(user, request):
-    if not user.avatar:
+    stamp = (
+        Profile.objects.filter(user=user)
+        .values_list('avatar_updated_at', flat=True)
+        .first()
+    )
+    if not stamp:
         return None
-    return request.build_absolute_uri(user.avatar.url)
+    # Deliberately relative: build_absolute_uri() trusts the Host header, so an
+    # absolute URL would let a poisoned Host persist an off-site avatar link.
+    url = reverse('accounts:avatar', args=[user.pk])
+    return f'{url}?v={stamp.strftime("%Y%m%d%H%M%S%f")}'
 
 
 def _user_payload(user, request):
@@ -737,10 +745,15 @@ def oauth_callback(request, provider):
 MAX_AVATAR_BYTES = 5 * 1024 * 1024
 AVATAR_SIZE = (256, 256)
 AVATAR_FORMATS = {'JPEG': 'jpg', 'PNG': 'png', 'WEBP': 'webp'}
+AVATAR_CONTENT_TYPES = {'JPEG': 'image/jpeg', 'PNG': 'image/png', 'WEBP': 'image/webp'}
 
 
 def _clean_avatar(uploaded):
-    """Square-crop to a thumbnail; the format is read from the bytes, not the client's Content-Type."""
+    """Return (bytes, content_type) for a square thumbnail, or raise ValueError.
+
+    The format is read from the decoded bytes because the multipart Content-Type is
+    supplied by the client.
+    """
     try:
         image = Image.open(uploaded)
         image.load()
@@ -755,9 +768,7 @@ def _clean_avatar(uploaded):
 
     buffer = io.BytesIO()
     ImageOps.fit(image, AVATAR_SIZE, Image.LANCZOS).save(buffer, format=image.format)
-    cleaned = ContentFile(buffer.getvalue())
-    cleaned.name = f"avatar.{AVATAR_FORMATS[image.format]}"
-    return cleaned
+    return buffer.getvalue(), AVATAR_CONTENT_TYPES[image.format]
 
 
 @api_view(['GET', 'PATCH'])
@@ -768,44 +779,72 @@ def api_profile(request):
         return Response(_user_payload(request.user, request))
 
     avatar = request.FILES.get('avatar')
+    remove_requested = bool(request.data.get('remove_avatar'))
+    if not avatar and not remove_requested:
+        # This view only edits the avatar, so a PATCH carrying neither an upload nor
+        # a removal is a malformed request, not a no-op to report success for.
+        return Response(
+            {'detail': 'Send an "avatar" file to set the photo, or remove_avatar to clear it.'},
+            status=400,
+        )
+
     if avatar:
         if avatar.size > MAX_AVATAR_BYTES:
             return Response({'detail': 'Image must be under 5 MB.'}, status=400)
         try:
-            cleaned = _clean_avatar(avatar)
+            cleaned, content_type = _clean_avatar(avatar)
         except ValueError as exc:
             return Response({'detail': str(exc)}, status=400)
 
-        # Drop the previous file so old uploads do not pile up.
-        previous = request.user.avatar
-        request.user.avatar = cleaned
+        profile, _ = Profile.objects.get_or_create(user=request.user)
+        profile.avatar = cleaned
+        profile.avatar_content_type = content_type
+        profile.avatar_updated_at = timezone.now()
         try:
-            request.user.save(update_fields=['avatar'])
+            profile.save(update_fields=['avatar', 'avatar_content_type', 'avatar_updated_at'])
         except OperationalError:
             logger.exception('Could not save avatar')
             return Response({'detail': 'Could not save image. Please try again.'}, status=503)
-        if previous:
-            try:
-                previous.delete(save=False)
-            except Exception:
-                logger.warning('Could not remove previous avatar for %s', request.user.username)
 
     # JSON PATCH may also clear the avatar entirely, so a user can have no photo.
-    if request.data.get('remove_avatar'):
-        previous = request.user.avatar
-        if previous:
-            request.user.avatar = None
+    if remove_requested:
+        profile = Profile.objects.filter(user=request.user).first()
+        if profile and profile.avatar:
+            profile.avatar = None
+            profile.avatar_content_type = ''
+            profile.avatar_updated_at = None
             try:
-                request.user.save(update_fields=['avatar'])
+                profile.save(
+                    update_fields=['avatar', 'avatar_content_type', 'avatar_updated_at']
+                )
             except OperationalError:
                 logger.exception('Could not clear avatar')
                 return Response({'detail': 'Could not remove the image. Please try again.'}, status=503)
-            try:
-                previous.delete(save=False)
-            except Exception:
-                logger.warning('Could not remove avatar file for %s', request.user.username)
 
     return Response(_user_payload(request.user, request))
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def api_avatar(request, user_id):
+    """Stream a stored avatar.
+
+    Public because an <img> tag cannot carry an Authorization header; the primary key is a
+    UUID, so the URL is unguessable. ETag revalidation keeps repeat views cheap.
+    """
+    profile = Profile.objects.filter(user_id=user_id).only('avatar', 'avatar_content_type').first()
+    if not profile or not profile.avatar:
+        raise NotFound({'detail': 'No avatar.'})
+
+    payload = bytes(profile.avatar)
+    etag = f'"{hashlib.md5(payload, usedforsecurity=False).hexdigest()}"'
+    response = HttpResponse(payload, content_type=profile.avatar_content_type or 'image/png')
+    response['ETag'] = etag
+    response['Cache-Control'] = 'private, max-age=86400'
+    if request.headers.get('If-None-Match') == etag:
+        response.status_code = 304
+        response.content = b''
+    return response
 
 
 def _collection_or_404(request, collection_id):

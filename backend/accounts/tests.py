@@ -398,3 +398,293 @@ class PasswordResetReuseTests(TestCase):
 		user = CustomUser.objects.get(pk=self.user.pk)
 		self.assertTrue(user.check_password('New-pass-456'))
 		self.assertFalse(user.check_password('Old-pass-123'))
+
+def _anonymous_account():
+	"""Invent a throwaway account so no example username, email or password is stored
+	here. These rows only ever reach Django's separate test database."""
+	import uuid
+	token = uuid.uuid4().hex
+	return {
+		'username': f'user-{token[:12]}',
+		'email': f'{token}@example.invalid',
+		'password': uuid.uuid4().hex,
+	}
+
+
+def _png(size=(1200, 600), fmt='PNG'):
+	import io
+	from PIL import Image
+	buffer = io.BytesIO()
+	Image.new('RGB', size, (30, 90, 200)).save(buffer, format=fmt)
+	return buffer.getvalue()
+
+
+class AvatarUploadTests(TestCase):
+	def setUp(self):
+		self.client = APIClient()
+		self.user = CustomUser.objects.create_user(**_anonymous_account())
+		self.client.force_authenticate(user=self.user)
+
+	def upload(self, payload, filename='upload.png', content_type='image/png'):
+		import io
+		return self.client.patch(
+			reverse('accounts:api_profile'),
+			{'avatar': (io.BytesIO(payload), filename)},
+			format='multipart',
+			HTTP_CONTENT_TYPE=content_type,
+		)
+
+	def avatar_path(self):
+		return reverse('accounts:avatar', args=[self.user.pk])
+
+	def test_upload_stores_square_bytes_in_the_database(self):
+		from accounts.models import Profile
+		from PIL import Image
+		import io
+		self.assertFalse(Profile.objects.filter(user=self.user).exists())
+
+		response = self.upload(_png())
+
+		self.assertEqual(response.status_code, 200)
+		stored = Profile.objects.get(user=self.user)
+		with Image.open(io.BytesIO(bytes(stored.avatar))) as image:
+			self.assertEqual(image.size, (256, 256))
+			self.assertEqual(image.format, 'PNG')
+
+	def test_avatar_url_is_relative_and_versioned(self):
+		avatar_url = self.upload(_png()).json()['avatarUrl']
+
+		# Relative on purpose: an absolute URL built from the Host header could be
+		# poisoned and then persisted in the browser's cached user object.
+		self.assertFalse(avatar_url.startswith('http'))
+		self.assertTrue(avatar_url.startswith('/'))
+		self.assertIn(f'/api/avatar/{self.user.pk}/', avatar_url)
+		self.assertIn('?v=', avatar_url)
+
+	def test_patch_without_an_avatar_or_removal_is_rejected(self):
+		response = self.client.patch(
+			reverse('accounts:api_profile'), {'misnamed': 'value'}, format='multipart'
+		)
+
+		self.assertEqual(response.status_code, 400)
+		self.assertIn('avatar', response.json()['detail'])
+
+	def test_serving_the_avatar_returns_the_stored_image(self):
+		from PIL import Image
+		import io
+		self.upload(_png())
+
+		response = self.client.get(self.avatar_path())
+
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(response['Content-Type'], 'image/png')
+		self.assertEqual(response['Cache-Control'], 'private, max-age=86400')
+		with Image.open(io.BytesIO(response.content)) as image:
+			self.assertEqual(image.size, (256, 256))
+
+	def test_etag_turns_a_repeat_request_into_a_304(self):
+		self.upload(_png())
+		path = self.avatar_path()
+
+		first = self.client.get(path)
+		second = self.client.get(path, HTTP_IF_NONE_MATCH=first['ETag'])
+
+		self.assertEqual(first.status_code, 200)
+		self.assertTrue(first['ETag'].startswith('"'))
+		self.assertEqual(second.status_code, 304)
+		self.assertEqual(second.content, b'')
+
+	def test_requesting_a_missing_avatar_is_404(self):
+		self.assertEqual(self.client.get(self.avatar_path()).status_code, 404)
+
+	def test_user_without_an_avatar_reports_null_url(self):
+		response = self.client.get(reverse('accounts:api_profile'))
+
+		self.assertEqual(response.status_code, 200)
+		self.assertIsNone(response.json()['avatarUrl'])
+
+	def test_non_image_declared_as_png_is_rejected(self):
+		from accounts.models import Profile
+		response = self.upload(b'<html><script>alert(1)</script></html>', filename='fake.png')
+
+		self.assertEqual(response.status_code, 400)
+		self.assertIn('readable image', response.json()['detail'])
+		self.assertFalse(Profile.objects.filter(user=self.user).exists())
+
+	def test_disallowed_format_is_rejected(self):
+		import io
+		from PIL import Image
+		buffer = io.BytesIO()
+		Image.new('RGB', (60, 60), (200, 0, 0)).save(buffer, format='GIF')
+
+		response = self.upload(buffer.getvalue(), filename='anim.gif', content_type='image/gif')
+
+		self.assertEqual(response.status_code, 400)
+		self.assertIn('JPG, PNG or WebP', response.json()['detail'])
+
+	def test_oversized_upload_is_rejected(self):
+		from accounts.models import Profile
+		response = self.upload(b'\x89PNG\r\n\x1a\n' + b'0' * (5 * 1024 * 1024 + 10))
+
+		self.assertEqual(response.status_code, 400)
+		self.assertIn('5 MB', response.json()['detail'])
+		self.assertFalse(Profile.objects.filter(user=self.user).exists())
+
+	def test_another_account_cannot_inherit_the_avatar(self):
+		from accounts.models import Profile
+		self.upload(_png((400, 400), 'PNG'))
+		other = CustomUser.objects.create_user(**_anonymous_account())
+		other_client = APIClient()
+		other_client.force_authenticate(user=other)
+
+		payload = other_client.get(reverse('accounts:api_profile')).json()
+
+		self.assertIsNone(payload['avatarUrl'])
+		self.assertFalse(Profile.objects.filter(user=other).exists())
+
+	def test_two_accounts_keep_independent_avatars(self):
+		from accounts.models import Profile
+		import io
+		other = CustomUser.objects.create_user(**_anonymous_account())
+		self.upload(_png((400, 400), 'PNG'))
+
+		other_client = APIClient()
+		other_client.force_authenticate(user=other)
+		other_client.patch(
+			reverse('accounts:api_profile'),
+			{'avatar': (io.BytesIO(_png((600, 600), 'JPEG')), 'other.jpg')},
+			format='multipart',
+		)
+
+		self.assertEqual(Profile.objects.get(user=self.user).avatar_content_type, 'image/png')
+		self.assertEqual(Profile.objects.get(user=other).avatar_content_type, 'image/jpeg')
+
+	def test_replacing_the_avatar_swaps_the_bytes_and_the_version(self):
+		first_url = self.upload(_png((400, 400), 'PNG')).json()['avatarUrl']
+		first_etag = self.client.get(self.avatar_path())['ETag']
+
+		second_url = self.upload(
+			_png((600, 600), 'JPEG'), filename='next.jpg'
+		).json()['avatarUrl']
+
+		self.assertNotEqual(first_url, second_url)
+		self.assertNotEqual(first_etag, self.client.get(self.avatar_path())['ETag'])
+
+	def test_remove_avatar_clears_the_row(self):
+		from accounts.models import Profile
+		self.upload(_png())
+
+		response = self.client.patch(
+			reverse('accounts:api_profile'), {'remove_avatar': True}, format='json'
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertIsNone(response.json()['avatarUrl'])
+		cleared = Profile.objects.get(user=self.user)
+		self.assertIsNone(cleared.avatar)
+		self.assertEqual(cleared.avatar_content_type, '')
+		self.assertIsNone(cleared.avatar_updated_at)
+		self.assertEqual(self.client.get(self.avatar_path()).status_code, 404)
+
+	def test_replace_then_remove_ends_with_no_avatar(self):
+		self.upload(_png((400, 400), 'PNG'))
+		self.upload(_png((600, 600), 'JPEG'), filename='next.jpg')
+
+		response = self.client.patch(
+			reverse('accounts:api_profile'), {'remove_avatar': True}, format='json'
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertIsNone(response.json()['avatarUrl'])
+
+	def test_uploading_again_after_removing_works(self):
+		self.upload(_png())
+		self.client.patch(
+			reverse('accounts:api_profile'), {'remove_avatar': True}, format='json'
+		)
+
+		response = self.upload(_png((500, 500), 'PNG'))
+
+		self.assertEqual(response.status_code, 200)
+		self.assertIsNotNone(response.json()['avatarUrl'])
+		self.assertEqual(self.client.get(self.avatar_path()).status_code, 200)
+
+	def test_no_file_is_written_to_the_media_root(self):
+		import tempfile
+		from pathlib import Path
+		with tempfile.TemporaryDirectory() as media_root:
+			with override_settings(MEDIA_ROOT=media_root):
+				self.upload(_png())
+				self.assertEqual(list(Path(media_root).rglob('*')), [])
+
+
+class CrossDeviceAvatarTests(TestCase):
+	"""Same account, two clients: an avatar set anywhere must be visible everywhere, with
+	no shared filesystem and no per-tab state."""
+
+	def setUp(self):
+		import uuid
+		self.password = uuid.uuid4().hex
+		fields = _anonymous_account()
+		fields['password'] = self.password
+		self.user = CustomUser.objects.create_user(**fields)
+
+	def sign_in_on_a_new_device(self):
+		import io
+		device = APIClient()
+		data = device.post(
+			reverse('accounts:api_login'),
+			{'username': self.user.username, 'password': self.password},
+			format='json',
+		).json()
+		device.credentials(HTTP_AUTHORIZATION=f"Bearer {data['access']}")
+		return device
+
+	def upload_from(self, device, size=(900, 300), fmt='PNG'):
+		import io
+		return device.patch(
+			reverse('accounts:api_profile'),
+			{'avatar': (io.BytesIO(_png(size, fmt)), 'shared.png')},
+			format='multipart',
+		)
+
+	def avatar_url_for(self, device):
+		return device.get(reverse('accounts:api_profile')).json()['avatarUrl']
+
+	def test_avatar_uploaded_on_one_device_is_visible_on_another(self):
+		from accounts.models import Profile
+		first = self.sign_in_on_a_new_device()
+		second = self.sign_in_on_a_new_device()
+
+		self.upload_from(first)
+
+		self.assertIsNotNone(self.avatar_url_for(second))
+		self.assertEqual(Profile.objects.filter(user=self.user).count(), 1)
+
+	def test_a_device_signed_in_before_the_upload_also_sees_it(self):
+		stale_device = self.sign_in_on_a_new_device()
+		self.assertIsNone(self.avatar_url_for(stale_device))
+
+		self.upload_from(self.sign_in_on_a_new_device())
+
+		self.assertIsNotNone(self.avatar_url_for(stale_device))
+
+	def test_a_change_on_one_device_shows_on_the_other(self):
+		first = self.sign_in_on_a_new_device()
+		second = self.sign_in_on_a_new_device()
+		self.upload_from(first, (900, 300), 'PNG')
+		before = self.avatar_url_for(second)
+
+		self.upload_from(first, (600, 600), 'JPEG')
+
+		self.assertNotEqual(before, self.avatar_url_for(second))
+
+	def test_a_removal_on_one_device_shows_on_the_other(self):
+		first = self.sign_in_on_a_new_device()
+		second = self.sign_in_on_a_new_device()
+		self.upload_from(first)
+		self.assertIsNotNone(self.avatar_url_for(second))
+
+		first.patch(reverse('accounts:api_profile'), {'remove_avatar': True}, format='json')
+
+		self.assertIsNone(self.avatar_url_for(second))

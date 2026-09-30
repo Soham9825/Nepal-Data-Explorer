@@ -114,6 +114,8 @@ Then apply migrations:
 python manage.py migrate
 ```
 
+Run this again whenever the models change, and on every deploy: code that queries a table before its migration is applied fails at runtime.
+
 #### f) Import the CSV data
 
 Do this after migrations succeed:

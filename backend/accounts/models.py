@@ -31,7 +31,6 @@ class CustomUser(AbstractBaseUser,PermissionsMixin):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     username = models.CharField(max_length=25, unique=True)
     email = models.EmailField(unique=True)
-    avatar = models.ImageField(upload_to='avatars/', blank=True, null=True)
 
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
@@ -47,13 +46,20 @@ class CustomUser(AbstractBaseUser,PermissionsMixin):
         return self.username
 
 
+class Profile(models.Model):
+    user = models.OneToOneField(
+        CustomUser, on_delete=models.CASCADE, related_name='profile'
+    )
+    avatar = models.BinaryField(blank=True, null=True, editable=False)
+    avatar_content_type = models.CharField(max_length=32, blank=True, default='')
+    avatar_updated_at = models.DateTimeField(blank=True, null=True)
+
+    def __str__(self):
+        return f'Profile for {self.user.username}'
+
+
+
 class SavedCollection(models.Model):
-    """A named folder a user keeps research results in.
-
-    Collections are scoped to a section of the site (e.g. ``tourism``) so the
-    rollout can start on one page and widen later. Nothing here is shared.
-    """
-
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='saved_collections')
     name = models.CharField(max_length=80)
@@ -73,13 +79,6 @@ class SavedCollection(models.Model):
 
 
 class SavedItem(models.Model):
-    """A single bookmarked view (a chart or dashboard state) inside a collection.
-
-    ``params`` stores the filters/selection that produced the view so it can be
-    restored later; ``chart_key`` is a stable identifier per page to tell the
-    UI when the current view is already saved.
-    """
-
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     collection = models.ForeignKey(SavedCollection, on_delete=models.CASCADE, related_name='items')
     chart_key = models.CharField(max_length=80)
