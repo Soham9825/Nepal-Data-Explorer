@@ -16,7 +16,10 @@ from django.views.decorators.csrf import ensure_csrf_cookie, csrf_protect
 from django.middleware.csrf import get_token
 import json
 import hashlib
+import io
 import secrets
+from PIL import Image, ImageOps, UnidentifiedImageError
+from django.core.files.base import ContentFile
 from datetime import timedelta
 from urllib.parse import urlencode
 from urllib.error import HTTPError, URLError
@@ -731,8 +734,30 @@ def oauth_callback(request, provider):
 
 # --- Profile & saved collections ---
 
-ALLOWED_AVATAR_TYPES = {'image/jpeg', 'image/png', 'image/webp'}
 MAX_AVATAR_BYTES = 5 * 1024 * 1024
+AVATAR_SIZE = (256, 256)
+AVATAR_FORMATS = {'JPEG': 'jpg', 'PNG': 'png', 'WEBP': 'webp'}
+
+
+def _clean_avatar(uploaded):
+    """Square-crop to a thumbnail; the format is read from the bytes, not the client's Content-Type."""
+    try:
+        image = Image.open(uploaded)
+        image.load()
+    except (UnidentifiedImageError, OSError, ValueError):
+        raise ValueError('File is not a readable image.')
+
+    if image.format not in AVATAR_FORMATS:
+        raise ValueError('Only JPG, PNG or WebP images are allowed.')
+
+    if image.mode not in ('RGB', 'RGBA'):
+        image = image.convert('RGBA' if 'transparency' in image.info else 'RGB')
+
+    buffer = io.BytesIO()
+    ImageOps.fit(image, AVATAR_SIZE, Image.LANCZOS).save(buffer, format=image.format)
+    cleaned = ContentFile(buffer.getvalue())
+    cleaned.name = f"avatar.{AVATAR_FORMATS[image.format]}"
+    return cleaned
 
 
 @api_view(['GET', 'PATCH'])
@@ -746,12 +771,14 @@ def api_profile(request):
     if avatar:
         if avatar.size > MAX_AVATAR_BYTES:
             return Response({'detail': 'Image must be under 5 MB.'}, status=400)
-        if avatar.content_type not in ALLOWED_AVATAR_TYPES:
-            return Response({'detail': 'Only JPG, PNG or WebP images are allowed.'}, status=400)
+        try:
+            cleaned = _clean_avatar(avatar)
+        except ValueError as exc:
+            return Response({'detail': str(exc)}, status=400)
 
         # Drop the previous file so old uploads do not pile up.
         previous = request.user.avatar
-        request.user.avatar = avatar
+        request.user.avatar = cleaned
         try:
             request.user.save(update_fields=['avatar'])
         except OperationalError:
